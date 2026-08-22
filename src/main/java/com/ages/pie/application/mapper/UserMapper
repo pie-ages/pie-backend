@@ -1,0 +1,32 @@
+package com.ages.pie.application.mapper;
+
+import com.ages.pie.application.dto.UserResponseDTO;
+import com.ages.pie.domain.entity.User;
+import org.springframework.stereotype.Component;
+
+/**
+ * Exemplo de Mapper.
+ *
+ * Única responsabilidade: converter DTO <-> Entity. Não deve conter
+ * nenhuma regra de negócio nem validação — se você está tentado a colocar
+ * um `if` de regra aqui dentro, essa regra provavelmente pertence à
+ * Entity ou a um Domain Service, não ao Mapper.
+ *
+ * Regra para o time: se um dia vocês adotarem MapStruct, essa classe
+ * pode até deixar de existir (o MapStruct gera isso automaticamente).
+ * Por ora, mapper manual é mais simples de entender para quem está
+ * começando.
+ */
+@Component
+public class UserMapper {
+
+    public UserResponseDTO toResponseDTO(User user) {
+        return new UserResponseDTO(
+            user.getId(),
+            user.getName(),
+            user.getEmail(),
+            user.getRole(),
+            user.getCreatedAt()
+        );
+    }
+}

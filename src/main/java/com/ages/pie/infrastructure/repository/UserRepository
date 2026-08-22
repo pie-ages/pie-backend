@@ -1,0 +1,20 @@
+package com.ages.pie.infrastructure.repository;
+
+import com.ages.pie.domain.entity.User;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.Optional;
+
+/**
+ * Exemplo de Repository (Spring Data JPA).
+ *
+ * Apenas acesso a dados — nenhuma regra de negócio deve aparecer aqui.
+ * Métodos derivados por nome (findByEmail) são permitidos porque ainda é
+ * "só busca". Se um método começar a combinar várias condições de
+ * negócio, considere se ela não deveria estar em uma Specification
+ * (aplicada no Service) em vez de crescer o Repository.
+ */
+public interface UserRepository extends JpaRepository<User, Long> {
+
+    Optional<User> findByEmail(String email);
+}
