@@ -1,10 +1,10 @@
 ## Descrição da Mudança
 
-- Adicione um resumo detalhado do que esta alteração engloba.
+- Descreva objetivamente o problema resolvido e a abordagem adotada.
 
-**Link da Task ou Issue:**
+## Issue no Linear
 
-- [Task ID](https://jira.ou.trello.com/sua-task)
+- Cole aqui o link da issue.
 
 ## Tipo de Mudança
 
@@ -16,21 +16,25 @@
 - [ ] Deploy - Deploy de nova versão
 - [ ] Infrastructure - Atualização de infraestrutura
 
-## Validação de Arquitetura (Ports & Adapters)
+## Validação de Arquitetura
 
-- [ ] Nenhuma lógica vazou e foi acoplada no `/domain`.
-- [ ] Interfaces e Casos de Uso permanecem dentro do `/core`.
-- [ ] DTOs estão mapeados em `/adapters/in`.
+- [ ] Controllers em `application/controller` apenas recebem requisições, delegam para services e retornam respostas HTTP.
+- [ ] DTOs e mapeamentos foram mantidos em `application/dto` e `application/mapper`.
+- [ ] Regras de negócio foram mantidas em `application/service` ou `domain/service`, sem depender de HTTP, JPA ou segurança.
+- [ ] Entidades e enums foram mantidos em `domain/entity` e `domain/enums`.
+- [ ] Acesso a dados, JWT e demais detalhes técnicos foram mantidos em `infrastructure`.
+- [ ] Configurações de aplicação foram mantidas em `application/config`.
 
 ## Checklist
 
-- [ ] O código passou no linter local.
-- [ ] Testes unitários adicionados para os services.
-- [ ] Testes de integração atualizados e passantes.
-- [ ] `.env.example` foi atualizado se for o caso.
-- [ ] Documentação foi atualizada se for o caso.
-- [ ] Sem comentários desnecessários (e emojis).
+- [ ] `./mvnw test` foi executado com sucesso.
+- [ ] Testes unitários com JUnit e Mockito foram adicionados ou atualizados para regras de negócio alteradas.
+- [ ] Testes de integração foram adicionados ou atualizados para endpoints e persistência alterados.
+- [ ] Segurança, autenticação e autorização foram revisadas quando aplicável.
+- [ ] Configurações, variáveis de ambiente ou Docker foram atualizados quando necessário.
+- [ ] A documentação foi atualizada quando necessário.
+- [ ] Não há logs, comentários temporários ou código morto.
 
-## Imagens
+## Evidências
 
-- Adicione imagens para comprovação
+- Adicione prints, resposta de endpoint ou outra evidência de funcionamento quando aplicável.
