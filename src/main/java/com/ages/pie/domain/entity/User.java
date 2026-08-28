@@ -24,13 +24,12 @@ public class User extends AuditableEntity {
     @UuidGenerator
     private UUID id;
 
-    @Column(nullable = false)
     private String name;
 
-    @Column(nullable = false, unique = true)
+    @Column(unique = true)
     private String email;
 
-    @Column(name = "password_hash", nullable = false)
+    @Column(name = "password_hash")
     private String passwordHash;
 
     @Column(name = "photo_url")

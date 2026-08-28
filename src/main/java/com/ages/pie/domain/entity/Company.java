@@ -23,27 +23,25 @@ public class Company extends AuditableEntity {
     @UuidGenerator
     private UUID id;
 
-    @Column(nullable = false)
     private String name;
 
-    @Column(nullable = false, unique = true)
+    @Column(unique = true)
     private String cnpj;
 
     private String website;
 
-    @Column(name = "social_reason", nullable = false)
+    @Column(name = "social_reason")
     private String socialReason;
 
-    @Column(name = "responsible_person", nullable = false)
+    @Column(name = "responsible_person")
     private String responsiblePerson;
 
-    @Column(nullable = false, unique = true)
+    @Column(unique = true)
     private String email;
 
-    @Column(name = "password_hash", nullable = false)
+    @Column(name = "password_hash")
     private String passwordHash;
 
-    @Column(nullable = false)
     private boolean active = true;
 
     @Column(name = "photo_url")

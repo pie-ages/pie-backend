@@ -29,10 +29,9 @@ public class Look extends AuditableEntity {
     @JoinColumn(name = "customer_id", nullable = false)
     private User customer;
 
-    @Column(nullable = false)
     private String title;
 
-    @Column(name = "is_ai_generated", nullable = false)
+    @Column(name = "is_ai_generated")
     private boolean aiGenerated = false;
 
     private String occasion;

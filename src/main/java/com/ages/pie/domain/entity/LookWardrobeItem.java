@@ -34,7 +34,7 @@ public class LookWardrobeItem {
     @JoinColumn(name = "wardrobe_item_id", nullable = false)
     private WardrobeItem wardrobeItem;
 
-    @Column(name = "created_at", nullable = false, updatable = false)
+    @Column(name = "created_at", updatable = false)
     private OffsetDateTime createdAt;
 
     protected LookWardrobeItem() {

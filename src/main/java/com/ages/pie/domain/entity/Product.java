@@ -27,7 +27,6 @@ public class Product extends AuditableEntity {
     @JoinColumn(name = "company_id", nullable = false)
     private Company company;
 
-    @Column(nullable = false)
     private String name;
 
     private String description;
@@ -42,7 +41,6 @@ public class Product extends AuditableEntity {
     @Column(name = "purchase_url")
     private String purchaseUrl;
 
-    @Column(nullable = false)
     private boolean active = true;
 
     protected Product() {

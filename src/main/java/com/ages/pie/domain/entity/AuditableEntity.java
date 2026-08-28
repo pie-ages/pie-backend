@@ -10,10 +10,10 @@ import jakarta.persistence.PreUpdate;
 @MappedSuperclass
 public abstract class AuditableEntity {
 
-    @Column(name = "created_at", nullable = false, updatable = false)
+    @Column(name = "created_at", updatable = false)
     private OffsetDateTime createdAt;
 
-    @Column(name = "updated_at", nullable = false)
+    @Column(name = "updated_at")
     private OffsetDateTime updatedAt;
 
     @PrePersist

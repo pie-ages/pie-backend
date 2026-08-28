@@ -5,7 +5,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
-import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
@@ -29,7 +28,6 @@ public class Wishlist extends AuditableEntity {
     @JoinColumn(name = "customer_id", nullable = false, unique = true)
     private User customer;
 
-    @Column(nullable = false)
     private String name;
 
     @OneToMany(mappedBy = "wishlist", fetch = FetchType.LAZY)
