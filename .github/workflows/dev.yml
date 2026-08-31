@@ -2,7 +2,6 @@ name: CI
 
 on:
   push:
-    branches: [dev, main]
   pull_request:
     branches: [dev, main]
   workflow_dispatch:
@@ -14,6 +13,7 @@ jobs:
   build-and-test:
     name: Build and Run tests
     runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
 
     services:
       postgres:
@@ -51,8 +51,7 @@ jobs:
   mirror:
     name: Mirror to GitLab
     runs-on: ubuntu-latest
-    needs: [build-and-test]
-    if: (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev') && github.event_name == 'push'
+    if: github.event_name == 'push'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -66,5 +65,5 @@ jobs:
         run: |
           BRANCH=${GITHUB_REF#refs/heads/}
           git remote add gitlab https://${GITLAB_USERNAME}:${GITLAB_TOKEN}@tools.ages.pucrs.br/2026-2/2lm-4lm/pi-consultoria-de-imagem/backend.git
-          git push --force gitlab ${BRANCH}:${BRANCH}
+          git push --force gitlab HEAD:${BRANCH}
 
