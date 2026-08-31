@@ -89,4 +89,36 @@ public class Product extends AuditableEntity {
     public boolean isActive() {
         return active;
     }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public void setCategory(String category) {
+        this.category = category;
+    }
+
+    public void setPrice(BigDecimal price) {
+        this.price = price;
+    }
+
+    public void setImageUrl(String imageUrl) {
+        this.imageUrl = imageUrl;
+    }
+
+    public void setPurchaseUrl(String purchaseUrl) {
+        this.purchaseUrl = purchaseUrl;
+    }
+
+    public void setActive(boolean active) {
+        this.active = active;
+    }
+
+    public void setCompany(Company company) {
+        this.company = company;
+    }
 }
