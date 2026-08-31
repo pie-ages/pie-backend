@@ -26,17 +26,17 @@ public class UserService {
     }
 
     @Transactional
-    public UserResponseDTO criar(UserRequestDTO dto) {
+    public UserResponseDTO create(UserRequestDTO dto) {
         if (userRepository.existsByEmail(dto.email())) {
             throw new DataIntegrityViolationException("Email já cadastrado: " + dto.email());
         }
 
-        User user = new User(dto.name(), dto.email(), hashSenha(dto.password()));
+        User user = new User(dto.name(), dto.email(), hashPassword(dto.password()));
         return userMapper.toResponseDTO(userRepository.save(user));
     }
 
     @Transactional(readOnly = true)
-    public List<UserResponseDTO> listar() {
+    public List<UserResponseDTO> findAll() {
         return userRepository.findAll()
                 .stream()
                 .map(userMapper::toResponseDTO)
@@ -44,14 +44,14 @@ public class UserService {
     }
 
     @Transactional(readOnly = true)
-    public UserResponseDTO buscarPorId(UUID id) {
+    public UserResponseDTO findById(UUID id) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Usuário não encontrado: " + id));
         return userMapper.toResponseDTO(user);
     }
 
     @Transactional
-    public UserResponseDTO atualizar(UUID id, UserUpdateDTO dto) {
+    public UserResponseDTO update(UUID id, UserUpdateDTO dto) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Usuário não encontrado: " + id));
 
@@ -60,15 +60,15 @@ public class UserService {
     }
 
     @Transactional
-    public void deletar(UUID id) {
+    public void delete(UUID id) {
         if (!userRepository.existsById(id)) {
             throw new EntityNotFoundException("Usuário não encontrado: " + id);
         }
         userRepository.deleteById(id);
     }
 
-    private String hashSenha(String senha) {
+    private String hashPassword(String password) {
         // TODO: substituir por BCryptPasswordEncoder quando Spring Security for adicionado (PIE-auth)
-        return "hash(" + senha + ")";
+        return "hash(" + password + ")";
     }
 }
