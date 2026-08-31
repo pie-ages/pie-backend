@@ -56,6 +56,13 @@ public class User extends AuditableEntity {
         this.passwordHash = Objects.requireNonNull(passwordHash, "Senha não pode ser nula");
     }
 
+    public void update(String name, String photoUrl) {
+        if (name != null && !name.isBlank()) {
+            this.name = name;
+        }
+        this.photoUrl = photoUrl;
+    }
+
     private String validateName(String name) {
         if (name == null || name.isBlank()) {
             throw new IllegalArgumentException("Nome é obrigatório");

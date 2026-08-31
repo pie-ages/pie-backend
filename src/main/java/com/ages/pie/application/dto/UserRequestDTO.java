@@ -1,19 +1,17 @@
 package com.ages.pie.application.dto;
 
-/**
- * Exemplo de DTO de entrada (request).
- *
- * Representa o formato de dados que chega do front-end (React Native)
- * via JSON. NUNCA deve ser confundido com a Entity de domínio — o DTO
- * pode ter menos campos, campos com nomes diferentes, ou validações de
- * formato (não de negócio) próprias da API.
- *
- * Regra para o time: Controller recebe DTO, nunca Entity. Quem traduz
- * DTO para Entity é o Mapper, não o Controller nem o Service.
- */
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+
 public record UserRequestDTO(
+    @NotBlank(message = "Nome é obrigatório")
     String name,
+
+    @NotBlank(message = "Email é obrigatório")
+    @Email(message = "Email inválido")
     String email,
+
+    @NotBlank(message = "Senha é obrigatória")
     String password
 ) {
 }
