@@ -23,30 +23,30 @@ public class UserController {
     }
 
     @PostMapping
-    public ResponseEntity<UserResponseDTO> criar(@Valid @RequestBody UserRequestDTO dto) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(userService.criar(dto));
+    public ResponseEntity<UserResponseDTO> create(@Valid @RequestBody UserRequestDTO dto) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(userService.create(dto));
     }
 
     @GetMapping
-    public ResponseEntity<List<UserResponseDTO>> listar() {
-        return ResponseEntity.ok(userService.listar());
+    public ResponseEntity<List<UserResponseDTO>> findAll() {
+        return ResponseEntity.ok(userService.findAll());
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<UserResponseDTO> buscarPorId(@PathVariable UUID id) {
-        return ResponseEntity.ok(userService.buscarPorId(id));
+    public ResponseEntity<UserResponseDTO> findById(@PathVariable UUID id) {
+        return ResponseEntity.ok(userService.findById(id));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<UserResponseDTO> atualizar(
+    public ResponseEntity<UserResponseDTO> update(
             @PathVariable UUID id,
             @Valid @RequestBody UserUpdateDTO dto) {
-        return ResponseEntity.ok(userService.atualizar(id, dto));
+        return ResponseEntity.ok(userService.update(id, dto));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deletar(@PathVariable UUID id) {
-        userService.deletar(id);
+    public ResponseEntity<Void> delete(@PathVariable UUID id) {
+        userService.delete(id);
         return ResponseEntity.noContent().build();
     }
 }
