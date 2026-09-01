@@ -1,6 +1,6 @@
 package com.ages.pie.application.mapper;
 
-import com.ages.pie.application.dto.UserResponseDTO;
+import com.ages.pie.application.dto.user.UserResponseDTO;
 import com.ages.pie.domain.entity.User;
 import org.springframework.stereotype.Component;
 

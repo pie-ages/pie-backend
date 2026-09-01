@@ -1,8 +1,8 @@
 package com.ages.pie.application.controller;
 
-import com.ages.pie.application.dto.UserRequestDTO;
-import com.ages.pie.application.dto.UserResponseDTO;
-import com.ages.pie.application.dto.UserUpdateDTO;
+import com.ages.pie.application.dto.user.UserRequestDTO;
+import com.ages.pie.application.dto.user.UserResponseDTO;
+import com.ages.pie.application.dto.user.UserUpdateDTO;
 import com.ages.pie.application.service.UserService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/users")
+@RequestMapping("/users")
 public class UserController {
 
     private final UserService userService;

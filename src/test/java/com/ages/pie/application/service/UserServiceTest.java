@@ -1,19 +1,18 @@
 package com.ages.pie.application.service;
 
-import com.ages.pie.application.dto.UserRequestDTO;
-import com.ages.pie.application.dto.UserResponseDTO;
-import com.ages.pie.application.dto.UserUpdateDTO;
+import com.ages.pie.application.dto.user.UserRequestDTO;
+import com.ages.pie.application.dto.user.UserResponseDTO;
+import com.ages.pie.application.dto.user.UserUpdateDTO;
 import com.ages.pie.application.mapper.UserMapper;
 import com.ages.pie.domain.entity.User;
 import com.ages.pie.infrastructure.repository.UserRepository;
-import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -51,10 +50,6 @@ class UserServiceTest {
         );
     }
 
-    // -------------------------------------------------------------------------
-    // create
-    // -------------------------------------------------------------------------
-
     @Test
     void create_shouldReturnResponseDTO_whenEmailIsNew() {
         UserRequestDTO dto = new UserRequestDTO("Ana Silva", "ana@email.com", "senha123");
@@ -70,21 +65,17 @@ class UserServiceTest {
     }
 
     @Test
-    void create_shouldThrowDataIntegrityViolationException_whenEmailAlreadyExists() {
+    void create_shouldThrowResponseStatusException_whenEmailAlreadyExists() {
         UserRequestDTO dto = new UserRequestDTO("Ana Silva", "ana@email.com", "senha123");
 
         when(userRepository.existsByEmail(dto.email())).thenReturn(true);
 
         assertThatThrownBy(() -> userService.create(dto))
-                .isInstanceOf(DataIntegrityViolationException.class)
+                .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("ana@email.com");
 
         verify(userRepository, never()).save(any());
     }
-
-    // -------------------------------------------------------------------------
-    // findAll
-    // -------------------------------------------------------------------------
 
     @Test
     void findAll_shouldReturnMappedList() {
@@ -105,10 +96,6 @@ class UserServiceTest {
         assertThat(result).isEmpty();
     }
 
-    // -------------------------------------------------------------------------
-    // findById
-    // -------------------------------------------------------------------------
-
     @Test
     void findById_shouldReturnResponseDTO_whenUserExists() {
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
@@ -120,17 +107,13 @@ class UserServiceTest {
     }
 
     @Test
-    void findById_shouldThrowEntityNotFoundException_whenUserDoesNotExist() {
+    void findById_shouldThrowResponseStatusException_whenUserDoesNotExist() {
         when(userRepository.findById(userId)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> userService.findById(userId))
-                .isInstanceOf(EntityNotFoundException.class)
+                .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining(userId.toString());
     }
-
-    // -------------------------------------------------------------------------
-    // update
-    // -------------------------------------------------------------------------
 
     @Test
     void update_shouldReturnUpdatedResponseDTO_whenUserExists() {
@@ -147,21 +130,17 @@ class UserServiceTest {
     }
 
     @Test
-    void update_shouldThrowEntityNotFoundException_whenUserDoesNotExist() {
+    void update_shouldThrowResponseStatusException_whenUserDoesNotExist() {
         UserUpdateDTO dto = new UserUpdateDTO("Ana Santos", null);
 
         when(userRepository.findById(userId)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> userService.update(userId, dto))
-                .isInstanceOf(EntityNotFoundException.class)
+                .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining(userId.toString());
 
         verify(userRepository, never()).save(any());
     }
-
-    // -------------------------------------------------------------------------
-    // delete
-    // -------------------------------------------------------------------------
 
     @Test
     void delete_shouldDeleteUser_whenUserExists() {
@@ -173,11 +152,11 @@ class UserServiceTest {
     }
 
     @Test
-    void delete_shouldThrowEntityNotFoundException_whenUserDoesNotExist() {
+    void delete_shouldThrowResponseStatusException_whenUserDoesNotExist() {
         when(userRepository.existsById(userId)).thenReturn(false);
 
         assertThatThrownBy(() -> userService.delete(userId))
-                .isInstanceOf(EntityNotFoundException.class)
+                .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining(userId.toString());
 
         verify(userRepository, never()).deleteById(any());
