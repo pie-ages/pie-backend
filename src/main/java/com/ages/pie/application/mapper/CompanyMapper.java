@@ -1,7 +1,7 @@
 package com.ages.pie.application.mapper;
 
-import com.ages.pie.application.dto.CompanyRequestDTO;
-import com.ages.pie.application.dto.CompanyResponseDTO;
+import com.ages.pie.application.dto.company.CompanyRequestDTO;
+import com.ages.pie.application.dto.company.CompanyResponseDTO;
 import com.ages.pie.domain.entity.Company;
 import org.springframework.stereotype.Component;
 

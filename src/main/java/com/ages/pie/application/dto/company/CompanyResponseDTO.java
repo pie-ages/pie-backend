@@ -1,4 +1,4 @@
-package com.ages.pie.application.dto;
+package com.ages.pie.application.dto.company;
 
 import java.time.OffsetDateTime;
 import java.util.UUID;
