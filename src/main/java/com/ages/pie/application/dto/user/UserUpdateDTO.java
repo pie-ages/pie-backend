@@ -1,4 +1,4 @@
-package com.ages.pie.application.dto;
+package com.ages.pie.application.dto.user;
 
 import jakarta.validation.constraints.NotBlank;
 
