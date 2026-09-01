@@ -5,3 +5,9 @@
 .vscode
 *.env
 *.env.local
+
+.classpath
+.project
+.settings/
+.metadata/
+*.factorypath
