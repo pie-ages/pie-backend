@@ -3,16 +3,16 @@ package com.ages.pie.application.service;
 import java.util.List;
 import java.util.UUID;
 
-import com.ages.pie.application.dto.CompanyRequestDTO;
-import com.ages.pie.application.dto.CompanyResponseDTO;
-import com.ages.pie.application.dto.CompanyUpdateDTO;
-import com.ages.pie.application.exception.DuplicateResourceException;
-import com.ages.pie.application.exception.ResourceNotFoundException;
+import com.ages.pie.application.dto.company.CompanyRequestDTO;
+import com.ages.pie.application.dto.company.CompanyResponseDTO;
+import com.ages.pie.application.dto.company.CompanyUpdateDTO;
 import com.ages.pie.application.mapper.CompanyMapper;
 import com.ages.pie.domain.entity.Company;
 import com.ages.pie.infrastructure.repository.CompanyRepository;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class CompanyService {
@@ -26,68 +26,69 @@ public class CompanyService {
     }
 
     @Transactional
-    public CompanyResponseDTO criar(CompanyRequestDTO requestDTO) {
-        String passwordHash = criptografarSenha(requestDTO.password());
-
-        if (companyRepository.existsByCnpj(requestDTO.cnpj())) {
-            throw new DuplicateResourceException("Já existe uma empresa com esse CNPJ");
+    public CompanyResponseDTO create(CompanyRequestDTO dto) {
+        if (companyRepository.existsByCnpj(dto.cnpj())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "CNPJ já cadastrado: " + dto.cnpj());
         }
-        if (companyRepository.existsByEmail(requestDTO.email())) {
-            throw new DuplicateResourceException("Já existe uma empresa com esse email");
+        if (companyRepository.existsByEmail(dto.email())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Email já cadastrado: " + dto.email());
         }
 
-        Company salvo = companyRepository.save(companyMapper.toEntity(requestDTO, passwordHash));
-        return companyMapper.toResponseDTO(salvo);
+        Company company;
+        try {
+            company = companyMapper.toEntity(dto, hashPassword(dto.password()));
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage(), e);
+        }
+        return companyMapper.toResponseDTO(companyRepository.save(company));
     }
 
     @Transactional(readOnly = true)
-    public List<CompanyResponseDTO> listar() {
-        return companyRepository.findAllByActiveTrue().stream()
-            .map(companyMapper::toResponseDTO)
-            .toList();
+    public List<CompanyResponseDTO> findAll() {
+        return companyRepository.findAllByActiveTrue()
+                .stream()
+                .map(companyMapper::toResponseDTO)
+                .toList();
     }
 
     @Transactional(readOnly = true)
-    public CompanyResponseDTO buscarPorId(UUID id) {
-        return companyMapper.toResponseDTO(buscarEntidade(id));
+    public CompanyResponseDTO findById(UUID id) {
+        return companyMapper.toResponseDTO(findEntity(id));
     }
 
     @Transactional
-    public CompanyResponseDTO atualizar(UUID id, CompanyUpdateDTO updateDTO) {
-        Company company = buscarEntidade(id);
+    public CompanyResponseDTO update(UUID id, CompanyUpdateDTO dto) {
+        Company company = findEntity(id);
 
-        if (companyRepository.existsByEmailAndIdNot(updateDTO.email(), id)) {
-            throw new DuplicateResourceException("Já existe uma empresa com esse email");
+        if (companyRepository.existsByEmailAndIdNot(dto.email(), id)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Email já cadastrado: " + dto.email());
         }
 
-        company.atualizarDados(
-            updateDTO.name(),
-            updateDTO.socialReason(),
-            updateDTO.responsiblePerson(),
-            updateDTO.email(),
-            updateDTO.website(),
-            updateDTO.photoUrl()
-        );
+        try {
+            company.update(dto.name(), dto.socialReason(), dto.responsiblePerson(),
+                    dto.email(), dto.website(), dto.photoUrl());
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage(), e);
+        }
         return companyMapper.toResponseDTO(companyRepository.save(company));
     }
 
     @Transactional
-    public void desativar(UUID id) {
-        Company company = buscarEntidade(id);
-        company.desativar();
+    public void deactivate(UUID id) {
+        Company company = findEntity(id);
+        company.deactivate();
         companyRepository.save(company);
     }
 
-    private Company buscarEntidade(UUID id) {
+    private Company findEntity(UUID id) {
         return companyRepository.findById(id)
-            .orElseThrow(() -> new ResourceNotFoundException("Empresa não encontrada"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Empresa não encontrada: " + id));
     }
 
-    private String criptografarSenha(String senhaPura) {
-        if (senhaPura == null || senhaPura.isBlank()) {
-            throw new IllegalArgumentException("Senha é obrigatória");
+    private String hashPassword(String password) {
+        if (password == null || password.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Senha é obrigatória");
         }
-        // TODO: injetar um PasswordEncoder do Spring Security em vez de simular a criptografia
-        return "hash(" + senhaPura + ")";
+        return "hash(" + password + ")";
     }
 }

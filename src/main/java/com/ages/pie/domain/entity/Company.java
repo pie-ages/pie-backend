@@ -65,7 +65,7 @@ public class Company extends AuditableEntity {
         this.photoUrl = photoUrl;
     }
 
-    public void atualizarDados(String name, String socialReason, String responsiblePerson,
+    public void update(String name, String socialReason, String responsiblePerson,
             String email, String website, String photoUrl) {
         this.name = requireText(name, "Nome é obrigatório");
         this.socialReason = requireText(socialReason, "Razão social é obrigatória");
@@ -75,7 +75,7 @@ public class Company extends AuditableEntity {
         this.photoUrl = photoUrl;
     }
 
-    public void desativar() {
+    public void deactivate() {
         this.active = false;
     }
 

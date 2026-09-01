@@ -1,4 +1,4 @@
-package com.ages.pie.application.dto;
+package com.ages.pie.application.dto.company;
 
 public record CompanyRequestDTO(
     String name,
