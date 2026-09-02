@@ -46,7 +46,7 @@ class CompanyServiceTest {
     @BeforeEach
     void setUp() {
         companyId = UUID.randomUUID();
-        company = new Company("Loja X", "12345678000199", "Loja X LTDA", "Maria",
+        company = new Company(companyId, "Loja X", "12345678000199", "Loja X LTDA", "Maria",
                 "contato@lojax.com", "hash(senha123)", null, null);
         responseDTO = new CompanyResponseDTO(companyId, "Loja X", "12345678000199", "Loja X LTDA",
                 "Maria", "contato@lojax.com", null, true, null, OffsetDateTime.now(), OffsetDateTime.now());

@@ -53,8 +53,9 @@ public class Company extends AuditableEntity {
     protected Company() {
     }
 
-    public Company(String name, String cnpj, String socialReason, String responsiblePerson,
+    public Company(UUID id, String name, String cnpj, String socialReason, String responsiblePerson,
             String email, String passwordHash, String website, String photoUrl) {
+        this.id = id;
         this.name = requireText(name, "Nome é obrigatório");
         this.cnpj = requireText(cnpj, "CNPJ é obrigatório");
         this.socialReason = requireText(socialReason, "Razão social é obrigatória");

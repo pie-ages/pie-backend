@@ -10,6 +10,7 @@ public class CompanyMapper {
 
     public Company toEntity(CompanyRequestDTO dto, String passwordHash) {
         return new Company(
+            null,
             dto.name(),
             dto.cnpj(),
             dto.socialReason(),
