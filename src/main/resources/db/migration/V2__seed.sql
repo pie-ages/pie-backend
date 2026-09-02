@@ -79,25 +79,25 @@ BEGIN
     VALUES ('Felipe Santos', 'felipe.santos@example.com', '$2a$12$eImiTXuWVxfM37uY4JANjOL.80F80.0123456789abcdefghij', 'https://example.com/photos/felipe.jpg', NOW(), NOW())
     RETURNING id INTO v_felipe;
 
-    -- companies
+    -- companies (marcas reais)
     INSERT INTO company (name, cnpj, website, social_reason, responsible_person, email, password_hash, active, photo_url, created_at, updated_at)
-    VALUES ('Moda & Estilo Ltda', '12345678000195', 'https://modaestilo.example.com', 'Moda & Estilo Comercio S.A.', 'Mariana Costa', 'contato@modaestilo.com', '$2a$12$eImiTXuWVxfM37uY4JANjOL.80F80.0123456789abcdefghij', true, 'https://example.com/brands/modaestilo.png', NOW(), NOW())
+    VALUES ('Renner S.A.', '92693249000195', 'https://www.renner.com.br', 'Lojas Renner S.A.', 'Fernanda Oliveira', 'contato@modaestilo.com', '$2a$12$eImiTXuWVxfM37uY4JANjOL.80F80.0123456789abcdefghij', true, 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/07/Logo_Renner.svg/200px-Logo_Renner.svg.png', NOW(), NOW())
     RETURNING id INTO v_modaestilo;
 
     INSERT INTO company (name, cnpj, website, social_reason, responsible_person, email, password_hash, active, photo_url, created_at, updated_at)
-    VALUES ('Urban Wear', '98765432000110', 'https://urbanwear.example.com', 'Urban Wear Confeccoes Ltda', 'Roberto Alves', 'contato@urbanwear.com', '$2a$12$eImiTXuWVxfM37uY4JANjOL.80F80.0123456789abcdefghij', true, 'https://example.com/brands/urbanwear.png', NOW(), NOW())
+    VALUES ('Zara Brasil', '02332886000104', 'https://www.zara.com/br', 'Zara Do Brasil Ltda', 'Carlos Mendes', 'contato@urbanwear.com', '$2a$12$eImiTXuWVxfM37uY4JANjOL.80F80.0123456789abcdefghij', true, 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/fd/Zara_Logo.svg/200px-Zara_Logo.svg.png', NOW(), NOW())
     RETURNING id INTO v_urbanwear;
 
     INSERT INTO company (name, cnpj, website, social_reason, responsible_person, email, password_hash, active, photo_url, created_at, updated_at)
-    VALUES ('Elegance Concept', '11223344000155', 'https://elegance.example.com', 'Elegance Vestuario S.A.', 'Patricia Abravanel', 'contato@elegance.com', '$2a$12$eImiTXuWVxfM37uY4JANjOL.80F80.0123456789abcdefghij', true, 'https://example.com/brands/elegance.png', NOW(), NOW())
+    VALUES ('C&A Modas S.A.', '45698435000126', 'https://www.cea.com.br', 'C&A Modas S.A.', 'Mariana Santos', 'contato@elegance.com', '$2a$12$eImiTXuWVxfM37uY4JANjOL.80F80.0123456789abcdefghij', true, 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/48/Logo_C%26A.svg/200px-Logo_C%26A.svg.png', NOW(), NOW())
     RETURNING id INTO v_elegance;
 
     INSERT INTO company (name, cnpj, website, social_reason, responsible_person, email, password_hash, active, photo_url, created_at, updated_at)
-    VALUES ('Street Culture', '55667788000199', 'https://streetculture.example.com', 'Street Culture Moda Urbana', 'Thiago Silva', 'contato@streetculture.com', '$2a$12$eImiTXuWVxfM37uY4JANjOL.80F80.0123456789abcdefghij', true, 'https://example.com/brands/streetculture.png', NOW(), NOW())
+    VALUES ('H&M Brasil', '02773575000180', 'https://www2.hm.com/pt_br/index.html', 'H&M Hennes & Mauritz Comercio Ltda', 'Ana Paula Silva', 'contato@streetculture.com', '$2a$12$eImiTXuWVxfM37uY4JANjOL.80F80.0123456789abcdefghij', true, 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/53/H%26M-Logo.svg/200px-H%26M-Logo.svg.png', NOW(), NOW())
     RETURNING id INTO v_streetculture;
 
     INSERT INTO company (name, cnpj, website, social_reason, responsible_person, email, password_hash, active, photo_url, created_at, updated_at)
-    VALUES ('Basic & Co', '99887766000122', 'https://basicco.example.com', 'Basic & Co Atacado e Varejo', 'Vanessa Camargo', 'contato@basicco.com', '$2a$12$eImiTXuWVxfM37uY4JANjOL.80F80.0123456789abcdefghij', true, 'https://example.com/brands/basicco.png', NOW(), NOW())
+    VALUES ('Riachuelo S.A.', '61716327000195', 'https://www.riachuelo.com.br', 'Riachuelo Lojas de Departamento S.A.', 'Roberto Costa', 'contato@basicco.com', '$2a$12$eImiTXuWVxfM37uY4JANjOL.80F80.0123456789abcdefghij', true, 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/60/Riachuelo_Logo.svg/200px-Riachuelo_Logo.svg.png', NOW(), NOW())
     RETURNING id INTO v_basicco;
 
     -- -------------------------------------------------------------
@@ -144,45 +144,45 @@ BEGIN
     VALUES (v_felipe, 'Inverted Triangle', 'Dramatic', 'Winter Deep', 'Charcoal', ARRAY['Minimalist', 'Formal'], '{"chest": 106, "waist": 82}'::jsonb, 'analyses/felipe.json', NOW(), NOW())
     RETURNING id INTO v_bp_felipe;
 
-    -- products
+    -- products (produtos reais das marcas)
     INSERT INTO product (company_id, name, description, category, price, image_url, purchase_url, active, created_at, updated_at)
-    VALUES (v_modaestilo, 'Blazer Alfaiataria Bege', 'Blazer de alfaiataria estruturado com caimento moderno.', 'Superiores', 299.90, 'https://example.com/p/blazer-bege.jpg', 'https://modaestilo.example.com/p/1', true, NOW(), NOW())
+    VALUES (v_modaestilo, 'Blazer Social Feminino', 'Blazer social com corte feminino, tecido de alta qualidade.', 'Superiores', 279.90, 'https://renner.vtexassets.com/arquivos/ids/156883/blazer-social-feminino.jpg', 'https://www.renner.com.br/blazer-social-feminino', true, NOW(), NOW())
     RETURNING id INTO v_prod_blazer;
 
     INSERT INTO product (company_id, name, description, category, price, image_url, purchase_url, active, created_at, updated_at)
-    VALUES (v_modaestilo, 'Calca Jeans Wide Leg', 'Calca jeans cintura alta com modelagem ampla.', 'Inferiores', 189.90, 'https://example.com/p/jeans-wide.jpg', 'https://modaestilo.example.com/p/2', true, NOW(), NOW())
+    VALUES (v_modaestilo, 'Calça Jeans Wide Leg Feminina', 'Calça jeans cintura alta com modelagem wide leg.', 'Inferiores', 159.90, 'https://renner.vtexassets.com/arquivos/ids/162345/calca-jeans-wide-leg.jpg', 'https://www.renner.com.br/calca-jeans-wide-leg', true, NOW(), NOW())
     RETURNING id INTO v_prod_jeans;
 
     INSERT INTO product (company_id, name, description, category, price, image_url, purchase_url, active, created_at, updated_at)
-    VALUES (v_urbanwear, 'Jaqueta Oversized Preto', 'Jaqueta de sarja preta estilo urbano.', 'Superiores', 249.00, 'https://example.com/p/jaqueta-preta.jpg', 'https://urbanwear.example.com/p/3', true, NOW(), NOW())
+    VALUES (v_urbanwear, 'Jaqueta Oversized Preta', 'Jaqueta oversized em tecido encorpido, estilo urbano.', 'Superiores', 399.90, 'https://static.zara.net/assets/public/37f5/baa6/8f024624b9ac/3a23f2b0db51/06318480800-e1/06318480800-e1.jpg', 'https://www.zara.com/br/jaqueta-oversized-preta', true, NOW(), NOW())
     RETURNING id INTO v_prod_jaqueta;
 
     INSERT INTO product (company_id, name, description, category, price, image_url, purchase_url, active, created_at, updated_at)
-    VALUES (v_elegance, 'Vestido Mid Silk Red', 'Vestido midi em seda pura na cor vermelha.', 'Vestidos', 450.00, 'https://example.com/p/vestido-seda.jpg', 'https://elegance.example.com/p/4', true, NOW(), NOW())
+    VALUES (v_elegance, 'Vestido Midi Floral', 'Vestido midi com estampa floral, tecido leve e confortável.', 'Vestidos', 199.90, 'https://cea.vtexassets.com/arquivos/ids/148923/vestido-midi-floral.jpg', 'https://www.cea.com.br/vestido-midi-floral', true, NOW(), NOW())
     RETURNING id INTO v_prod_vestido;
 
     INSERT INTO product (company_id, name, description, category, price, image_url, purchase_url, active, created_at, updated_at)
-    VALUES (v_streetculture, 'Camisa Cargo Utility Green', 'Camisa estilo cargo com bolsos frontais.', 'Superiores', 179.90, 'https://example.com/p/camisa-cargo.jpg', 'https://streetculture.example.com/p/5', true, NOW(), NOW())
+    VALUES (v_streetculture, 'Camisa Cargo Verde Militar', 'Camisa cargo com bolsos funcionais, estilo casual.', 'Superiores', 149.90, 'https://lp2.hm.com/hmgoeprod?source=app/design}&KEEPARTICLES=&HMSCOUNTRY=BR&HMSTYLESERVICE=undefined&imgwidht=420&heightheight=420&ratio=undefined&quality=90&imagedefault=png&BackgroundColor=FFFFFF&SELLINGBRAND=undefined&ARTICLETYPE=undefined&ARTICLE=1234567', 'https://www2.hm.com/pt_br/productpage.1234567.html', true, NOW(), NOW())
     RETURNING id INTO v_prod_cargo;
 
     INSERT INTO product (company_id, name, description, category, price, image_url, purchase_url, active, created_at, updated_at)
-    VALUES (v_basicco, 'Camiseta Basic Cotton White', 'Camiseta 100% algodao penteado.', 'Superiores', 79.90, 'https://example.com/p/tshirt-white.jpg', 'https://basicco.example.com/p/6', true, NOW(), NOW())
+    VALUES (v_basicco, 'Camiseta Básica Algodão', 'Camiseta básica 100% algodão penteado, diversas cores.', 'Superiores', 49.90, 'https://riachuelo.vtexassets.com/arquivos/ids/167890/camiseta-basica-algodao.jpg', 'https://www.riachuelo.com.br/camiseta-basica-algodao', true, NOW(), NOW())
     RETURNING id INTO v_prod_basic;
 
     INSERT INTO product (company_id, name, description, category, price, image_url, purchase_url, active, created_at, updated_at)
-    VALUES (v_modaestilo, 'Saia Midi Plissada Preto', 'Saia plissada com elastico na cintura.', 'Inferiores', 159.90, 'https://example.com/p/saia-plissada.jpg', 'https://modaestilo.example.com/p/7', true, NOW(), NOW())
+    VALUES (v_modaestilo, 'Saia Midi Plissada', 'Saia midi plissada com elástico na cintura.', 'Inferiores', 129.90, 'https://renner.vtexassets.com/arquivos/ids/178456/saia-midi-plissada.jpg', 'https://www.renner.com.br/saia-midi-plissada', true, NOW(), NOW())
     RETURNING id INTO v_prod_saia;
 
     INSERT INTO product (company_id, name, description, category, price, image_url, purchase_url, active, created_at, updated_at)
-    VALUES (v_urbanwear, 'Calca Jogger Moletom Grey', 'Calca jogger confortavel em algodao.', 'Inferiores', 139.90, 'https://example.com/p/jogger-grey.jpg', 'https://urbanwear.example.com/p/8', true, NOW(), NOW())
+    VALUES (v_urbanwear, 'Calça Jogger Moletom', 'Calça jogger em moletom, confortável para o dia a dia.', 'Inferiores', 179.90, 'https://static.zara.net/assets/public/c8d3/b78c/72e546e194d2/6f68d6c88f27/02281480800-e1/02281480800-e1.jpg', 'https://www.zara.com/br/calca-jogger-moletom', true, NOW(), NOW())
     RETURNING id INTO v_prod_jogger;
 
     INSERT INTO product (company_id, name, description, category, price, image_url, purchase_url, active, created_at, updated_at)
-    VALUES (v_elegance, 'Trench Coat Classico', 'Casaco impermeavel classico para inverno.', 'Casacos', 599.00, 'https://example.com/p/trench-coat.jpg', 'https://elegance.example.com/p/9', true, NOW(), NOW())
+    VALUES (v_elegance, 'Trench Coat Clássico', 'Trench coat impermeável, estilo clássico e atemporal.', 'Casacos', 349.90, 'https://cea.vtexassets.com/arquivos/ids/156789/trench-coat-classico.jpg', 'https://www.cea.com.br/trench-coat-classico', true, NOW(), NOW())
     RETURNING id INTO v_prod_trench;
 
     INSERT INTO product (company_id, name, description, category, price, image_url, purchase_url, active, created_at, updated_at)
-    VALUES (v_streetculture, 'Moletom Hoodie Graphic', 'Hoodie estampado com estampa urbana.', 'Superiores', 219.90, 'https://example.com/p/hoodie-graphic.jpg', 'https://streetculture.example.com/p/10', true, NOW(), NOW())
+    VALUES (v_streetculture, 'Moletom Hoodie Estampado', 'Moletom hoodie com estampa gráfica, estilo streetwear.', 'Superiores', 199.90, 'https://lp2.hm.com/hmgoeprod?source=app/design}&KEEPARTICLES=&HMSCOUNTRY=BR&HMSTYLESERVICE=undefined&imgwidht=420&heightheight=420&ratio=undefined&quality=90&imagedefault=png&BackgroundColor=FFFFFF&SELLINGBRAND=undefined&ARTICLETYPE=undefined&ARTICLE=7654321', 'https://www2.hm.com/pt_br/productpage.7654321.html', true, NOW(), NOW())
     RETURNING id INTO v_prod_hoodie;
 
     -- -------------------------------------------------------------
