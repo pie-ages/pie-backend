@@ -146,43 +146,43 @@ BEGIN
 
     -- products (produtos reais das marcas)
     INSERT INTO product (company_id, name, description, category, price, image_url, purchase_url, active, created_at, updated_at)
-    VALUES (v_modaestilo, 'Blazer Social Feminino', 'Blazer social com corte feminino, tecido de alta qualidade.', 'Superiores', 279.90, 'https://renner.vtexassets.com/arquivos/ids/156883/blazer-social-feminino.jpg', 'https://www.renner.com.br/blazer-social-feminino', true, NOW(), NOW())
+    VALUES (v_modaestilo, 'Blazer Social Feminino', 'Blazer social com corte feminino, tecido de alta qualidade.', 'Superiores', 279.90, 'https://acdn-us.mitiendanube.com/stores/003/859/035/products/sem-titulo-6-e0bab52ee68f0948e817695729129251-640-0.webp', 'https://www.renner.com.br/blazer-social-feminino', true, NOW(), NOW())
     RETURNING id INTO v_prod_blazer;
 
     INSERT INTO product (company_id, name, description, category, price, image_url, purchase_url, active, created_at, updated_at)
-    VALUES (v_modaestilo, 'Calça Jeans Wide Leg Feminina', 'Calça jeans cintura alta com modelagem wide leg.', 'Inferiores', 159.90, 'https://renner.vtexassets.com/arquivos/ids/162345/calca-jeans-wide-leg.jpg', 'https://www.renner.com.br/calca-jeans-wide-leg', true, NOW(), NOW())
+    VALUES (v_modaestilo, 'Calça Jeans Wide Leg Feminina', 'Calça jeans cintura alta com modelagem wide leg.', 'Inferiores', 159.90, 'https://acdn-us.mitiendanube.com/stores/003/859/035/products/sem-titulo-6-e0bab52ee68f0948e817695729129251-640-0.webp', 'https://www.renner.com.br/calca-jeans-wide-leg', true, NOW(), NOW())
     RETURNING id INTO v_prod_jeans;
 
     INSERT INTO product (company_id, name, description, category, price, image_url, purchase_url, active, created_at, updated_at)
-    VALUES (v_urbanwear, 'Jaqueta Oversized Preta', 'Jaqueta oversized em tecido encorpido, estilo urbano.', 'Superiores', 399.90, 'https://static.zara.net/assets/public/37f5/baa6/8f024624b9ac/3a23f2b0db51/06318480800-e1/06318480800-e1.jpg', 'https://www.zara.com/br/jaqueta-oversized-preta', true, NOW(), NOW())
+    VALUES (v_urbanwear, 'Jaqueta Oversized Preta', 'Jaqueta oversized em tecido encorpido, estilo urbano.', 'Superiores', 399.90, 'https://adaptive-images.uooucdn.com.br/ik-seo/tr:w-1100,h-1594,c-at_max,pr-true,q-90/a3-ohc9pq/pv/ef/5d/21/e591a6ddca7f8f4856ae47cee2/jaqueta-preta-oversized-80s-large-13.jpg', 'https://www.zara.com/br/jaqueta-oversized-preta', true, NOW(), NOW())
     RETURNING id INTO v_prod_jaqueta;
 
     INSERT INTO product (company_id, name, description, category, price, image_url, purchase_url, active, created_at, updated_at)
-    VALUES (v_elegance, 'Vestido Midi Floral', 'Vestido midi com estampa floral, tecido leve e confortável.', 'Vestidos', 199.90, 'https://cea.vtexassets.com/arquivos/ids/148923/vestido-midi-floral.jpg', 'https://www.cea.com.br/vestido-midi-floral', true, NOW(), NOW())
+    VALUES (v_elegance, 'Vestido Midi Floral', 'Vestido midi com estampa floral, tecido leve e confortável.', 'Vestidos', 199.90, 'https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Fimages.tcdn.com.br%2Fimg%2Fimg_prod%2F954006%2Fvestido_midi_floral_1_20250916185054_ee05becedc76.jpg&f=1&nofb=1&ipt=fcec753af0e6584e7a1b9b52fc80e4419ffda672bd8aac6718e32a59c5996d0d', 'https://www.cea.com.br/vestido-midi-floral', true, NOW(), NOW())
     RETURNING id INTO v_prod_vestido;
 
     INSERT INTO product (company_id, name, description, category, price, image_url, purchase_url, active, created_at, updated_at)
-    VALUES (v_streetculture, 'Camisa Cargo Verde Militar', 'Camisa cargo com bolsos funcionais, estilo casual.', 'Superiores', 149.90, 'https://lp2.hm.com/hmgoeprod?source=app/design}&KEEPARTICLES=&HMSCOUNTRY=BR&HMSTYLESERVICE=undefined&imgwidht=420&heightheight=420&ratio=undefined&quality=90&imagedefault=png&BackgroundColor=FFFFFF&SELLINGBRAND=undefined&ARTICLETYPE=undefined&ARTICLE=1234567', 'https://www2.hm.com/pt_br/productpage.1234567.html', true, NOW(), NOW())
+    VALUES (v_streetculture, 'Camisa Cargo Verde Militar', 'Camisa cargo com bolsos funcionais, estilo casual.', 'Superiores', 149.90, 'https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Fimg.lojasrenner.com.br%2Fitem%2F914600871%2Foriginal%2F3.jpg&f=1&nofb=1&ipt=51923144463abeb6d24d01f2afb6f95439992c24d8ff658804f9e470d0e5b2e3', 'https://www2.hm.com/pt_br/productpage.1234567.html', true, NOW(), NOW())
     RETURNING id INTO v_prod_cargo;
 
     INSERT INTO product (company_id, name, description, category, price, image_url, purchase_url, active, created_at, updated_at)
-    VALUES (v_basicco, 'Camiseta Básica Algodão', 'Camiseta básica 100% algodão penteado, diversas cores.', 'Superiores', 49.90, 'https://riachuelo.vtexassets.com/arquivos/ids/167890/camiseta-basica-algodao.jpg', 'https://www.riachuelo.com.br/camiseta-basica-algodao', true, NOW(), NOW())
+    VALUES (v_basicco, 'Camiseta Básica Algodão', 'Camiseta básica 100% algodão penteado, diversas cores.', 'Superiores', 49.90, 'https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Fimg.lojasrenner.com.br%2Fitem%2F929525130%2Foriginal%2F3.jpg&f=1&nofb=1&ipt=95726fe1a0e17eb589ba144c1aa17d426dafacca7de1bd2575f2ba4247ac892d', 'https://www.riachuelo.com.br/camiseta-basica-algodao', true, NOW(), NOW())
     RETURNING id INTO v_prod_basic;
 
     INSERT INTO product (company_id, name, description, category, price, image_url, purchase_url, active, created_at, updated_at)
-    VALUES (v_modaestilo, 'Saia Midi Plissada', 'Saia midi plissada com elástico na cintura.', 'Inferiores', 129.90, 'https://renner.vtexassets.com/arquivos/ids/178456/saia-midi-plissada.jpg', 'https://www.renner.com.br/saia-midi-plissada', true, NOW(), NOW())
+    VALUES (v_modaestilo, 'Saia Midi Plissada', 'Saia midi plissada com elástico na cintura.', 'Inferiores', 129.90, 'https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Fdown-br.img.susercontent.com%2Ffile%2Fbr-11134207-7r98o-m6plx45ql0z4f1&f=1&nofb=1&ipt=89aaae0a4f15b40fc3da524dd160eebb299322ea5f2961ef56ae461f178e6bdd', 'https://www.renner.com.br/saia-midi-plissada', true, NOW(), NOW())
     RETURNING id INTO v_prod_saia;
 
     INSERT INTO product (company_id, name, description, category, price, image_url, purchase_url, active, created_at, updated_at)
-    VALUES (v_urbanwear, 'Calça Jogger Moletom', 'Calça jogger em moletom, confortável para o dia a dia.', 'Inferiores', 179.90, 'https://static.zara.net/assets/public/c8d3/b78c/72e546e194d2/6f68d6c88f27/02281480800-e1/02281480800-e1.jpg', 'https://www.zara.com/br/calca-jogger-moletom', true, NOW(), NOW())
+    VALUES (v_urbanwear, 'Calça Jogger Moletom', 'Calça jogger em moletom, confortável para o dia a dia.', 'Inferiores', 179.90, 'https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Fdown-br.img.susercontent.com%2Ffile%2Fa0d0b827e801a39481b9258f3c7021a6&f=1&nofb=1&ipt=66008c466576f07a10e18990d27ee1a442b4210a3134fac8932c6351f59bb3ef', 'https://www.zara.com/br/calca-jogger-moletom', true, NOW(), NOW())
     RETURNING id INTO v_prod_jogger;
 
     INSERT INTO product (company_id, name, description, category, price, image_url, purchase_url, active, created_at, updated_at)
-    VALUES (v_elegance, 'Trench Coat Clássico', 'Trench coat impermeável, estilo clássico e atemporal.', 'Casacos', 349.90, 'https://cea.vtexassets.com/arquivos/ids/156789/trench-coat-classico.jpg', 'https://www.cea.com.br/trench-coat-classico', true, NOW(), NOW())
+    VALUES (v_elegance, 'Trench Coat Clássico', 'Trench coat impermeável, estilo clássico e atemporal.', 'Casacos', 349.90, 'https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Fi.pinimg.com%2Foriginals%2F2d%2F7e%2F0c%2F2d7e0cd89fe103bcddf88deecb277d21.jpg&f=1&nofb=1&ipt=38cb654849de3427589d46d31c56c83ba4419d610b6840776a3e6ee4ae2612c0', 'https://www.cea.com.br/trench-coat-classico', true, NOW(), NOW())
     RETURNING id INTO v_prod_trench;
 
     INSERT INTO product (company_id, name, description, category, price, image_url, purchase_url, active, created_at, updated_at)
-    VALUES (v_streetculture, 'Moletom Hoodie Estampado', 'Moletom hoodie com estampa gráfica, estilo streetwear.', 'Superiores', 199.90, 'https://lp2.hm.com/hmgoeprod?source=app/design}&KEEPARTICLES=&HMSCOUNTRY=BR&HMSTYLESERVICE=undefined&imgwidht=420&heightheight=420&ratio=undefined&quality=90&imagedefault=png&BackgroundColor=FFFFFF&SELLINGBRAND=undefined&ARTICLETYPE=undefined&ARTICLE=7654321', 'https://www2.hm.com/pt_br/productpage.7654321.html', true, NOW(), NOW())
+    VALUES (v_streetculture, 'Moletom Hoodie Estampado', 'Moletom hoodie com estampa gráfica, estilo streetwear.', 'Superiores', 199.90, 'https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Fhotmart.s3.amazonaws.com%2Fproduct_pictures%2F02a49336-0ebf-486f-bacf-ac060e46c40f%2FCapturadetela20260103103654.png&f=1&nofb=1&ipt=cc785a74f130b948b9b6f22539b390c013a58e6d15269790236b82d5dcc96113', 'https://www2.hm.com/pt_br/productpage.7654321.html', true, NOW(), NOW())
     RETURNING id INTO v_prod_hoodie;
 
     -- -------------------------------------------------------------
