@@ -81,23 +81,23 @@ BEGIN
 
     -- companies (marcas reais)
     INSERT INTO company (name, cnpj, website, social_reason, responsible_person, email, password_hash, active, photo_url, created_at, updated_at)
-    VALUES ('Renner S.A.', '92693249000195', 'https://www.renner.com.br', 'Lojas Renner S.A.', 'Fernanda Oliveira', 'contato@modaestilo.com', '$2a$12$eImiTXuWVxfM37uY4JANjOL.80F80.0123456789abcdefghij', true, 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/07/Logo_Renner.svg/200px-Logo_Renner.svg.png', NOW(), NOW())
+    VALUES ('Renner S.A.', '92693249000195', 'https://www.renner.com.br', 'Lojas Renner S.A.', 'Fernanda Oliveira', 'contato@modaestilo.com', '$2a$12$eImiTXuWVxfM37uY4JANjOL.80F80.0123456789abcdefghij', true, 'https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Fcdn.pixabay.com%2Fphoto%2F2015%2F10%2F05%2F22%2F37%2Fblank-profile-picture-973460_1280.png&f=1&nofb=1&ipt=ec4b8c78d02124f9b70e073d9679b64c5b6f328ebd108b6cd07432d19ed22501', NOW(), NOW())
     RETURNING id INTO v_modaestilo;
 
     INSERT INTO company (name, cnpj, website, social_reason, responsible_person, email, password_hash, active, photo_url, created_at, updated_at)
-    VALUES ('Zara Brasil', '02332886000104', 'https://www.zara.com/br', 'Zara Do Brasil Ltda', 'Carlos Mendes', 'contato@urbanwear.com', '$2a$12$eImiTXuWVxfM37uY4JANjOL.80F80.0123456789abcdefghij', true, 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/fd/Zara_Logo.svg/200px-Zara_Logo.svg.png', NOW(), NOW())
+    VALUES ('Zara Brasil', '02332886000104', 'https://www.zara.com/br', 'Zara Do Brasil Ltda', 'Carlos Mendes', 'contato@urbanwear.com', '$2a$12$eImiTXuWVxfM37uY4JANjOL.80F80.0123456789abcdefghij', true, 'https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Fcdn.pixabay.com%2Fphoto%2F2015%2F10%2F05%2F22%2F37%2Fblank-profile-picture-973460_1280.png&f=1&nofb=1&ipt=ec4b8c78d02124f9b70e073d9679b64c5b6f328ebd108b6cd07432d19ed22501', NOW(), NOW())
     RETURNING id INTO v_urbanwear;
 
     INSERT INTO company (name, cnpj, website, social_reason, responsible_person, email, password_hash, active, photo_url, created_at, updated_at)
-    VALUES ('C&A Modas S.A.', '45698435000126', 'https://www.cea.com.br', 'C&A Modas S.A.', 'Mariana Santos', 'contato@elegance.com', '$2a$12$eImiTXuWVxfM37uY4JANjOL.80F80.0123456789abcdefghij', true, 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/48/Logo_C%26A.svg/200px-Logo_C%26A.svg.png', NOW(), NOW())
+    VALUES ('C&A Modas S.A.', '45698435000126', 'https://www.cea.com.br', 'C&A Modas S.A.', 'Mariana Santos', 'contato@elegance.com', '$2a$12$eImiTXuWVxfM37uY4JANjOL.80F80.0123456789abcdefghij', true, 'https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Fcdn.pixabay.com%2Fphoto%2F2015%2F10%2F05%2F22%2F37%2Fblank-profile-picture-973460_1280.png&f=1&nofb=1&ipt=ec4b8c78d02124f9b70e073d9679b64c5b6f328ebd108b6cd07432d19ed22501', NOW(), NOW())
     RETURNING id INTO v_elegance;
 
     INSERT INTO company (name, cnpj, website, social_reason, responsible_person, email, password_hash, active, photo_url, created_at, updated_at)
-    VALUES ('H&M Brasil', '02773575000180', 'https://www2.hm.com/pt_br/index.html', 'H&M Hennes & Mauritz Comercio Ltda', 'Ana Paula Silva', 'contato@streetculture.com', '$2a$12$eImiTXuWVxfM37uY4JANjOL.80F80.0123456789abcdefghij', true, 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/53/H%26M-Logo.svg/200px-H%26M-Logo.svg.png', NOW(), NOW())
+    VALUES ('H&M Brasil', '02773575000180', 'https://www2.hm.com/pt_br/index.html', 'H&M Hennes & Mauritz Comercio Ltda', 'Ana Paula Silva', 'contato@streetculture.com', '$2a$12$eImiTXuWVxfM37uY4JANjOL.80F80.0123456789abcdefghij', true, 'https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Fcdn.pixabay.com%2Fphoto%2F2015%2F10%2F05%2F22%2F37%2Fblank-profile-picture-973460_1280.png&f=1&nofb=1&ipt=ec4b8c78d02124f9b70e073d9679b64c5b6f328ebd108b6cd07432d19ed22501', NOW(), NOW())
     RETURNING id INTO v_streetculture;
 
     INSERT INTO company (name, cnpj, website, social_reason, responsible_person, email, password_hash, active, photo_url, created_at, updated_at)
-    VALUES ('Riachuelo S.A.', '61716327000195', 'https://www.riachuelo.com.br', 'Riachuelo Lojas de Departamento S.A.', 'Roberto Costa', 'contato@basicco.com', '$2a$12$eImiTXuWVxfM37uY4JANjOL.80F80.0123456789abcdefghij', true, 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/60/Riachuelo_Logo.svg/200px-Riachuelo_Logo.svg.png', NOW(), NOW())
+    VALUES ('Riachuelo S.A.', '61716327000195', 'https://www.riachuelo.com.br', 'Riachuelo Lojas de Departamento S.A.', 'Roberto Costa', 'contato@basicco.com', '$2a$12$eImiTXuWVxfM37uY4JANjOL.80F80.0123456789abcdefghij', true, 'https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Fcdn.pixabay.com%2Fphoto%2F2015%2F10%2F05%2F22%2F37%2Fblank-profile-picture-973460_1280.png&f=1&nofb=1&ipt=ec4b8c78d02124f9b70e073d9679b64c5b6f328ebd108b6cd07432d19ed22501', NOW(), NOW())
     RETURNING id INTO v_basicco;
 
     -- -------------------------------------------------------------
