@@ -53,14 +53,31 @@ public class Company extends AuditableEntity {
     protected Company() {
     }
 
-    public Company(String name, String cnpj, String socialReason, String responsiblePerson,
-            String email, String passwordHash) {
+    public Company(UUID id, String name, String cnpj, String socialReason, String responsiblePerson,
+            String email, String passwordHash, String website, String photoUrl) {
+        this.id = id;
         this.name = requireText(name, "Nome é obrigatório");
         this.cnpj = requireText(cnpj, "CNPJ é obrigatório");
         this.socialReason = requireText(socialReason, "Razão social é obrigatória");
         this.responsiblePerson = requireText(responsiblePerson, "Responsável é obrigatório");
-        this.email = requireText(email, "Email é obrigatório");
+        this.email = requireEmail(email);
         this.passwordHash = Objects.requireNonNull(passwordHash, "Senha não pode ser nula");
+        this.website = website;
+        this.photoUrl = photoUrl;
+    }
+
+    public void update(String name, String socialReason, String responsiblePerson,
+            String email, String website, String photoUrl) {
+        this.name = requireText(name, "Nome é obrigatório");
+        this.socialReason = requireText(socialReason, "Razão social é obrigatória");
+        this.responsiblePerson = requireText(responsiblePerson, "Responsável é obrigatório");
+        this.email = requireEmail(email);
+        this.website = website;
+        this.photoUrl = photoUrl;
+    }
+
+    public void deactivate() {
+        this.active = false;
     }
 
     private String requireText(String value, String message) {
@@ -68,6 +85,14 @@ public class Company extends AuditableEntity {
             throw new IllegalArgumentException(message);
         }
         return value;
+    }
+
+    private String requireEmail(String email) {
+        requireText(email, "Email é obrigatório");
+        if (!email.contains("@")) {
+            throw new IllegalArgumentException("Email inválido");
+        }
+        return email;
     }
 
     public UUID getId() {
