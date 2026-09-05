@@ -52,31 +52,31 @@ BEGIN
     RETURNING id INTO v_mariana;
 
     INSERT INTO customer (name, email, password_hash, photo_url, created_at, updated_at)
-    VALUES ('Lucas Mendes', 'lucas.mendes@example.com', '$2a$12$eImiTXuWVxfM37uY4JANjOL.80F80.0123456789abcdefghij', 'https://example.com/photos/lucas.jpg', NOW(), NOW())
+    VALUES ('Lucas Mendes', 'lucas.mendes@example.com', '$2a$12$eImiTXuWVxfM37uY4JANjOL.80F80.0123456789abcdefghij', 'https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Fcdn.pixabay.com%2Fphoto%2F2015%2F10%2F05%2F22%2F37%2Fblank-profile-picture-973460_1280.png&f=1&nofb=1&ipt=ec4b8c78d02124f9b70e073d9679b64c5b6f328ebd108b6cd07432d19ed22501', NOW(), NOW())
     RETURNING id INTO v_lucas;
 
     INSERT INTO customer (name, email, password_hash, photo_url, created_at, updated_at)
-    VALUES ('Beatriz Costa', 'beatriz.costa@example.com', '$2a$12$eImiTXuWVxfM37uY4JANjOL.80F80.0123456789abcdefghij', 'https://example.com/photos/beatriz.jpg', NOW(), NOW())
+    VALUES ('Beatriz Costa', 'beatriz.costa@example.com', '$2a$12$eImiTXuWVxfM37uY4JANjOL.80F80.0123456789abcdefghij', 'https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Fcdn.pixabay.com%2Fphoto%2F2015%2F10%2F05%2F22%2F37%2Fblank-profile-picture-973460_1280.png&f=1&nofb=1&ipt=ec4b8c78d02124f9b70e073d9679b64c5b6f328ebd108b6cd07432d19ed22501', NOW(), NOW())
     RETURNING id INTO v_beatriz;
 
     INSERT INTO customer (name, email, password_hash, photo_url, created_at, updated_at)
-    VALUES ('Gabriel Souza', 'gabriel.souza@example.com', '$2a$12$eImiTXuWVxfM37uY4JANjOL.80F80.0123456789abcdefghij', 'https://example.com/photos/gabriel.jpg', NOW(), NOW())
+    VALUES ('Gabriel Souza', 'gabriel.souza@example.com', '$2a$12$eImiTXuWVxfM37uY4JANjOL.80F80.0123456789abcdefghij', 'https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Fcdn.pixabay.com%2Fphoto%2F2015%2F10%2F05%2F22%2F37%2Fblank-profile-picture-973460_1280.png&f=1&nofb=1&ipt=ec4b8c78d02124f9b70e073d9679b64c5b6f328ebd108b6cd07432d19ed22501', NOW(), NOW())
     RETURNING id INTO v_gabriel;
 
     INSERT INTO customer (name, email, password_hash, photo_url, created_at, updated_at)
-    VALUES ('Juliana Lima', 'juliana.lima@example.com', '$2a$12$eImiTXuWVxfM37uY4JANjOL.80F80.0123456789abcdefghij', 'https://example.com/photos/juliana.jpg', NOW(), NOW())
+    VALUES ('Juliana Lima', 'juliana.lima@example.com', '$2a$12$eImiTXuWVxfM37uY4JANjOL.80F80.0123456789abcdefghij', 'https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Fcdn.pixabay.com%2Fphoto%2F2015%2F10%2F05%2F22%2F37%2Fblank-profile-picture-973460_1280.png&f=1&nofb=1&ipt=ec4b8c78d02124f9b70e073d9679b64c5b6f328ebd108b6cd07432d19ed22501', NOW(), NOW())
     RETURNING id INTO v_juliana;
 
     INSERT INTO customer (name, email, password_hash, photo_url, created_at, updated_at)
-    VALUES ('Rodrigo Ferreira', 'rodrigo.ferreira@example.com', '$2a$12$eImiTXuWVxfM37uY4JANjOL.80F80.0123456789abcdefghij', 'https://example.com/photos/rodrigo.jpg', NOW(), NOW())
+    VALUES ('Rodrigo Ferreira', 'rodrigo.ferreira@example.com', '$2a$12$eImiTXuWVxfM37uY4JANjOL.80F80.0123456789abcdefghij', 'https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Fcdn.pixabay.com%2Fphoto%2F2015%2F10%2F05%2F22%2F37%2Fblank-profile-picture-973460_1280.png&f=1&nofb=1&ipt=ec4b8c78d02124f9b70e073d9679b64c5b6f328ebd108b6cd07432d19ed22501', NOW(), NOW())
     RETURNING id INTO v_rodrigo;
 
     INSERT INTO customer (name, email, password_hash, photo_url, created_at, updated_at)
-    VALUES ('Camila Rocha', 'camila.rocha@example.com', '$2a$12$eImiTXuWVxfM37uY4JANjOL.80F80.0123456789abcdefghij', 'https://example.com/photos/camila.jpg', NOW(), NOW())
+    VALUES ('Camila Rocha', 'camila.rocha@example.com', '$2a$12$eImiTXuWVxfM37uY4JANjOL.80F80.0123456789abcdefghij', 'https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Fcdn.pixabay.com%2Fphoto%2F2015%2F10%2F05%2F22%2F37%2Fblank-profile-picture-973460_1280.png&f=1&nofb=1&ipt=ec4b8c78d02124f9b70e073d9679b64c5b6f328ebd108b6cd07432d19ed22501', NOW(), NOW())
     RETURNING id INTO v_camila;
 
     INSERT INTO customer (name, email, password_hash, photo_url, created_at, updated_at)
-    VALUES ('Felipe Santos', 'felipe.santos@example.com', '$2a$12$eImiTXuWVxfM37uY4JANjOL.80F80.0123456789abcdefghij', 'https://example.com/photos/felipe.jpg', NOW(), NOW())
+    VALUES ('Felipe Santos', 'felipe.santos@example.com', '$2a$12$eImiTXuWVxfM37uY4JANjOL.80F80.0123456789abcdefghij', 'https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Fcdn.pixabay.com%2Fphoto%2F2015%2F10%2F05%2F22%2F37%2Fblank-profile-picture-973460_1280.png&f=1&nofb=1&ipt=ec4b8c78d02124f9b70e073d9679b64c5b6f328ebd108b6cd07432d19ed22501', NOW(), NOW())
     RETURNING id INTO v_felipe;
 
     -- companies (marcas reais)
