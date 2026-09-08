@@ -40,15 +40,15 @@ DECLARE
 BEGIN
     -- customers
     INSERT INTO customer (name, email, password_hash, photo_url, created_at, updated_at)
-    VALUES ('Ana Silva', 'ana.silva@example.com', '$2a$12$eImiTXuWVxfM37uY4JANjOL.80F80.0123456789abcdefghij', 'https://example.com/photos/ana.jpg', NOW(), NOW())
+    VALUES ('Ana Silva', 'ana.silva@example.com', '$2a$12$eImiTXuWVxfM37uY4JANjOL.80F80.0123456789abcdefghij', 'https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Fcdn.pixabay.com%2Fphoto%2F2015%2F10%2F05%2F22%2F37%2Fblank-profile-picture-973460_1280.png&f=1&nofb=1&ipt=ec4b8c78d02124f9b70e073d9679b64c5b6f328ebd108b6cd07432d19ed22501', NOW(), NOW())
     RETURNING id INTO v_ana;
 
     INSERT INTO customer (name, email, password_hash, photo_url, created_at, updated_at)
-    VALUES ('Carlos Eduardo', 'carlos.eduardo@example.com', '$2a$12$eImiTXuWVxfM37uY4JANjOL.80F80.0123456789abcdefghij', 'https://example.com/photos/carlos.jpg', NOW(), NOW())
+    VALUES ('Carlos Eduardo', 'carlos.eduardo@example.com', '$2a$12$eImiTXuWVxfM37uY4JANjOL.80F80.0123456789abcdefghij', 'https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Fcdn.pixabay.com%2Fphoto%2F2015%2F10%2F05%2F22%2F37%2Fblank-profile-picture-973460_1280.png&f=1&nofb=1&ipt=ec4b8c78d02124f9b70e073d9679b64c5b6f328ebd108b6cd07432d19ed22501', NOW(), NOW())
     RETURNING id INTO v_carlos;
 
     INSERT INTO customer (name, email, password_hash, photo_url, created_at, updated_at)
-    VALUES ('Mariana Oliveira', 'mariana.oliveira@example.com', '$2a$12$eImiTXuWVxfM37uY4JANjOL.80F80.0123456789abcdefghij', 'https://example.com/photos/mariana.jpg', NOW(), NOW())
+    VALUES ('Mariana Oliveira', 'mariana.oliveira@example.com', '$2a$12$eImiTXuWVxfM37uY4JANjOL.80F80.0123456789abcdefghij', 'https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Fcdn.pixabay.com%2Fphoto%2F2015%2F10%2F05%2F22%2F37%2Fblank-profile-picture-973460_1280.png&f=1&nofb=1&ipt=ec4b8c78d02124f9b70e073d9679b64c5b6f328ebd108b6cd07432d19ed22501', NOW(), NOW())
     RETURNING id INTO v_mariana;
 
     INSERT INTO customer (name, email, password_hash, photo_url, created_at, updated_at)
