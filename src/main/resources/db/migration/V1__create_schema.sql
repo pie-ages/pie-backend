@@ -3,7 +3,7 @@
 -- -------------------------------------------------------------
 
 CREATE TABLE customer (
-    id            uuid         PRIMARY KEY,
+    id            uuid         PRIMARY KEY DEFAULT gen_random_uuid(),
     name          varchar,
     email         varchar      UNIQUE,
     password_hash varchar,
@@ -13,7 +13,7 @@ CREATE TABLE customer (
 );
 
 CREATE TABLE company (
-    id                 uuid         PRIMARY KEY,
+    id                 uuid         PRIMARY KEY DEFAULT gen_random_uuid(),
     name               varchar,
     cnpj               varchar      UNIQUE,
     website            varchar,
@@ -32,7 +32,7 @@ CREATE TABLE company (
 -- -------------------------------------------------------------
 
 CREATE TABLE body_profile (
-    id                  uuid  PRIMARY KEY,
+    id                  uuid  PRIMARY KEY DEFAULT gen_random_uuid(),
     customer_id         uuid  NOT NULL,
     body_shape          varchar,
     kibbe_type          varchar,
@@ -52,7 +52,7 @@ ALTER TABLE body_profile
     ADD CONSTRAINT uq_body_profile_customer UNIQUE (customer_id);
 
 CREATE TABLE product (
-    id           uuid     PRIMARY KEY,
+    id           uuid     PRIMARY KEY DEFAULT gen_random_uuid(),
     company_id   uuid     NOT NULL,
     name         varchar,
     description  text,
@@ -73,7 +73,7 @@ ALTER TABLE product
 -- -------------------------------------------------------------
 
 CREATE TABLE wishlist (
-    id          uuid  PRIMARY KEY,
+    id          uuid  PRIMARY KEY DEFAULT gen_random_uuid(),
     customer_id uuid  NOT NULL,
     name        varchar,
     created_at  timestamptz,
@@ -87,7 +87,7 @@ ALTER TABLE wishlist
     ADD CONSTRAINT uq_wishlist_customer UNIQUE (customer_id);
 
 CREATE TABLE wardrobe_item (
-    id          uuid  PRIMARY KEY,
+    id          uuid  PRIMARY KEY DEFAULT gen_random_uuid(),
     customer_id uuid  NOT NULL,
     product_id  uuid,
     category    varchar,
@@ -104,7 +104,7 @@ ALTER TABLE wardrobe_item
     ADD FOREIGN KEY (product_id) REFERENCES product(id) DEFERRABLE INITIALLY IMMEDIATE;
 
 CREATE TABLE look (
-    id               uuid     PRIMARY KEY,
+    id               uuid     PRIMARY KEY DEFAULT gen_random_uuid(),
     customer_id      uuid     NOT NULL,
     title            varchar,
     is_ai_generated  boolean  DEFAULT false,
@@ -122,7 +122,7 @@ ALTER TABLE look
 -- -------------------------------------------------------------
 
 CREATE TABLE wishlist_item (
-    id          uuid  PRIMARY KEY,
+    id          uuid  PRIMARY KEY DEFAULT gen_random_uuid(),
     wishlist_id uuid  NOT NULL,
     product_id  uuid  NOT NULL,
     created_at  timestamptz
@@ -137,7 +137,7 @@ ALTER TABLE wishlist_item
 CREATE UNIQUE INDEX uq_wishlist_product ON wishlist_item (wishlist_id, product_id);
 
 CREATE TABLE look_wardrobe_item (
-    id               uuid  PRIMARY KEY,
+    id               uuid  PRIMARY KEY DEFAULT gen_random_uuid(),
     look_id          uuid  NOT NULL,
     wardrobe_item_id uuid  NOT NULL,
     created_at       timestamptz
@@ -152,7 +152,7 @@ ALTER TABLE look_wardrobe_item
 CREATE UNIQUE INDEX ON look_wardrobe_item (look_id, wardrobe_item_id);
 
 CREATE TABLE look_product (
-    id         uuid  PRIMARY KEY,
+    id         uuid  PRIMARY KEY DEFAULT gen_random_uuid(),
     look_id    uuid  NOT NULL,
     product_id uuid  NOT NULL,
     created_at timestamptz
