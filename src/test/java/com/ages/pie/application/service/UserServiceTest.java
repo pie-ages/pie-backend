@@ -3,6 +3,8 @@ package com.ages.pie.application.service;
 import com.ages.pie.application.dto.user.UserRequestDTO;
 import com.ages.pie.application.dto.user.UserResponseDTO;
 import com.ages.pie.application.dto.user.UserUpdateDTO;
+import com.ages.pie.application.exception.BusinessException;
+import com.ages.pie.application.exception.ResourceNotFoundException;
 import com.ages.pie.application.mapper.UserMapper;
 import com.ages.pie.domain.entity.User;
 import com.ages.pie.infrastructure.repository.UserRepository;
@@ -12,7 +14,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -65,13 +66,13 @@ class UserServiceTest {
     }
 
     @Test
-    void create_shouldThrowResponseStatusException_whenEmailAlreadyExists() {
+    void create_shouldThrowBusinessException_whenEmailAlreadyExists() {
         UserRequestDTO dto = new UserRequestDTO("Ana Silva", "ana@email.com", "senha123");
 
         when(userRepository.existsByEmail(dto.email())).thenReturn(true);
 
         assertThatThrownBy(() -> userService.create(dto))
-                .isInstanceOf(ResponseStatusException.class)
+                .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("ana@email.com");
 
         verify(userRepository, never()).save(any());
@@ -107,11 +108,11 @@ class UserServiceTest {
     }
 
     @Test
-    void findById_shouldThrowResponseStatusException_whenUserDoesNotExist() {
+    void findById_shouldThrowResourceNotFoundException_whenUserDoesNotExist() {
         when(userRepository.findById(userId)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> userService.findById(userId))
-                .isInstanceOf(ResponseStatusException.class)
+                .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessageContaining(userId.toString());
     }
 
@@ -130,13 +131,13 @@ class UserServiceTest {
     }
 
     @Test
-    void update_shouldThrowResponseStatusException_whenUserDoesNotExist() {
+    void update_shouldThrowResourceNotFoundException_whenUserDoesNotExist() {
         UserUpdateDTO dto = new UserUpdateDTO("Ana Santos", null);
 
         when(userRepository.findById(userId)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> userService.update(userId, dto))
-                .isInstanceOf(ResponseStatusException.class)
+                .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessageContaining(userId.toString());
 
         verify(userRepository, never()).save(any());
@@ -152,11 +153,11 @@ class UserServiceTest {
     }
 
     @Test
-    void delete_shouldThrowResponseStatusException_whenUserDoesNotExist() {
+    void delete_shouldThrowResourceNotFoundException_whenUserDoesNotExist() {
         when(userRepository.existsById(userId)).thenReturn(false);
 
         assertThatThrownBy(() -> userService.delete(userId))
-                .isInstanceOf(ResponseStatusException.class)
+                .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessageContaining(userId.toString());
 
         verify(userRepository, never()).deleteById(any());

@@ -3,6 +3,8 @@ package com.ages.pie.application.service;
 import com.ages.pie.application.dto.company.CompanyRequestDTO;
 import com.ages.pie.application.dto.company.CompanyResponseDTO;
 import com.ages.pie.application.dto.company.CompanyUpdateDTO;
+import com.ages.pie.application.exception.BusinessException;
+import com.ages.pie.application.exception.ResourceNotFoundException;
 import com.ages.pie.application.mapper.CompanyMapper;
 import com.ages.pie.domain.entity.Company;
 import com.ages.pie.infrastructure.repository.CompanyRepository;
@@ -12,8 +14,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.http.HttpStatus;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -21,11 +21,9 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.catchThrowable;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class CompanyServiceTest {
@@ -61,11 +59,6 @@ class CompanyServiceTest {
         return new CompanyUpdateDTO("Loja Y", "Loja Y LTDA", "Joao", "novo@lojay.com", null, null);
     }
 
-    private static int statusOf(Throwable thrown) {
-        assertThat(thrown).isInstanceOf(ResponseStatusException.class);
-        return ((ResponseStatusException) thrown).getStatusCode().value();
-    }
-
     @Test
     void create_shouldReturnResponseDTO_whenDataIsValid() {
         CompanyRequestDTO dto = requestDTO();
@@ -82,52 +75,56 @@ class CompanyServiceTest {
     }
 
     @Test
-    void create_shouldThrowConflict_whenCnpjAlreadyExists() {
+    void create_shouldThrowBusinessException_whenCnpjAlreadyExists() {
         CompanyRequestDTO dto = requestDTO();
         when(companyRepository.existsByCnpj(dto.cnpj())).thenReturn(true);
 
-        Throwable thrown = catchThrowable(() -> companyService.create(dto));
+        assertThatThrownBy(() -> companyService.create(dto))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining(dto.cnpj());
 
-        assertThat(statusOf(thrown)).isEqualTo(HttpStatus.CONFLICT.value());
         verify(companyRepository, never()).save(any());
     }
 
     @Test
-    void create_shouldThrowConflict_whenEmailAlreadyExists() {
+    void create_shouldThrowBusinessException_whenEmailAlreadyExists() {
         CompanyRequestDTO dto = requestDTO();
         when(companyRepository.existsByCnpj(dto.cnpj())).thenReturn(false);
         when(companyRepository.existsByEmail(dto.email())).thenReturn(true);
 
-        Throwable thrown = catchThrowable(() -> companyService.create(dto));
+        assertThatThrownBy(() -> companyService.create(dto))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining(dto.email());
 
-        assertThat(statusOf(thrown)).isEqualTo(HttpStatus.CONFLICT.value());
         verify(companyRepository, never()).save(any());
     }
 
     @Test
-    void create_shouldThrowBadRequest_whenPasswordIsBlank() {
+    void create_shouldThrowIllegalArgumentException_whenPasswordIsBlank() {
         CompanyRequestDTO dto = new CompanyRequestDTO("Loja X", "12345678000199", "Loja X LTDA",
                 "Maria", "contato@lojax.com", "  ", null, null);
         when(companyRepository.existsByCnpj(dto.cnpj())).thenReturn(false);
         when(companyRepository.existsByEmail(dto.email())).thenReturn(false);
 
-        Throwable thrown = catchThrowable(() -> companyService.create(dto));
+        assertThatThrownBy(() -> companyService.create(dto))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Senha");
 
-        assertThat(statusOf(thrown)).isEqualTo(HttpStatus.BAD_REQUEST.value());
         verify(companyRepository, never()).save(any());
     }
 
     @Test
-    void create_shouldThrowBadRequest_whenEntityRejectsData() {
+    void create_shouldThrowIllegalArgumentException_whenEntityRejectsData() {
         CompanyRequestDTO dto = requestDTO();
         when(companyRepository.existsByCnpj(dto.cnpj())).thenReturn(false);
         when(companyRepository.existsByEmail(dto.email())).thenReturn(false);
         when(companyMapper.toEntity(any(), any()))
                 .thenThrow(new IllegalArgumentException("Nome é obrigatório"));
 
-        Throwable thrown = catchThrowable(() -> companyService.create(dto));
+        assertThatThrownBy(() -> companyService.create(dto))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Nome");
 
-        assertThat(statusOf(thrown)).isEqualTo(HttpStatus.BAD_REQUEST.value());
         verify(companyRepository, never()).save(any());
     }
 
@@ -155,12 +152,12 @@ class CompanyServiceTest {
     }
 
     @Test
-    void findById_shouldThrowNotFound_whenCompanyDoesNotExist() {
+    void findById_shouldThrowResourceNotFoundException_whenCompanyDoesNotExist() {
         when(companyRepository.findById(companyId)).thenReturn(Optional.empty());
 
-        Throwable thrown = catchThrowable(() -> companyService.findById(companyId));
-
-        assertThat(statusOf(thrown)).isEqualTo(HttpStatus.NOT_FOUND.value());
+        assertThatThrownBy(() -> companyService.findById(companyId))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessageContaining(companyId.toString());
     }
 
     @Test
@@ -179,37 +176,39 @@ class CompanyServiceTest {
     }
 
     @Test
-    void update_shouldThrowNotFound_whenCompanyDoesNotExist() {
+    void update_shouldThrowResourceNotFoundException_whenCompanyDoesNotExist() {
         when(companyRepository.findById(companyId)).thenReturn(Optional.empty());
 
-        Throwable thrown = catchThrowable(() -> companyService.update(companyId, updateDTO()));
+        assertThatThrownBy(() -> companyService.update(companyId, updateDTO()))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessageContaining(companyId.toString());
 
-        assertThat(statusOf(thrown)).isEqualTo(HttpStatus.NOT_FOUND.value());
         verify(companyRepository, never()).save(any());
     }
 
     @Test
-    void update_shouldThrowConflict_whenEmailBelongsToAnotherCompany() {
+    void update_shouldThrowBusinessException_whenEmailBelongsToAnotherCompany() {
         CompanyUpdateDTO dto = updateDTO();
         when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
         when(companyRepository.existsByEmailAndIdNot(dto.email(), companyId)).thenReturn(true);
 
-        Throwable thrown = catchThrowable(() -> companyService.update(companyId, dto));
+        assertThatThrownBy(() -> companyService.update(companyId, dto))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining(dto.email());
 
-        assertThat(statusOf(thrown)).isEqualTo(HttpStatus.CONFLICT.value());
         verify(companyRepository, never()).save(any());
     }
 
     @Test
-    void update_shouldThrowBadRequest_whenEntityRejectsData() {
+    void update_shouldThrowIllegalArgumentException_whenEntityRejectsData() {
         CompanyUpdateDTO dto = new CompanyUpdateDTO("  ", "Loja Y LTDA", "Joao",
                 "novo@lojay.com", null, null);
         when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
         when(companyRepository.existsByEmailAndIdNot(dto.email(), companyId)).thenReturn(false);
 
-        Throwable thrown = catchThrowable(() -> companyService.update(companyId, dto));
+        assertThatThrownBy(() -> companyService.update(companyId, dto))
+                .isInstanceOf(IllegalArgumentException.class);
 
-        assertThat(statusOf(thrown)).isEqualTo(HttpStatus.BAD_REQUEST.value());
         verify(companyRepository, never()).save(any());
     }
 
@@ -224,12 +223,13 @@ class CompanyServiceTest {
     }
 
     @Test
-    void deactivate_shouldThrowNotFound_whenCompanyDoesNotExist() {
+    void deactivate_shouldThrowResourceNotFoundException_whenCompanyDoesNotExist() {
         when(companyRepository.findById(companyId)).thenReturn(Optional.empty());
 
-        Throwable thrown = catchThrowable(() -> companyService.deactivate(companyId));
+        assertThatThrownBy(() -> companyService.deactivate(companyId))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessageContaining(companyId.toString());
 
-        assertThat(statusOf(thrown)).isEqualTo(HttpStatus.NOT_FOUND.value());
         verify(companyRepository, never()).save(any());
     }
 }
