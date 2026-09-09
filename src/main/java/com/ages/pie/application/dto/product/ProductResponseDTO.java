@@ -1,4 +1,4 @@
-package com.ages.pie.application.dto;
+package com.ages.pie.application.dto.product;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
