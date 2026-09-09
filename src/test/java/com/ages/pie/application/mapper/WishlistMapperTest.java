@@ -33,6 +33,7 @@ class WishlistMapperTest {
                 "Maria", "contato@lojax.com", "hash(senha123)", null, null);
         product = new Product(company, "Blazer Social Feminino");
         ReflectionTestUtils.setField(product, "id", productId);
+        ReflectionTestUtils.setField(product, "color", "Bege");
         ReflectionTestUtils.setField(product, "price", new BigDecimal("279.90"));
         ReflectionTestUtils.setField(product, "imageUrl", "https://loja.com/blazer.jpg");
         ReflectionTestUtils.setField(product, "purchaseUrl", "https://loja.com/comprar/blazer");
@@ -48,6 +49,7 @@ class WishlistMapperTest {
 
         assertThat(result.productId()).isEqualTo(productId);
         assertThat(result.name()).isEqualTo("Blazer Social Feminino");
+        assertThat(result.color()).isEqualTo("Bege");
         assertThat(result.price()).isEqualByComparingTo("279.90");
         assertThat(result.imageUrl()).isEqualTo("https://loja.com/blazer.jpg");
         assertThat(result.purchaseUrl()).isEqualTo("https://loja.com/comprar/blazer");
@@ -56,6 +58,8 @@ class WishlistMapperTest {
 
     @Test
     void toItemDTO_shouldReturnNullColor_whenProductHasNoColor() {
+        ReflectionTestUtils.setField(product, "color", null);
+
         WishlistItemResponseDTO result = wishlistMapper.toItemDTO(new WishlistItem(wishlist, product));
 
         assertThat(result.color()).isNull();

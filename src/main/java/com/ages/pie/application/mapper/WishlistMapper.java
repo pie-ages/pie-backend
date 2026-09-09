@@ -38,7 +38,7 @@ public class WishlistMapper {
             item.getId(),
             product.getId(),
             product.getName(),
-            null,
+            product.getColor(),
             product.getPrice(),
             product.getImageUrl(),
             product.getPurchaseUrl(),
