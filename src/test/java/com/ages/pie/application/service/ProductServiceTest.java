@@ -27,6 +27,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -67,6 +68,7 @@ class ProductServiceTest {
         responseDTO = new ProductResponseDTO(productId, "Camiseta", "Camiseta 100% algodão",
                 "Roupas", new BigDecimal("49.90"), "https://exemplo.com/camiseta.jpg",
                 "https://loja.exemplo.com/camiseta", true, "Loja X", OffsetDateTime.now());
+        lenient().doCallRealMethod().when(productMapper).updateEntityFromDto(any(), any());
     }
 
     private ProductRequestDTO requestDTO() {

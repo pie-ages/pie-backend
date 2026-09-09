@@ -74,25 +74,25 @@ public class ProductService {
     @Transactional
     public ProductResponseDTO update(UUID id, ProductUpdateDTO dto) {
         logger.info("Atualizando product: {}", id);
-    
+
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Produto não encontrado"));
-    
+
         if (dto.name() != null && dto.name().isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Nome é obrigatório");
         }
-    
+
         productMapper.updateEntityFromDto(dto, product);
-    
+
         if (dto.companyId() != null) {
             product.setCompany(findCompanyOrThrow(dto.companyId()));
         }
-    
+
         Product atualizado = productRepository.save(product);
         logger.info("Product atualizado: {}", atualizado.getId());
         return productMapper.toResponseDTO(atualizado);
     }
-    
+
     private Company findCompanyOrThrow(UUID companyId) {
         return companyRepository.findById(companyId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Empresa não encontrada"));

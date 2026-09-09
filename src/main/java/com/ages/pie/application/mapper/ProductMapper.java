@@ -44,5 +44,4 @@ public class ProductMapper {
         if (dto.imageUrl() != null) product.setImageUrl(dto.imageUrl());
         if (dto.purchaseUrl() != null) product.setPurchaseUrl(dto.purchaseUrl());
     }
-    
 }
