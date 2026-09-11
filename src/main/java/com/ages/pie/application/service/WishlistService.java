@@ -4,6 +4,8 @@ import java.util.UUID;
 
 import com.ages.pie.application.dto.wishlist.WishlistItemResponseDTO;
 import com.ages.pie.application.dto.wishlist.WishlistResponseDTO;
+import com.ages.pie.application.exception.BusinessException;
+import com.ages.pie.application.exception.ResourceNotFoundException;
 import com.ages.pie.application.mapper.WishlistMapper;
 import com.ages.pie.domain.entity.Product;
 import com.ages.pie.domain.entity.User;
@@ -13,10 +15,8 @@ import com.ages.pie.infrastructure.repository.ProductRepository;
 import com.ages.pie.infrastructure.repository.UserRepository;
 import com.ages.pie.infrastructure.repository.WishlistItemRepository;
 import com.ages.pie.infrastructure.repository.WishlistRepository;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class WishlistService {
@@ -55,15 +55,13 @@ public class WishlistService {
     @Transactional
     public WishlistItemResponseDTO addItem(UUID userId, UUID productId) {
         Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                        "Produto não encontrado: " + productId));
+                .orElseThrow(() -> new ResourceNotFoundException("Produto não encontrado: " + productId));
 
         Wishlist wishlist = wishlistRepository.findByCustomerId(userId)
                 .orElseGet(() -> createFor(userId));
 
         if (wishlistItemRepository.existsByWishlistIdAndProductId(wishlist.getId(), productId)) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "Produto já está na wishlist: " + productId);
+            throw new BusinessException("Produto já está na wishlist: " + productId);
         }
 
         WishlistItem item = wishlistItemRepository.save(new WishlistItem(wishlist, product));
@@ -73,12 +71,12 @@ public class WishlistService {
     @Transactional
     public void removeItem(UUID userId, UUID productId) {
         Wishlist wishlist = wishlistRepository.findByCustomerId(userId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                .orElseThrow(() -> new ResourceNotFoundException(
                         "Wishlist não encontrada para o usuário: " + userId));
 
         WishlistItem item = wishlistItemRepository
                 .findByWishlistIdAndProductId(wishlist.getId(), productId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                .orElseThrow(() -> new ResourceNotFoundException(
                         "Produto não está na wishlist: " + productId));
 
         wishlistItemRepository.delete(item);
@@ -91,7 +89,7 @@ public class WishlistService {
         return wishlistRepository.save(new Wishlist(user, DEFAULT_WISHLIST_NAME));
     }
 
-    private ResponseStatusException userNotFound(UUID userId) {
-        return new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado: " + userId);
+    private ResourceNotFoundException userNotFound(UUID userId) {
+        return new ResourceNotFoundException("Usuário não encontrado: " + userId);
     }
 }

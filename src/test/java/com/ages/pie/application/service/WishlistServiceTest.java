@@ -2,6 +2,8 @@ package com.ages.pie.application.service;
 
 import com.ages.pie.application.dto.wishlist.WishlistItemResponseDTO;
 import com.ages.pie.application.dto.wishlist.WishlistResponseDTO;
+import com.ages.pie.application.exception.BusinessException;
+import com.ages.pie.application.exception.ResourceNotFoundException;
 import com.ages.pie.application.mapper.WishlistMapper;
 import com.ages.pie.domain.entity.Company;
 import com.ages.pie.domain.entity.Product;
@@ -19,7 +21,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -27,7 +28,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.catchThrowable;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -84,11 +85,6 @@ class WishlistServiceTest {
                 null, new BigDecimal("279.90"), null, null, true, null);
     }
 
-    private static int statusOf(Throwable thrown) {
-        assertThat(thrown).isInstanceOf(ResponseStatusException.class);
-        return ((ResponseStatusException) thrown).getStatusCode().value();
-    }
-
     @Test
     void findByUser_shouldReturnMappedWishlist_whenWishlistExists() {
         WishlistResponseDTO dto = new WishlistResponseDTO(wishlistId, "Minha wishlist", List.of(), null, null);
@@ -114,12 +110,12 @@ class WishlistServiceTest {
     }
 
     @Test
-    void findByUser_shouldThrowNotFound_whenUserDoesNotExist() {
+    void findByUser_shouldThrowResourceNotFoundException_whenUserDoesNotExist() {
         when(userRepository.existsById(userId)).thenReturn(false);
 
-        Throwable thrown = catchThrowable(() -> wishlistService.findByUser(userId));
-
-        assertThat(statusOf(thrown)).isEqualTo(404);
+        assertThatThrownBy(() -> wishlistService.findByUser(userId))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessageContaining(userId.toString());
     }
 
     @Test
@@ -155,36 +151,36 @@ class WishlistServiceTest {
     }
 
     @Test
-    void addItem_shouldThrowNotFound_whenProductDoesNotExist() {
+    void addItem_shouldThrowResourceNotFoundException_whenProductDoesNotExist() {
         when(productRepository.findById(productId)).thenReturn(Optional.empty());
 
-        Throwable thrown = catchThrowable(() -> wishlistService.addItem(userId, productId));
-
-        assertThat(statusOf(thrown)).isEqualTo(404);
+        assertThatThrownBy(() -> wishlistService.addItem(userId, productId))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessageContaining(productId.toString());
         verify(wishlistItemRepository, never()).save(any());
     }
 
     @Test
-    void addItem_shouldThrowConflict_whenProductAlreadyInWishlist() {
+    void addItem_shouldThrowBusinessException_whenProductAlreadyInWishlist() {
         when(productRepository.findById(productId)).thenReturn(Optional.of(product));
         when(wishlistRepository.findByCustomerId(userId)).thenReturn(Optional.of(wishlist));
         when(wishlistItemRepository.existsByWishlistIdAndProductId(wishlistId, productId)).thenReturn(true);
 
-        Throwable thrown = catchThrowable(() -> wishlistService.addItem(userId, productId));
-
-        assertThat(statusOf(thrown)).isEqualTo(409);
+        assertThatThrownBy(() -> wishlistService.addItem(userId, productId))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining(productId.toString());
         verify(wishlistItemRepository, never()).save(any());
     }
 
     @Test
-    void addItem_shouldThrowNotFound_whenUserDoesNotExist() {
+    void addItem_shouldThrowResourceNotFoundException_whenUserDoesNotExist() {
         when(productRepository.findById(productId)).thenReturn(Optional.of(product));
         when(wishlistRepository.findByCustomerId(userId)).thenReturn(Optional.empty());
         when(userRepository.findById(userId)).thenReturn(Optional.empty());
 
-        Throwable thrown = catchThrowable(() -> wishlistService.addItem(userId, productId));
-
-        assertThat(statusOf(thrown)).isEqualTo(404);
+        assertThatThrownBy(() -> wishlistService.addItem(userId, productId))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessageContaining(userId.toString());
         verify(wishlistRepository, never()).save(any(Wishlist.class));
     }
 
@@ -201,24 +197,24 @@ class WishlistServiceTest {
     }
 
     @Test
-    void removeItem_shouldThrowNotFound_whenUserHasNoWishlist() {
+    void removeItem_shouldThrowResourceNotFoundException_whenUserHasNoWishlist() {
         when(wishlistRepository.findByCustomerId(userId)).thenReturn(Optional.empty());
 
-        Throwable thrown = catchThrowable(() -> wishlistService.removeItem(userId, productId));
-
-        assertThat(statusOf(thrown)).isEqualTo(404);
+        assertThatThrownBy(() -> wishlistService.removeItem(userId, productId))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessageContaining(userId.toString());
         verify(wishlistItemRepository, never()).delete(any());
     }
 
     @Test
-    void removeItem_shouldThrowNotFound_whenProductIsNotInWishlist() {
+    void removeItem_shouldThrowResourceNotFoundException_whenProductIsNotInWishlist() {
         when(wishlistRepository.findByCustomerId(userId)).thenReturn(Optional.of(wishlist));
         when(wishlistItemRepository.findByWishlistIdAndProductId(wishlistId, productId))
                 .thenReturn(Optional.empty());
 
-        Throwable thrown = catchThrowable(() -> wishlistService.removeItem(userId, productId));
-
-        assertThat(statusOf(thrown)).isEqualTo(404);
+        assertThatThrownBy(() -> wishlistService.removeItem(userId, productId))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessageContaining(productId.toString());
         verify(wishlistItemRepository, never()).delete(any());
     }
 }
