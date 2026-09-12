@@ -12,6 +12,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
+import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
 import org.hibernate.annotations.UuidGenerator;
 
@@ -31,6 +32,7 @@ public class Wishlist extends AuditableEntity {
     private String name;
 
     @OneToMany(mappedBy = "wishlist", fetch = FetchType.LAZY)
+    @OrderBy("createdAt")
     private List<WishlistItem> items = new ArrayList<>();
 
     protected Wishlist() {
