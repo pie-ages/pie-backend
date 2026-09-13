@@ -1,10 +1,7 @@
-name: CI
+name: Dev Pipeline
 
 on:
-  push:
-  pull_request:
-    branches: [dev, main]
-  workflow_dispatch:
+  workflow_dispatch: 
  
 permissions:
   contents: read
@@ -13,7 +10,6 @@ jobs:
   build-and-test:
     name: Build and Run tests
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
 
     services:
       postgres:
@@ -28,7 +24,7 @@ jobs:
           --health-cmd pg_isready
           --health-interval 10s
           --health-timeout 5s
-          --health-retries 5
+          --health-retries 5  
 
     steps:
       - name: Checkout
@@ -47,23 +43,4 @@ jobs:
           SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/testdb
           SPRING_DATASOURCE_USERNAME: postgres
           SPRING_DATASOURCE_PASSWORD: postgres
-
-  mirror:
-    name: Mirror to GitLab
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push'
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Mirror to GitLab
-        env:
-          GITLAB_USERNAME: ${{ secrets.GITLAB_USERNAME }}
-          GITLAB_TOKEN: ${{ secrets.GITLAB_TOKEN }}
-        run: |
-          BRANCH=${GITHUB_REF#refs/heads/}
-          git remote add gitlab https://${GITLAB_USERNAME}:${GITLAB_TOKEN}@tools.ages.pucrs.br/2026-2/2lm-4lm/pi-consultoria-de-imagem/backend.git
-          git push --force gitlab HEAD:${BRANCH}
 

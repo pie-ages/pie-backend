@@ -1,59 +1,43 @@
 package com.ages.pie.domain.entity;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.time.LocalDateTime;
 import java.util.Objects;
-import java.util.UUID;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.Id;
-import jakarta.persistence.OneToMany;
-import jakarta.persistence.OneToOne;
-import jakarta.persistence.Table;
-import org.hibernate.annotations.UuidGenerator;
+import com.ages.pie.domain.enums.UserRole;
 
-@Entity
-@Table(name = "customer")
-public class User extends AuditableEntity {
+/**
+ * Exemplo de Aggregate Root.
+ *
+ * Representa um conceito central do domínio, com identidade própria (id) e
+ * ciclo de vida independente. É responsável por proteger seus próprios
+ * invariantes: um User nunca deve existir em estado inválido (sem nome,
+ * sem email válido, etc.), então essas validações ficam no construtor,
+ * não em quem cria o objeto.
+ *
+ * Regra para o time: não crie setters soltos que permitam colocar a
+ * entidade em estado inconsistente. Se um atributo pode mudar, crie um
+ * método de negócio com nome (ex: promoverPara), não um setPapel genérico.
+ */
+public class User {
 
-    @Id
-    @GeneratedValue
-    @UuidGenerator
-    private UUID id;
-
+    private Long id;
     private String name;
-
-    @Column(unique = true)
     private String email;
-
-    @Column(name = "password_hash")
     private String passwordHash;
+    private UserRole role;
+    private LocalDateTime createdAt;
 
-    @Column(name = "photo_url")
-    private String photoUrl;
 
-    @OneToOne(mappedBy = "customer", fetch = FetchType.LAZY)
-    private BodyProfile bodyProfile;
-
-    @OneToOne(mappedBy = "customer", fetch = FetchType.LAZY)
-    private Wishlist wishlist;
-
-    @OneToMany(mappedBy = "customer", fetch = FetchType.LAZY)
-    private List<WardrobeItem> wardrobeItems = new ArrayList<>();
-
-    @OneToMany(mappedBy = "customer", fetch = FetchType.LAZY)
-    private List<Look> looks = new ArrayList<>();
-
+    /** Construtor protegido, exigido pelo JPA. Não usar diretamente. */
     protected User() {
     }
 
-    public User(String name, String email, String passwordHash) {
+    public User(String name, String email, String passwordHash, UserRole role) {
         this.name = validateName(name);
         this.email = validateEmail(email);
         this.passwordHash = Objects.requireNonNull(passwordHash, "Senha não pode ser nula");
+        this.role = Objects.requireNonNull(role, "Papel do usuário é obrigatório");
+        this.createdAt = LocalDateTime.now();
     }
 
     private String validateName(String name) {
@@ -70,7 +54,16 @@ public class User extends AuditableEntity {
         return email;
     }
 
-    public UUID getId() {
+    /**
+     * Exemplo de método de negócio nomeado, em vez de um setter genérico.
+     * Deixa explícito, no código e no log de commits, que uma promoção
+     * de papel é uma ação de domínio, não uma edição de campo qualquer.
+     */
+    public void promoverPara(UserRole novoRole) {
+        this.role = Objects.requireNonNull(novoRole, "Novo papel não pode ser nulo");
+    }
+
+    public Long getId() {
         return id;
     }
 
@@ -82,23 +75,11 @@ public class User extends AuditableEntity {
         return email;
     }
 
-    public String getPhotoUrl() {
-        return photoUrl;
+    public UserRole getRole() {
+        return role;
     }
 
-    public BodyProfile getBodyProfile() {
-        return bodyProfile;
-    }
-
-    public Wishlist getWishlist() {
-        return wishlist;
-    }
-
-    public List<WardrobeItem> getWardrobeItems() {
-        return wardrobeItems;
-    }
-
-    public List<Look> getLooks() {
-        return looks;
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
     }
 }
