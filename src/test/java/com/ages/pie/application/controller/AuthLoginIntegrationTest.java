@@ -56,8 +56,8 @@ class AuthLoginIntegrationTest {
         String token = JsonPath.read(json, "$.token");
         String userId = JsonPath.read(json, "$.user.id");
 
-        assertThat(jwtTokenProvider.validarToken(token)).isTrue();
-        assertThat(jwtTokenProvider.extrairUserId(token)).hasToString(userId);
+        assertThat(jwtTokenProvider.validateToken(token)).isTrue();
+        assertThat(jwtTokenProvider.extractUserId(token)).hasToString(userId);
         assertThat(userRepository.findById(UUID.fromString(userId))).isPresent();
     }
 

@@ -1,8 +1,7 @@
 package com.ages.pie.application.dto;
 
-import com.ages.pie.domain.enums.UserRole;
-
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.util.UUID;
 
 /**
  * Exemplo de DTO de saída (response).
@@ -13,10 +12,10 @@ import java.time.LocalDateTime;
  * sensível e ele vaza na resposta HTTP sem querer.
  */
 public record UserResponseDTO(
-    Long id,
+    UUID id,
     String name,
     String email,
-    UserRole role,
-    LocalDateTime createdAt
+    String photoUrl,
+    OffsetDateTime createdAt
 ) {
 }

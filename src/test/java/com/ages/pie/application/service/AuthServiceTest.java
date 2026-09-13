@@ -50,7 +50,7 @@ class AuthServiceTest {
     @Test
     void loginRetornaTokenEDadosDoUsuario() {
         when(userRepository.findFirstByOrderByCreatedAtAsc()).thenReturn(Optional.of(user));
-        when(jwtTokenProvider.gerarToken(userId)).thenReturn("tok-123");
+        when(jwtTokenProvider.generateToken(userId)).thenReturn("tok-123");
 
         LoginResponseDTO result = authService.login(new LoginRequestDTO("ana@email.com", "senha"));
 
@@ -63,7 +63,7 @@ class AuthServiceTest {
     @Test
     void loginNaoValidaCredenciais() {
         when(userRepository.findFirstByOrderByCreatedAtAsc()).thenReturn(Optional.of(user));
-        when(jwtTokenProvider.gerarToken(any())).thenReturn("tok");
+        when(jwtTokenProvider.generateToken(any())).thenReturn("tok");
 
         LoginResponseDTO result = authService.login(new LoginRequestDTO(null, null));
 
@@ -74,7 +74,7 @@ class AuthServiceTest {
     @Test
     void loginUsaOPrimeiroUsuarioDisponivel() {
         when(userRepository.findFirstByOrderByCreatedAtAsc()).thenReturn(Optional.of(user));
-        when(jwtTokenProvider.gerarToken(any())).thenReturn("tok");
+        when(jwtTokenProvider.generateToken(any())).thenReturn("tok");
 
         authService.login(new LoginRequestDTO("x", "y"));
 
@@ -85,12 +85,12 @@ class AuthServiceTest {
     @Test
     void loginGeraTokenComOIdDoUsuarioEncontrado() {
         when(userRepository.findFirstByOrderByCreatedAtAsc()).thenReturn(Optional.of(user));
-        when(jwtTokenProvider.gerarToken(any())).thenReturn("tok");
+        when(jwtTokenProvider.generateToken(any())).thenReturn("tok");
 
         authService.login(new LoginRequestDTO("x", "y"));
 
         ArgumentCaptor<UUID> captor = ArgumentCaptor.forClass(UUID.class);
-        verify(jwtTokenProvider).gerarToken(captor.capture());
+        verify(jwtTokenProvider).generateToken(captor.capture());
         assertThat(captor.getValue()).isEqualTo(userId);
     }
 
@@ -102,6 +102,6 @@ class AuthServiceTest {
             .isInstanceOf(NoUsersAvailableException.class)
             .hasMessage("Nenhum usuário cadastrado");
 
-        verify(jwtTokenProvider, never()).gerarToken(any());
+        verify(jwtTokenProvider, never()).generateToken(any());
     }
 }

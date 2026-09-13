@@ -30,7 +30,7 @@ public class JwtTokenProvider {
         this.expiration = expiration;
     }
 
-    public String gerarToken(UUID userId) {
+    public String generateToken(UUID userId) {
         Instant now = Instant.now();
         return Jwts.builder()
             .subject(userId.toString())
@@ -40,7 +40,7 @@ public class JwtTokenProvider {
             .compact();
     }
 
-    public boolean validarToken(String token) {
+    public boolean validateToken(String token) {
         try {
             parse(token);
             return true;
@@ -49,7 +49,7 @@ public class JwtTokenProvider {
         }
     }
 
-    public UUID extrairUserId(String token) {
+    public UUID extractUserId(String token) {
         return UUID.fromString(parse(token).getPayload().getSubject());
     }
 
