@@ -16,59 +16,59 @@ class JwtTokenProviderTest {
     private final JwtTokenProvider provider = new JwtTokenProvider(SECRET, Duration.ofHours(1));
 
     @Test
-    void gerarTokenProduzJwtComTresPartes() {
-        String token = provider.gerarToken(UUID.randomUUID());
+    void tokenGeradoTemTresPartes() {
+        String token = provider.generateToken(UUID.randomUUID());
 
         assertThat(token).isNotBlank();
         assertThat(token.split("\\.")).hasSize(3);
     }
 
     @Test
-    void validarTokenAceitaTokenGeradoPeloProvider() {
-        String token = provider.gerarToken(UUID.randomUUID());
+    void tokenValidoEAceito() {
+        String token = provider.generateToken(UUID.randomUUID());
 
-        assertThat(provider.validarToken(token)).isTrue();
+        assertThat(provider.validateToken(token)).isTrue();
     }
 
     @Test
-    void extrairUserIdFazRoundTripDoUuid() {
+    void userIdERecuperadoDoToken() {
         UUID userId = UUID.randomUUID();
 
-        String token = provider.gerarToken(userId);
+        String token = provider.generateToken(userId);
 
-        assertThat(provider.extrairUserId(token)).isEqualTo(userId);
+        assertThat(provider.extractUserId(token)).isEqualTo(userId);
     }
 
     @Test
-    void validarTokenRejeitaTokenMalformado() {
-        assertThat(provider.validarToken("")).isFalse();
-        assertThat(provider.validarToken("nao-e-um-jwt")).isFalse();
-        assertThat(provider.validarToken("a.b.c")).isFalse();
+    void tokenMalformadoERejeitado() {
+        assertThat(provider.validateToken("")).isFalse();
+        assertThat(provider.validateToken("nao-e-um-jwt")).isFalse();
+        assertThat(provider.validateToken("a.b.c")).isFalse();
     }
 
     @Test
-    void validarTokenRejeitaAssinaturaDeOutroSegredo() {
+    void tokenComAssinaturaDeOutroSegredoERejeitado() {
         JwtTokenProvider outro = new JwtTokenProvider(
             "outro-segredo-completamente-diferente-do-primeiro", Duration.ofHours(1));
-        String token = outro.gerarToken(UUID.randomUUID());
+        String token = outro.generateToken(UUID.randomUUID());
 
-        assertThat(provider.validarToken(token)).isFalse();
+        assertThat(provider.validateToken(token)).isFalse();
     }
 
     @Test
-    void validarTokenRejeitaTokenExpirado() {
+    void tokenExpiradoERejeitado() {
         JwtTokenProvider expirado = new JwtTokenProvider(SECRET, Duration.ofSeconds(-1));
-        String token = expirado.gerarToken(UUID.randomUUID());
+        String token = expirado.generateToken(UUID.randomUUID());
 
-        assertThat(provider.validarToken(token)).isFalse();
+        assertThat(provider.validateToken(token)).isFalse();
     }
 
     @Test
-    void extrairUserIdLancaParaTokenComAssinaturaInvalida() {
+    void extrairUserIdDeTokenComAssinaturaInvalidaLancaExcecao() {
         JwtTokenProvider outro = new JwtTokenProvider(
             "outro-segredo-completamente-diferente-do-primeiro", Duration.ofHours(1));
-        String token = outro.gerarToken(UUID.randomUUID());
+        String token = outro.generateToken(UUID.randomUUID());
 
-        assertThatThrownBy(() -> provider.extrairUserId(token)).isInstanceOf(JwtException.class);
+        assertThatThrownBy(() -> provider.extractUserId(token)).isInstanceOf(JwtException.class);
     }
 }

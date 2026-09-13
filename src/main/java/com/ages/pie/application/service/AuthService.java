@@ -32,7 +32,7 @@ public class AuthService {
         User user = userRepository.findFirstByOrderByCreatedAtAsc()
             .orElseThrow(() -> new NoUsersAvailableException("Nenhum usuário cadastrado"));
 
-        String token = jwtTokenProvider.gerarToken(user.getId());
+        String token = jwtTokenProvider.generateToken(user.getId());
         UserSummaryDTO summary = new UserSummaryDTO(
             user.getId(),
             user.getName(),
