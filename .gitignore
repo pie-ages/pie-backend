@@ -1,2 +1,7 @@
 /target
 .idea
+
+# IDE e ferramentas locais
+.vscode
+*.env
+*.env.local
