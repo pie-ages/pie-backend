@@ -1,5 +1,7 @@
 package com.ages.pie.application.service;
 
+import com.ages.pie.application.dto.product.ProductCatalogItemDTO;
+import com.ages.pie.application.dto.product.ProductCatalogPageDTO;
 import com.ages.pie.application.dto.product.ProductRequestDTO;
 import com.ages.pie.application.dto.product.ProductResponseDTO;
 import com.ages.pie.application.dto.product.ProductUpdateDTO;
@@ -15,6 +17,10 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -27,6 +33,8 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -136,21 +144,6 @@ class ProductServiceTest {
     }
 
     @Test
-    void findAll_shouldReturnMappedActiveProducts() {
-        when(productRepository.findAllByActiveTrue()).thenReturn(List.of(product));
-        when(productMapper.toResponseDTO(product)).thenReturn(responseDTO);
-
-        assertThat(productService.findAll()).containsExactly(responseDTO);
-    }
-
-    @Test
-    void findAll_shouldReturnEmptyList_whenNoActiveProducts() {
-        when(productRepository.findAllByActiveTrue()).thenReturn(List.of());
-
-        assertThat(productService.findAll()).isEmpty();
-    }
-
-    @Test
     void findById_shouldReturnResponseDTO_whenProductExists() {
         when(productRepository.findById(productId)).thenReturn(Optional.of(product));
         when(productMapper.toResponseDTO(product)).thenReturn(responseDTO);
@@ -251,5 +244,80 @@ class ProductServiceTest {
 
         assertThat(statusOf(thrown)).isEqualTo(HttpStatus.NOT_FOUND.value());
         verify(productRepository, never()).save(any());
+    }
+
+    @Test
+    void delete_shouldDeleteProduct_whenProductExists() {
+        when(productRepository.existsById(productId)).thenReturn(true);
+
+        productService.delete(productId);
+
+        verify(productRepository).deleteById(productId);
+    }
+
+    @Test
+    void delete_shouldThrowNotFound_whenProductDoesNotExist() {
+        when(productRepository.existsById(productId)).thenReturn(false);
+
+        Throwable thrown = catchThrowable(() -> productService.delete(productId));
+
+        assertThat(statusOf(thrown)).isEqualTo(HttpStatus.NOT_FOUND.value());
+        verify(productRepository, never()).deleteById(any());
+    }
+
+    @Test
+    void findCatalog_shouldPassNullSearch_whenSearchIsNull() {
+        Pageable pageable = PageRequest.of(0, 20);
+        Page<Product> page = new PageImpl<>(List.of(product), pageable, 1);
+        ProductCatalogItemDTO itemDTO = new ProductCatalogItemDTO(productId, "Camiseta",
+                new BigDecimal("49.90"), "https://exemplo.com/camiseta.jpg",
+                "https://loja.exemplo.com/camiseta", "Loja X");
+        ProductCatalogPageDTO pageDTO = new ProductCatalogPageDTO(List.of(itemDTO), 1, 0, 20);
+        when(productRepository.findCatalog(isNull(), eq(pageable))).thenReturn(page);
+        when(productMapper.toCatalogPageDTO(page)).thenReturn(pageDTO);
+
+        ProductCatalogPageDTO result = productService.findCatalog(null, pageable);
+
+        assertThat(result).isEqualTo(pageDTO);
+        verify(productRepository).findCatalog(isNull(), eq(pageable));
+    }
+
+    @Test
+    void findCatalog_shouldPassNullSearch_whenSearchIsBlank() {
+        Pageable pageable = PageRequest.of(0, 20);
+        Page<Product> page = new PageImpl<>(List.of(product), pageable, 1);
+        when(productRepository.findCatalog(isNull(), eq(pageable))).thenReturn(page);
+        when(productMapper.toCatalogPageDTO(page)).thenReturn(new ProductCatalogPageDTO(List.of(), 1, 0, 20));
+
+        productService.findCatalog("   ", pageable);
+
+        verify(productRepository).findCatalog(isNull(), eq(pageable));
+    }
+
+    @Test
+    void findCatalog_shouldTrimSearch_whenSearchHasSurroundingWhitespace() {
+        Pageable pageable = PageRequest.of(0, 20);
+        Page<Product> page = new PageImpl<>(List.of(product), pageable, 1);
+        ArgumentCaptor<String> searchCaptor = ArgumentCaptor.forClass(String.class);
+        when(productRepository.findCatalog(searchCaptor.capture(), eq(pageable))).thenReturn(page);
+        when(productMapper.toCatalogPageDTO(page)).thenReturn(new ProductCatalogPageDTO(List.of(), 1, 0, 20));
+
+        productService.findCatalog("  camiseta  ", pageable);
+
+        assertThat(searchCaptor.getValue()).isEqualTo("camiseta");
+    }
+
+    @Test
+    void findCatalog_shouldReturnEmptyPage_whenNoResults() {
+        Pageable pageable = PageRequest.of(0, 20);
+        Page<Product> emptyPage = new PageImpl<>(List.of(), pageable, 0);
+        ProductCatalogPageDTO emptyDTO = new ProductCatalogPageDTO(List.of(), 0, 0, 20);
+        when(productRepository.findCatalog(any(), eq(pageable))).thenReturn(emptyPage);
+        when(productMapper.toCatalogPageDTO(emptyPage)).thenReturn(emptyDTO);
+
+        ProductCatalogPageDTO result = productService.findCatalog("inexistente", pageable);
+
+        assertThat(result.items()).isEmpty();
+        assertThat(result.total()).isZero();
     }
 }

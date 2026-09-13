@@ -1,5 +1,6 @@
 package com.ages.pie.application.service;
 
+import com.ages.pie.application.dto.product.ProductCatalogPageDTO;
 import com.ages.pie.application.dto.product.ProductRequestDTO;
 import com.ages.pie.application.dto.product.ProductResponseDTO;
 import com.ages.pie.application.dto.product.ProductUpdateDTO;
@@ -10,12 +11,13 @@ import com.ages.pie.infrastructure.repository.CompanyRepository;
 import com.ages.pie.infrastructure.repository.ProductRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -58,10 +60,10 @@ public class ProductService {
     }
 
     @Transactional(readOnly = true)
-    public List<ProductResponseDTO> findAll() {
-        return productRepository.findAllByActiveTrue().stream()
-                .map(productMapper::toResponseDTO)
-                .toList();
+    public ProductCatalogPageDTO findCatalog(String search, Pageable pageable) {
+        String normalizedSearch = normalize(search);
+        Page<Product> page = productRepository.findCatalog(normalizedSearch, pageable);
+        return productMapper.toCatalogPageDTO(page);
     }
 
     @Transactional(readOnly = true)
@@ -119,5 +121,12 @@ public class ProductService {
 
         productRepository.deleteById(id);
         logger.info("Product deletado: {}", id);
+    }
+
+    private String normalize(String search) {
+        if (search == null || search.isBlank()) {
+            return null;
+        }
+        return search.trim();
     }
 }

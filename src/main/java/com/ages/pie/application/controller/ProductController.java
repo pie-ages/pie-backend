@@ -1,15 +1,18 @@
 package com.ages.pie.application.controller;
 
+import com.ages.pie.application.dto.product.ProductCatalogPageDTO;
 import com.ages.pie.application.dto.product.ProductRequestDTO;
 import com.ages.pie.application.dto.product.ProductResponseDTO;
 import com.ages.pie.application.dto.product.ProductUpdateDTO;
 import com.ages.pie.application.service.ProductService;
 import jakarta.validation.Valid;
+import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -29,8 +32,10 @@ public class ProductController {
     }
 
     @GetMapping
-    public ResponseEntity<List<ProductResponseDTO>> findAll() {
-        return ResponseEntity.ok(productService.findAll());
+    public ResponseEntity<ProductCatalogPageDTO> findCatalog(
+            @RequestParam(required = false) String search,
+            @ParameterObject @PageableDefault(size = 20, sort = "name") Pageable pageable) {
+        return ResponseEntity.ok(productService.findCatalog(search, pageable));
     }
 
     @GetMapping("/{id}")

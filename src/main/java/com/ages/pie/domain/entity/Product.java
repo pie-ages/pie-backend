@@ -33,6 +33,8 @@ public class Product extends AuditableEntity {
 
     private String category;
 
+    private String color;
+
     private BigDecimal price;
 
     @Column(name = "image_url")
@@ -72,6 +74,10 @@ public class Product extends AuditableEntity {
 
     public String getCategory() {
         return category;
+    }
+
+    public String getColor() {
+        return color;
     }
 
     public BigDecimal getPrice() {

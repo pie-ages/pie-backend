@@ -6,13 +6,13 @@ import java.util.UUID;
 import com.ages.pie.application.dto.company.CompanyRequestDTO;
 import com.ages.pie.application.dto.company.CompanyResponseDTO;
 import com.ages.pie.application.dto.company.CompanyUpdateDTO;
+import com.ages.pie.application.exception.BusinessException;
+import com.ages.pie.application.exception.ResourceNotFoundException;
 import com.ages.pie.application.mapper.CompanyMapper;
 import com.ages.pie.domain.entity.Company;
 import com.ages.pie.infrastructure.repository.CompanyRepository;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class CompanyService {
@@ -28,18 +28,13 @@ public class CompanyService {
     @Transactional
     public CompanyResponseDTO create(CompanyRequestDTO dto) {
         if (companyRepository.existsByCnpj(dto.cnpj())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "CNPJ já cadastrado: " + dto.cnpj());
+            throw new BusinessException("CNPJ já cadastrado: " + dto.cnpj());
         }
         if (companyRepository.existsByEmail(dto.email())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Email já cadastrado: " + dto.email());
+            throw new BusinessException("Email já cadastrado: " + dto.email());
         }
 
-        Company company;
-        try {
-            company = companyMapper.toEntity(dto, hashPassword(dto.password()));
-        } catch (IllegalArgumentException e) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage(), e);
-        }
+        Company company = companyMapper.toEntity(dto, hashPassword(dto.password()));
         return companyMapper.toResponseDTO(companyRepository.save(company));
     }
 
@@ -61,15 +56,11 @@ public class CompanyService {
         Company company = findEntity(id);
 
         if (companyRepository.existsByEmailAndIdNot(dto.email(), id)) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Email já cadastrado: " + dto.email());
+            throw new BusinessException("Email já cadastrado: " + dto.email());
         }
 
-        try {
-            company.update(dto.name(), dto.socialReason(), dto.responsiblePerson(),
-                    dto.email(), dto.website(), dto.photoUrl());
-        } catch (IllegalArgumentException e) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage(), e);
-        }
+        company.update(dto.name(), dto.socialReason(), dto.responsiblePerson(),
+                dto.email(), dto.website(), dto.photoUrl());
         return companyMapper.toResponseDTO(companyRepository.save(company));
     }
 
@@ -82,12 +73,12 @@ public class CompanyService {
 
     private Company findEntity(UUID id) {
         return companyRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Empresa não encontrada: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Empresa não encontrada: " + id));
     }
 
     private String hashPassword(String password) {
         if (password == null || password.isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Senha é obrigatória");
+            throw new IllegalArgumentException("Senha é obrigatória");
         }
         return "hash(" + password + ")";
     }
