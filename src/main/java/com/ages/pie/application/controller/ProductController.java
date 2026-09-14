@@ -73,12 +73,12 @@ public class ProductController {
     }
 
     @PatchMapping("/{id}/available")
-    public ResponseEntity<ProductResponseDTO> disponibilizar(@PathVariable UUID id) {
+    public ResponseEntity<ProductResponseDTO> available(@PathVariable UUID id) {
         return publish(id);
     }
 
     @PatchMapping("/{id}/unavailable")
-    public ResponseEntity<ProductResponseDTO> retirar(@PathVariable UUID id) {
+    public ResponseEntity<ProductResponseDTO> toRemove(@PathVariable UUID id) {
         return unpublish(id);
     }
 
