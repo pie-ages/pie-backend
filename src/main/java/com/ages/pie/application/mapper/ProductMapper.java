@@ -22,6 +22,7 @@ public class ProductMapper {
             product.getImageUrl(),
             product.getPurchaseUrl(),
             product.isActive(),
+            product.isAvailable(),
             companyName,
             product.getCreatedAt()
         );
@@ -43,7 +44,8 @@ public class ProductMapper {
             product.getPrice(),
             product.getImageUrl(),
             product.getPurchaseUrl(),
-            product.getCompany().getName()
+            product.getCompany().getName(),
+            product.isAvailable()
         );
     }
 

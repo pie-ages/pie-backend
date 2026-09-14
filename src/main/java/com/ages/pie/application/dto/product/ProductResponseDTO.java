@@ -13,6 +13,7 @@ public record ProductResponseDTO(
     String imageUrl,
     String purchaseUrl,
     boolean active,
+    boolean available,
     String companyName,
     OffsetDateTime createdAt
 ) {

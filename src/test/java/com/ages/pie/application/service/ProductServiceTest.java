@@ -75,7 +75,7 @@ class ProductServiceTest {
         product.setPurchaseUrl("https://loja.exemplo.com/camiseta");
         responseDTO = new ProductResponseDTO(productId, "Camiseta", "Camiseta 100% algodão",
                 "Roupas", new BigDecimal("49.90"), "https://exemplo.com/camiseta.jpg",
-                "https://loja.exemplo.com/camiseta", true, "Loja X", OffsetDateTime.now());
+                "https://loja.exemplo.com/camiseta", true, true, "Loja X", OffsetDateTime.now());
         lenient().doCallRealMethod().when(productMapper).updateEntityFromDto(any(), any());
     }
 
@@ -271,7 +271,7 @@ class ProductServiceTest {
         Page<Product> page = new PageImpl<>(List.of(product), pageable, 1);
         ProductCatalogItemDTO itemDTO = new ProductCatalogItemDTO(productId, "Camiseta",
                 new BigDecimal("49.90"), "https://exemplo.com/camiseta.jpg",
-                "https://loja.exemplo.com/camiseta", "Loja X");
+                "https://loja.exemplo.com/camiseta", "Loja X", true);
         ProductCatalogPageDTO pageDTO = new ProductCatalogPageDTO(List.of(itemDTO), 1, 0, 20);
         when(productRepository.findCatalog(isNull(), eq(pageable))).thenReturn(page);
         when(productMapper.toCatalogPageDTO(page)).thenReturn(pageDTO);
