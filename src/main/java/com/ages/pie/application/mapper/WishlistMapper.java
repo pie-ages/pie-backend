@@ -42,7 +42,7 @@ public class WishlistMapper {
             product.getPrice(),
             product.getImageUrl(),
             product.getPurchaseUrl(),
-            product.isActive(),
+            product.isActive() && product.isAvailable(),
             item.getCreatedAt()
         );
     }

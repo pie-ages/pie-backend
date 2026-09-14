@@ -75,7 +75,7 @@ class ProductServiceTest {
         product.setPurchaseUrl("https://loja.exemplo.com/camiseta");
         responseDTO = new ProductResponseDTO(productId, "Camiseta", "Camiseta 100% algodão",
                 "Roupas", new BigDecimal("49.90"), "https://exemplo.com/camiseta.jpg",
-                "https://loja.exemplo.com/camiseta", true, "Loja X", OffsetDateTime.now());
+                "https://loja.exemplo.com/camiseta", true, true, "Loja X", OffsetDateTime.now());
         lenient().doCallRealMethod().when(productMapper).updateEntityFromDto(any(), any());
     }
 
@@ -271,7 +271,7 @@ class ProductServiceTest {
         Page<Product> page = new PageImpl<>(List.of(product), pageable, 1);
         ProductCatalogItemDTO itemDTO = new ProductCatalogItemDTO(productId, "Camiseta",
                 new BigDecimal("49.90"), "https://exemplo.com/camiseta.jpg",
-                "https://loja.exemplo.com/camiseta", "Loja X");
+                "https://loja.exemplo.com/camiseta", "Loja X", true);
         ProductCatalogPageDTO pageDTO = new ProductCatalogPageDTO(List.of(itemDTO), 1, 0, 20);
         when(productRepository.findCatalog(isNull(), eq(pageable))).thenReturn(page);
         when(productMapper.toCatalogPageDTO(page)).thenReturn(pageDTO);
@@ -319,5 +319,253 @@ class ProductServiceTest {
 
         assertThat(result.items()).isEmpty();
         assertThat(result.total()).isZero();
+    }
+
+    @Test
+    void publish_shouldSetAvailableTrue_whenProductExistsAndOwnedByCompany() {
+        product.setAvailable(false);
+        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+        stubSavePassthrough();
+        when(productMapper.toResponseDTO(any())).thenReturn(responseDTO);
+
+        productService.publish(productId, companyId);
+
+        assertThat(product.isAvailable()).isTrue();
+        verify(productRepository).save(product);
+    }
+
+    @Test
+    void publish_shouldThrowNotFound_whenProductDoesNotExist() {
+        when(productRepository.findById(productId)).thenReturn(Optional.empty());
+
+        Throwable thrown = catchThrowable(() -> productService.publish(productId, companyId));
+
+        assertThat(statusOf(thrown)).isEqualTo(HttpStatus.NOT_FOUND.value());
+        verify(productRepository, never()).save(any());
+    }
+
+    @Test
+    void publish_shouldThrowForbidden_whenCompanyIsNotOwner() {
+        UUID otherCompanyId = UUID.randomUUID();
+        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+
+        Throwable thrown = catchThrowable(() -> productService.publish(productId, otherCompanyId));
+
+        assertThat(statusOf(thrown)).isEqualTo(HttpStatus.FORBIDDEN.value());
+        verify(productRepository, never()).save(any());
+    }
+
+    @Test
+    void publish_shouldThrowConflict_whenProductIsAlreadyPublished() {
+        product.setAvailable(true);
+        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+
+        Throwable thrown = catchThrowable(() -> productService.publish(productId, companyId));
+
+        assertThat(statusOf(thrown)).isEqualTo(HttpStatus.CONFLICT.value());
+        verify(productRepository, never()).save(any());
+    }
+
+    @Test
+    void publish_shouldThrowConflict_whenProductIsDeactivated() {
+        product.setAvailable(false);
+        product.setActive(false);
+        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+
+        Throwable thrown = catchThrowable(() -> productService.publish(productId, companyId));
+
+        assertThat(statusOf(thrown)).isEqualTo(HttpStatus.CONFLICT.value());
+        verify(productRepository, never()).save(any());
+    }
+
+    @Test
+    void publish_shouldThrowBadRequest_whenProductNameIsNull() {
+        product.setAvailable(false);
+        product.setName(null);
+        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+
+        Throwable thrown = catchThrowable(() -> productService.publish(productId, companyId));
+
+        assertThat(statusOf(thrown)).isEqualTo(HttpStatus.BAD_REQUEST.value());
+        verify(productRepository, never()).save(any());
+    }
+
+    @Test
+    void publish_shouldThrowBadRequest_whenProductPriceIsNull() {
+        product.setAvailable(false);
+        product.setPrice(null);
+        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+
+        Throwable thrown = catchThrowable(() -> productService.publish(productId, companyId));
+
+        assertThat(statusOf(thrown)).isEqualTo(HttpStatus.BAD_REQUEST.value());
+        verify(productRepository, never()).save(any());
+    }
+
+    @Test
+    void publish_shouldThrowUnauthorized_whenCompanyIdIsNull() {
+        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+
+        Throwable thrown = catchThrowable(() -> productService.publish(productId, null));
+
+        assertThat(statusOf(thrown)).isEqualTo(HttpStatus.UNAUTHORIZED.value());
+        verify(productRepository, never()).save(any());
+    }
+
+    @Test
+    void unpublish_shouldSetAvailableFalse_whenProductExistsAndOwnedByCompany() {
+        product.setAvailable(true);
+        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+        stubSavePassthrough();
+        when(productMapper.toResponseDTO(any())).thenReturn(responseDTO);
+
+        productService.unpublish(productId, companyId);
+
+        assertThat(product.isAvailable()).isFalse();
+        verify(productRepository).save(product);
+    }
+
+    @Test
+    void unpublish_shouldThrowNotFound_whenProductDoesNotExist() {
+        when(productRepository.findById(productId)).thenReturn(Optional.empty());
+
+        Throwable thrown = catchThrowable(() -> productService.unpublish(productId, companyId));
+
+        assertThat(statusOf(thrown)).isEqualTo(HttpStatus.NOT_FOUND.value());
+        verify(productRepository, never()).save(any());
+    }
+
+    @Test
+    void unpublish_shouldThrowForbidden_whenCompanyIsNotOwner() {
+        UUID otherCompanyId = UUID.randomUUID();
+        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+
+        Throwable thrown = catchThrowable(() -> productService.unpublish(productId, otherCompanyId));
+
+        assertThat(statusOf(thrown)).isEqualTo(HttpStatus.FORBIDDEN.value());
+        verify(productRepository, never()).save(any());
+    }
+
+    @Test
+    void unpublish_shouldThrowConflict_whenProductIsAlreadyUnpublished() {
+        product.setAvailable(false);
+        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+
+        Throwable thrown = catchThrowable(() -> productService.unpublish(productId, companyId));
+
+        assertThat(statusOf(thrown)).isEqualTo(HttpStatus.CONFLICT.value());
+        verify(productRepository, never()).save(any());
+    }
+
+    // ── markAvailable ────────────────────────────────────────────────────
+
+    @Test
+    void markAvailable_shouldSetAvailableTrue_whenProductExistsAndOwnedByCompany() {
+        product.setAvailable(false);
+        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+        stubSavePassthrough();
+        when(productMapper.toResponseDTO(any())).thenReturn(responseDTO);
+
+        productService.markAvailable(productId, companyId);
+
+        assertThat(product.isAvailable()).isTrue();
+        verify(productRepository).save(product);
+    }
+
+    @Test
+    void markAvailable_shouldThrowConflict_whenProductIsAlreadyAvailable() {
+        product.setAvailable(true);
+        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+
+        Throwable thrown = catchThrowable(() -> productService.markAvailable(productId, companyId));
+
+        assertThat(statusOf(thrown)).isEqualTo(HttpStatus.CONFLICT.value());
+    }
+
+    @Test
+    void markAvailable_shouldThrowConflict_whenProductIsDeactivated() {
+        product.setAvailable(false);
+        product.setActive(false);
+        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+
+        Throwable thrown = catchThrowable(() -> productService.markAvailable(productId, companyId));
+
+        assertThat(statusOf(thrown)).isEqualTo(HttpStatus.CONFLICT.value());
+    }
+
+    @Test
+    void markUnavailable_shouldSetAvailableFalse_whenProductExistsAndOwnedByCompany() {
+        product.setAvailable(true);
+        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+        stubSavePassthrough();
+        when(productMapper.toResponseDTO(any())).thenReturn(responseDTO);
+
+        productService.markUnavailable(productId, companyId);
+
+        assertThat(product.isAvailable()).isFalse();
+        verify(productRepository).save(product);
+    }
+
+    @Test
+    void markUnavailable_shouldThrowConflict_whenProductIsAlreadyUnavailable() {
+        product.setAvailable(false);
+        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+
+        Throwable thrown = catchThrowable(() -> productService.markUnavailable(productId, companyId));
+
+        assertThat(statusOf(thrown)).isEqualTo(HttpStatus.CONFLICT.value());
+    }
+
+    @Test
+    void markUnavailable_shouldThrowConflict_whenProductIsDeactivated() {
+        product.setAvailable(true);
+        product.setActive(false);
+        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+
+        Throwable thrown = catchThrowable(() -> productService.markUnavailable(productId, companyId));
+
+        assertThat(statusOf(thrown)).isEqualTo(HttpStatus.CONFLICT.value());
+    }
+
+    @Test
+    void findByCompany_shouldReturnFilteredProducts_whenCompanyExists() {
+        Pageable pageable = PageRequest.of(0, 20);
+        Page<Product> page = new PageImpl<>(List.of(product), pageable, 1);
+        ProductCatalogItemDTO itemDTO = new ProductCatalogItemDTO(productId, "Camiseta",
+                new BigDecimal("49.90"), "https://exemplo.com/camiseta.jpg",
+                "https://loja.exemplo.com/camiseta", "Loja X", true);
+        ProductCatalogPageDTO pageDTO = new ProductCatalogPageDTO(List.of(itemDTO), 1, 0, 20);
+        when(companyRepository.existsById(companyId)).thenReturn(true);
+        when(productRepository.findByCompanyFiltered(companyId, true, null, pageable)).thenReturn(page);
+        when(productMapper.toCatalogPageDTO(page)).thenReturn(pageDTO);
+
+        ProductCatalogPageDTO result = productService.findByCompany(companyId, true, null, pageable);
+
+        assertThat(result).isEqualTo(pageDTO);
+    }
+
+    @Test
+    void findByCompany_shouldThrowNotFound_whenCompanyDoesNotExist() {
+        Pageable pageable = PageRequest.of(0, 20);
+        when(companyRepository.existsById(companyId)).thenReturn(false);
+
+        Throwable thrown = catchThrowable(
+                () -> productService.findByCompany(companyId, null, null, pageable));
+
+        assertThat(statusOf(thrown)).isEqualTo(HttpStatus.NOT_FOUND.value());
+    }
+
+    @Test
+    void findByCompany_shouldPassNullSearch_whenSearchIsBlank() {
+        Pageable pageable = PageRequest.of(0, 20);
+        Page<Product> page = new PageImpl<>(List.of(), pageable, 0);
+        ProductCatalogPageDTO emptyDTO = new ProductCatalogPageDTO(List.of(), 0, 0, 20);
+        when(companyRepository.existsById(companyId)).thenReturn(true);
+        when(productRepository.findByCompanyFiltered(eq(companyId), isNull(), isNull(), eq(pageable))).thenReturn(page);
+        when(productMapper.toCatalogPageDTO(page)).thenReturn(emptyDTO);
+
+        productService.findByCompany(companyId, null, "   ", pageable);
+
+        verify(productRepository).findByCompanyFiltered(eq(companyId), isNull(), isNull(), eq(pageable));
     }
 }

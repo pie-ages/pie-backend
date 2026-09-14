@@ -9,6 +9,7 @@ public record ProductCatalogItemDTO(
     BigDecimal price,
     String imageUrl,
     String purchaseUrl,
-    String companyName
+    String companyName,
+    boolean available
 ) {
 }

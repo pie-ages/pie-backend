@@ -111,6 +111,94 @@ public class ProductService {
         logger.info("Product desativado: {}", id);
     }
 
+    @Transactional(readOnly = true)
+    public ProductCatalogPageDTO findByCompany(UUID companyId, Boolean available, String search, Pageable pageable) {
+        if (!companyRepository.existsById(companyId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Empresa não encontrada");
+        }
+        String normalizedSearch = normalize(search);
+        Page<Product> page = productRepository.findByCompanyFiltered(companyId, available, normalizedSearch, pageable);
+        return productMapper.toCatalogPageDTO(page);
+    }
+
+    @Transactional
+    public ProductResponseDTO publish(UUID productId, UUID authenticatedCompanyId) {
+        logger.info("Publicando product {} por empresa {}", productId, authenticatedCompanyId);
+        Product product = findAndVerifyOwnership(productId, authenticatedCompanyId);
+        ensureActive(product);
+        ensurePublishable(product);
+        return toggleAvailability(product, true, "publicado");
+    }
+
+    @Transactional
+    public ProductResponseDTO unpublish(UUID productId, UUID authenticatedCompanyId) {
+        logger.info("Despublicando product {} por empresa {}", productId, authenticatedCompanyId);
+        Product product = findAndVerifyOwnership(productId, authenticatedCompanyId);
+        return toggleAvailability(product, false, "despublicado");
+    }
+
+    @Transactional
+    public ProductResponseDTO markAvailable(UUID productId, UUID authenticatedCompanyId) {
+        logger.info("Marcando product {} como disponível por empresa {}", productId, authenticatedCompanyId);
+        Product product = findAndVerifyOwnership(productId, authenticatedCompanyId);
+        ensureActive(product);
+        return toggleAvailability(product, true, "disponível");
+    }
+
+    @Transactional
+    public ProductResponseDTO markUnavailable(UUID productId, UUID authenticatedCompanyId) {
+        logger.info("Marcando product {} como indisponível por empresa {}", productId, authenticatedCompanyId);
+        Product product = findAndVerifyOwnership(productId, authenticatedCompanyId);
+        ensureActive(product);
+        return toggleAvailability(product, false, "indisponível");
+    }
+
+    private Product findAndVerifyOwnership(UUID productId, UUID companyId) {
+        Product product = findProductOrThrow(productId);
+        verifyOwnership(product, companyId);
+        return product;
+    }
+
+    private ProductResponseDTO toggleAvailability(Product product, boolean desired, String stateLabel) {
+        if (product.isAvailable() == desired) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Produto já está " + stateLabel);
+        }
+        product.setAvailable(desired);
+        Product salvo = productRepository.save(product);
+        logger.info("Product {} id={}", stateLabel, product.getId());
+        return productMapper.toResponseDTO(salvo);
+    }
+
+    private Product findProductOrThrow(UUID productId) {
+        return productRepository.findById(productId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Produto não encontrado"));
+    }
+
+    private void ensureActive(Product product) {
+        if (!product.isActive()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Produto desativado não pode ter disponibilidade alterada");
+        }
+    }
+
+    private void ensurePublishable(Product product) {
+        if (product.getName() == null || product.getName().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Produto precisa ter nome para ser publicado");
+        }
+        if (product.getPrice() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Produto precisa ter preço para ser publicado");
+        }
+    }
+
+    private void verifyOwnership(Product product, UUID authenticatedCompanyId) {
+        if (authenticatedCompanyId == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Usuário não autenticado");
+        }
+        UUID ownerId = product.getCompany() != null ? product.getCompany().getId() : null;
+        if (ownerId == null || !ownerId.equals(authenticatedCompanyId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Apenas a empresa dona do produto pode alterar a disponibilidade");
+        }
+    }
+
     @Transactional
     public void delete(UUID id) {
         logger.info("Deletando product: {}", id);

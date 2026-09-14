@@ -45,6 +45,9 @@ public class Product extends AuditableEntity {
 
     private boolean active = true;
 
+    @Column(name = "available")
+    private boolean available = true;
+
     protected Product() {
     }
 
@@ -122,6 +125,14 @@ public class Product extends AuditableEntity {
 
     public void setActive(boolean active) {
         this.active = active;
+    }
+
+    public boolean isAvailable() {
+        return available;
+    }
+
+    public void setAvailable(boolean available) {
+        this.available = available;
     }
 
     public void setCompany(Company company) {
