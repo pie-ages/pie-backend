@@ -7,6 +7,7 @@ import com.ages.pie.application.dto.product.ProductUpdateDTO;
 import com.ages.pie.application.mapper.ProductMapper;
 import com.ages.pie.domain.entity.Company;
 import com.ages.pie.domain.entity.Product;
+import com.ages.pie.domain.enums.ProductStatus;
 import com.ages.pie.infrastructure.repository.CompanyRepository;
 import com.ages.pie.infrastructure.repository.ProductRepository;
 import org.slf4j.Logger;
@@ -50,6 +51,7 @@ public class ProductService {
         Product product = new Product(company, requestDTO.name());
         product.setDescription(requestDTO.description());
         product.setCategory(requestDTO.category());
+        product.setColor(requestDTO.color());
         product.setPrice(requestDTO.price());
         product.setImageUrl(requestDTO.imageUrl());
         product.setPurchaseUrl(requestDTO.purchaseUrl());
@@ -109,6 +111,81 @@ public class ProductService {
         product.setActive(false);
         productRepository.save(product);
         logger.info("Product desativado: {}", id);
+    }
+
+    @Transactional(readOnly = true)
+    public ProductCatalogPageDTO findByCompany(UUID companyId, ProductStatus status, String search, Pageable pageable) {
+        if (!companyRepository.existsById(companyId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Empresa não encontrada");
+        }
+        String normalizedSearch = normalize(search);
+        Page<Product> page = productRepository.findByCompanyFiltered(companyId, status, normalizedSearch, pageable);
+        return productMapper.toCatalogPageDTO(page);
+    }
+
+    @Transactional
+    public ProductResponseDTO publish(UUID productId, UUID authenticatedCompanyId) {
+        logger.info("Publicando product {} por empresa {}", productId, authenticatedCompanyId);
+        Product product = findAndVerifyOwnership(productId, authenticatedCompanyId);
+        ensureActive(product);
+        if (product.getStatus() == ProductStatus.PUBLISHED) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Produto já está publicado");
+        }
+        ensurePublishable(product);
+        product.setStatus(ProductStatus.PUBLISHED);
+        Product salvo = productRepository.save(product);
+        logger.info("Product publicado id={}", product.getId());
+        return productMapper.toResponseDTO(salvo);
+    }
+
+    @Transactional
+    public ProductResponseDTO unpublish(UUID productId, UUID authenticatedCompanyId) {
+        logger.info("Pausando product {} por empresa {}", productId, authenticatedCompanyId);
+        Product product = findAndVerifyOwnership(productId, authenticatedCompanyId);
+        ensureActive(product);
+        if (product.getStatus() != ProductStatus.PUBLISHED) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Produto não está publicado");
+        }
+        product.setStatus(ProductStatus.PAUSED);
+        Product salvo = productRepository.save(product);
+        logger.info("Product pausado id={}", product.getId());
+        return productMapper.toResponseDTO(salvo);
+    }
+
+    private Product findAndVerifyOwnership(UUID productId, UUID companyId) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Produto não encontrado"));
+        verifyOwnership(product, companyId);
+        return product;
+    }
+
+    private void ensureActive(Product product) {
+        if (!product.isActive()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Produto desativado não pode ter disponibilidade alterada");
+        }
+    }
+
+    private void ensurePublishable(Product product) {
+        if (product.getName() == null || product.getName().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Produto precisa ter nome para ser publicado");
+        }
+        if (product.getPrice() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Produto precisa ter preço para ser publicado");
+        }
+    }
+
+    private void verifyOwnership(Product product, UUID authenticatedCompanyId) {
+        if (authenticatedCompanyId == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Usuário não autenticado");
+        }
+        UUID ownerId = product.getCompany() != null ? product.getCompany().getId() : null;
+        if (ownerId == null || !ownerId.equals(authenticatedCompanyId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Apenas a empresa dona do produto pode alterar a disponibilidade");
+        }
     }
 
     @Transactional

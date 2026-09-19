@@ -18,12 +18,15 @@ public class ProductMapper {
             product.getName(),
             product.getDescription(),
             product.getCategory(),
+            product.getColor(),
             product.getPrice(),
             product.getImageUrl(),
             product.getPurchaseUrl(),
-            product.isActive(),
+            product.getStatus(),
             companyName,
-            product.getCreatedAt()
+            product.getCreatedAt(),
+            product.getStyle(),
+            product.getSizes()
         );
     }
 
@@ -31,6 +34,9 @@ public class ProductMapper {
         if (dto.name() != null) product.setName(dto.name());
         if (dto.description() != null) product.setDescription(dto.description());
         if (dto.category() != null) product.setCategory(dto.category());
+        if (dto.color() != null) product.setColor(dto.color());
+        if (dto.style() != null) product.setStyle(dto.style());
+        if (dto.sizes() != null) product.setSizes(dto.sizes());
         if (dto.price() != null) product.setPrice(dto.price());
         if (dto.imageUrl() != null) product.setImageUrl(dto.imageUrl());
         if (dto.purchaseUrl() != null) product.setPurchaseUrl(dto.purchaseUrl());
@@ -40,10 +46,15 @@ public class ProductMapper {
         return new ProductCatalogItemDTO(
             product.getId(),
             product.getName(),
+            product.getCategory(),
+            product.getColor(),
             product.getPrice(),
             product.getImageUrl(),
             product.getPurchaseUrl(),
-            product.getCompany().getName()
+            product.getCompany().getName(),
+            product.getStatus(),
+            product.getStyle(),
+            product.getSizes()
         );
     }
 

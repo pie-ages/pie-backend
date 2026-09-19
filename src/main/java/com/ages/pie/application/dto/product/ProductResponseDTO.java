@@ -1,7 +1,10 @@
 package com.ages.pie.application.dto.product;
 
+import com.ages.pie.domain.enums.ProductStatus;
+
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.UUID;
 
 public record ProductResponseDTO(
@@ -9,11 +12,14 @@ public record ProductResponseDTO(
     String name,
     String description,
     String category,
+    String color,
     BigDecimal price,
     String imageUrl,
     String purchaseUrl,
-    boolean active,
+    ProductStatus status,
     String companyName,
-    OffsetDateTime createdAt
+    OffsetDateTime createdAt,
+    String style,
+    List<String> sizes
 ) {
 }

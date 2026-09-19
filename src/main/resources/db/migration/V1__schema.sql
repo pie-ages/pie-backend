@@ -1,5 +1,7 @@
+CREATE EXTENSION IF NOT EXISTS unaccent;
+
 -- -------------------------------------------------------------
--- 1. customer, company
+-- customer, company
 -- -------------------------------------------------------------
 
 CREATE TABLE customer (
@@ -28,7 +30,7 @@ CREATE TABLE company (
 );
 
 -- -------------------------------------------------------------
--- 2. body_profile, product
+-- body_profile, product
 -- -------------------------------------------------------------
 
 CREATE TABLE body_profile (
@@ -57,9 +59,13 @@ CREATE TABLE product (
     name         varchar,
     description  text,
     category     varchar,
+    color        varchar,
+    style        varchar,
+    sizes        varchar[] NOT NULL DEFAULT '{}',
     price        decimal,
     image_url    varchar,
     purchase_url text,
+    status       varchar  NOT NULL DEFAULT 'DRAFT',
     active       boolean  DEFAULT true,
     created_at   timestamptz,
     updated_at   timestamptz
@@ -69,7 +75,7 @@ ALTER TABLE product
     ADD FOREIGN KEY (company_id) REFERENCES company(id) DEFERRABLE INITIALLY IMMEDIATE;
 
 -- -------------------------------------------------------------
--- 3. wishlist, wardrobe_item, look
+-- wishlist, wardrobe_item, look
 -- -------------------------------------------------------------
 
 CREATE TABLE wishlist (
@@ -118,7 +124,7 @@ ALTER TABLE look
     ADD FOREIGN KEY (customer_id) REFERENCES customer(id) DEFERRABLE INITIALLY IMMEDIATE;
 
 -- -------------------------------------------------------------
--- 4. Tabelas de junção
+-- join tables
 -- -------------------------------------------------------------
 
 CREATE TABLE wishlist_item (
