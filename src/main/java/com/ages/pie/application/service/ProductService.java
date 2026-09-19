@@ -128,11 +128,11 @@ public class ProductService {
         logger.info("Publicando product {} por empresa {}", productId, authenticatedCompanyId);
         Product product = findAndVerifyOwnership(productId, authenticatedCompanyId);
         ensureActive(product);
-        if (product.getStatus() == ProductStatus.PUBLICADO) {
+        if (product.getStatus() == ProductStatus.PUBLISHED) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Produto já está publicado");
         }
         ensurePublishable(product);
-        product.setStatus(ProductStatus.PUBLICADO);
+        product.setStatus(ProductStatus.PUBLISHED);
         Product salvo = productRepository.save(product);
         logger.info("Product publicado id={}", product.getId());
         return productMapper.toResponseDTO(salvo);
@@ -143,10 +143,10 @@ public class ProductService {
         logger.info("Pausando product {} por empresa {}", productId, authenticatedCompanyId);
         Product product = findAndVerifyOwnership(productId, authenticatedCompanyId);
         ensureActive(product);
-        if (product.getStatus() != ProductStatus.PUBLICADO) {
+        if (product.getStatus() != ProductStatus.PUBLISHED) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Produto não está publicado");
         }
-        product.setStatus(ProductStatus.PAUSADO);
+        product.setStatus(ProductStatus.PAUSED);
         Product salvo = productRepository.save(product);
         logger.info("Product pausado id={}", product.getId());
         return productMapper.toResponseDTO(salvo);

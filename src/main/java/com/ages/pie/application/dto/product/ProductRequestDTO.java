@@ -5,6 +5,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.UUID;
 
 public record ProductRequestDTO(
@@ -16,6 +17,10 @@ public record ProductRequestDTO(
     String category,
 
     String color,
+
+    String style,
+
+    List<String> sizes,
 
     @NotNull(message = "Preço é obrigatório")
     @Positive(message = "Preço deve ser maior que zero")

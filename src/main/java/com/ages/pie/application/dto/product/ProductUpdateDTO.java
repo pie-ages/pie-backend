@@ -3,6 +3,7 @@ package com.ages.pie.application.dto.product;
 import jakarta.validation.constraints.Positive;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.UUID;
 
 public record ProductUpdateDTO(
@@ -13,6 +14,10 @@ public record ProductUpdateDTO(
     String category,
 
     String color,
+
+    String style,
+
+    List<String> sizes,
 
     @Positive(message = "Preço deve ser maior que zero")
     BigDecimal price,

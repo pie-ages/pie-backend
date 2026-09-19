@@ -43,8 +43,8 @@ class ProductControllerTest {
         return new ProductResponseDTO(
                 PRODUCT_ID, "Camiseta", "100% algodão", "Camiseta",
                 "Branco", new BigDecimal("49.90"), "https://img.com/camiseta.jpg",
-                "https://loja.com/camiseta", ProductStatus.RASCUNHO, "Loja X",
-                OffsetDateTime.now());
+                "https://loja.com/camiseta", ProductStatus.DRAFT, "Loja X",
+                OffsetDateTime.now(), null, List.of());
     }
 
     // ── POST /products ────────────────────────────────────────────────────
@@ -67,7 +67,7 @@ class ProductControllerTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value(PRODUCT_ID.toString()))
                 .andExpect(jsonPath("$.name").value("Camiseta"))
-                .andExpect(jsonPath("$.status").value("RASCUNHO"))
+                .andExpect(jsonPath("$.status").value("DRAFT"))
                 .andExpect(jsonPath("$.color").value("Branco"));
     }
 
@@ -118,7 +118,7 @@ class ProductControllerTest {
         ProductCatalogItemDTO item = new ProductCatalogItemDTO(
                 PRODUCT_ID, "Camiseta", "Camiseta", "Branco", new BigDecimal("49.90"),
                 "https://img.com/camiseta.jpg", "https://loja.com/camiseta",
-                "Loja X", ProductStatus.PUBLICADO);
+                "Loja X", ProductStatus.PUBLISHED, null, List.of());
         ProductCatalogPageDTO page = new ProductCatalogPageDTO(List.of(item), 1, 0, 20);
         when(productService.findCatalog(any(), any())).thenReturn(page);
 
@@ -126,7 +126,7 @@ class ProductControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items").isArray())
                 .andExpect(jsonPath("$.items[0].name").value("Camiseta"))
-                .andExpect(jsonPath("$.items[0].status").value("PUBLICADO"))
+                .andExpect(jsonPath("$.items[0].status").value("PUBLISHED"))
                 .andExpect(jsonPath("$.total").value(1));
     }
 
@@ -149,7 +149,7 @@ class ProductControllerTest {
         mockMvc.perform(get("/products/{id}", PRODUCT_ID))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(PRODUCT_ID.toString()))
-                .andExpect(jsonPath("$.status").value("RASCUNHO"));
+                .andExpect(jsonPath("$.status").value("DRAFT"));
     }
 
     @Test
@@ -196,18 +196,18 @@ class ProductControllerTest {
         ProductCatalogItemDTO item = new ProductCatalogItemDTO(
                 PRODUCT_ID, "Camiseta", "Camiseta", "Branco", new BigDecimal("49.90"),
                 "https://img.com/camiseta.jpg", "https://loja.com/camiseta",
-                "Loja X", ProductStatus.PUBLICADO);
+                "Loja X", ProductStatus.PUBLISHED, null, List.of());
         ProductCatalogPageDTO page = new ProductCatalogPageDTO(List.of(item), 1, 0, 20);
-        when(productService.findByCompany(eq(COMPANY_ID), eq(ProductStatus.PUBLICADO), any(), any()))
+        when(productService.findByCompany(eq(COMPANY_ID), eq(ProductStatus.PUBLISHED), any(), any()))
                 .thenReturn(page);
 
         mockMvc.perform(get("/products/company/{companyId}", COMPANY_ID)
-                        .param("status", "PUBLICADO"))
+                        .param("status", "PUBLISHED"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[0].name").value("Camiseta"))
                 .andExpect(jsonPath("$.items[0].category").value("Camiseta"))
                 .andExpect(jsonPath("$.items[0].color").value("Branco"))
-                .andExpect(jsonPath("$.items[0].status").value("PUBLICADO"));
+                .andExpect(jsonPath("$.items[0].status").value("PUBLISHED"));
     }
 
     @Test
@@ -238,13 +238,13 @@ class ProductControllerTest {
         when(authenticatedUserProvider.id()).thenReturn(COMPANY_ID);
         ProductResponseDTO published = new ProductResponseDTO(
                 PRODUCT_ID, "Camiseta", null, "Camiseta", "Branco", new BigDecimal("49.90"),
-                null, null, ProductStatus.PUBLICADO, "Loja X", OffsetDateTime.now());
+                null, null, ProductStatus.PUBLISHED, "Loja X", OffsetDateTime.now(), null, List.of());
         when(productService.publish(PRODUCT_ID, COMPANY_ID)).thenReturn(published);
 
         mockMvc.perform(patch("/products/{id}/publish", PRODUCT_ID)
                         .header("X-User-Id", COMPANY_ID))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("PUBLICADO"));
+                .andExpect(jsonPath("$.status").value("PUBLISHED"));
     }
 
     @Test
@@ -280,13 +280,13 @@ class ProductControllerTest {
         when(authenticatedUserProvider.id()).thenReturn(COMPANY_ID);
         ProductResponseDTO paused = new ProductResponseDTO(
                 PRODUCT_ID, "Camiseta", null, "Camiseta", "Branco", new BigDecimal("49.90"),
-                null, null, ProductStatus.PAUSADO, "Loja X", OffsetDateTime.now());
+                null, null, ProductStatus.PAUSED, "Loja X", OffsetDateTime.now(), null, List.of());
         when(productService.unpublish(PRODUCT_ID, COMPANY_ID)).thenReturn(paused);
 
         mockMvc.perform(patch("/products/{id}/unpublish", PRODUCT_ID)
                         .header("X-User-Id", COMPANY_ID))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("PAUSADO"));
+                .andExpect(jsonPath("$.status").value("PAUSED"));
     }
 
     @Test

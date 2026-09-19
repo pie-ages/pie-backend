@@ -1,6 +1,8 @@
 package com.ages.pie.domain.entity;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -15,7 +17,9 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UuidGenerator;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "product")
@@ -50,7 +54,13 @@ public class Product extends AuditableEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status")
-    private ProductStatus status = ProductStatus.RASCUNHO;
+    private ProductStatus status = ProductStatus.DRAFT;
+
+    private String style;
+
+    @JdbcTypeCode(SqlTypes.ARRAY)
+    @Column(name = "sizes", columnDefinition = "varchar[]")
+    private List<String> sizes = new ArrayList<>();
 
     protected Product() {
     }
@@ -141,6 +151,22 @@ public class Product extends AuditableEntity {
 
     public void setColor(String color) {
         this.color = color;
+    }
+
+    public String getStyle() {
+        return style;
+    }
+
+    public void setStyle(String style) {
+        this.style = style;
+    }
+
+    public List<String> getSizes() {
+        return sizes;
+    }
+
+    public void setSizes(List<String> sizes) {
+        this.sizes = sizes;
     }
 
     public void setCompany(Company company) {

@@ -77,18 +77,19 @@ class ProductServiceTest {
         product.setPurchaseUrl("https://loja.exemplo.com/camiseta");
         responseDTO = new ProductResponseDTO(productId, "Camiseta", "Camiseta 100% algodão",
                 "Camiseta", "Branco", new BigDecimal("49.90"), "https://exemplo.com/camiseta.jpg",
-                "https://loja.exemplo.com/camiseta", ProductStatus.RASCUNHO, "Loja X", OffsetDateTime.now());
+                "https://loja.exemplo.com/camiseta", ProductStatus.DRAFT, "Loja X", OffsetDateTime.now(),
+                null, List.of());
         lenient().doCallRealMethod().when(productMapper).updateEntityFromDto(any(), any());
     }
 
     private ProductRequestDTO requestDTO() {
-        return new ProductRequestDTO("Camiseta", "Camiseta 100% algodão", "Camiseta", "Branco",
+        return new ProductRequestDTO("Camiseta", "Camiseta 100% algodão", "Camiseta", "Branco", null, null,
                 new BigDecimal("49.90"), "https://exemplo.com/camiseta.jpg",
                 "https://loja.exemplo.com/camiseta", companyId);
     }
 
     private ProductUpdateDTO updateDTO() {
-        return new ProductUpdateDTO("Camiseta Premium", null, null, null,
+        return new ProductUpdateDTO("Camiseta Premium", null, null, null, null, null,
                 new BigDecimal("59.90"), null, null, null);
     }
 
@@ -124,7 +125,7 @@ class ProductServiceTest {
         assertThat(saved.getPrice()).isEqualByComparingTo("49.90");
         assertThat(saved.getColor()).isEqualTo("Branco");
         assertThat(saved.getCompany()).isEqualTo(company);
-        assertThat(saved.getStatus()).isEqualTo(ProductStatus.RASCUNHO);
+        assertThat(saved.getStatus()).isEqualTo(ProductStatus.DRAFT);
     }
 
     @Test
@@ -139,7 +140,7 @@ class ProductServiceTest {
 
     @Test
     void create_shouldThrowBadRequest_whenNameIsBlank() {
-        ProductRequestDTO dto = new ProductRequestDTO("  ", null, null, null,
+        ProductRequestDTO dto = new ProductRequestDTO("  ", null, null, null, null, null,
                 new BigDecimal("49.90"), null, null, companyId);
         when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
 
@@ -192,7 +193,7 @@ class ProductServiceTest {
         UUID otherCompanyId = UUID.randomUUID();
         Company otherCompany = new Company(otherCompanyId, "Loja Y", "98765432000188", "Loja Y LTDA",
                 "Joao", "outra@email.com", "hash(senha456)", null, null);
-        ProductUpdateDTO dto = new ProductUpdateDTO(null, null, null, null, null, null, null, otherCompanyId);
+        ProductUpdateDTO dto = new ProductUpdateDTO(null, null, null, null, null, null, null, null, null, otherCompanyId);
         stubSavePassthrough();
         when(productRepository.findById(productId)).thenReturn(Optional.of(product));
         when(companyRepository.findById(otherCompanyId)).thenReturn(Optional.of(otherCompany));
@@ -216,7 +217,7 @@ class ProductServiceTest {
     @Test
     void update_shouldThrowNotFound_whenNewCompanyDoesNotExist() {
         UUID unknownCompanyId = UUID.randomUUID();
-        ProductUpdateDTO dto = new ProductUpdateDTO(null, null, null, null, null, null, null, unknownCompanyId);
+        ProductUpdateDTO dto = new ProductUpdateDTO(null, null, null, null, null, null, null, null, null, unknownCompanyId);
         when(productRepository.findById(productId)).thenReturn(Optional.of(product));
         when(companyRepository.findById(unknownCompanyId)).thenReturn(Optional.empty());
 
@@ -228,7 +229,7 @@ class ProductServiceTest {
 
     @Test
     void update_shouldThrowBadRequest_whenNameIsBlank() {
-        ProductUpdateDTO dto = new ProductUpdateDTO("  ", null, null, null, null, null, null, null);
+        ProductUpdateDTO dto = new ProductUpdateDTO("  ", null, null, null, null, null, null, null, null, null);
         when(productRepository.findById(productId)).thenReturn(Optional.of(product));
 
         Throwable thrown = catchThrowable(() -> productService.update(productId, dto));
@@ -288,7 +289,7 @@ class ProductServiceTest {
         Page<Product> page = new PageImpl<>(List.of(product), pageable, 1);
         ProductCatalogItemDTO itemDTO = new ProductCatalogItemDTO(productId, "Camiseta",
                 "Camiseta", "Branco", new BigDecimal("49.90"), "https://exemplo.com/camiseta.jpg",
-                "https://loja.exemplo.com/camiseta", "Loja X", ProductStatus.RASCUNHO);
+                "https://loja.exemplo.com/camiseta", "Loja X", ProductStatus.DRAFT, null, List.of());
         ProductCatalogPageDTO pageDTO = new ProductCatalogPageDTO(List.of(itemDTO), 1, 0, 20);
         when(productRepository.findCatalog(isNull(), eq(pageable))).thenReturn(page);
         when(productMapper.toCatalogPageDTO(page)).thenReturn(pageDTO);
@@ -346,14 +347,14 @@ class ProductServiceTest {
         Page<Product> page = new PageImpl<>(List.of(product), pageable, 1);
         ProductCatalogItemDTO itemDTO = new ProductCatalogItemDTO(productId, "Camiseta",
                 "Camiseta", "Branco", new BigDecimal("49.90"), "https://exemplo.com/camiseta.jpg",
-                "https://loja.exemplo.com/camiseta", "Loja X", ProductStatus.PUBLICADO);
+                "https://loja.exemplo.com/camiseta", "Loja X", ProductStatus.PUBLISHED, null, List.of());
         ProductCatalogPageDTO pageDTO = new ProductCatalogPageDTO(List.of(itemDTO), 1, 0, 20);
         when(companyRepository.existsById(companyId)).thenReturn(true);
-        when(productRepository.findByCompanyFiltered(companyId, ProductStatus.PUBLICADO, null, pageable))
+        when(productRepository.findByCompanyFiltered(companyId, ProductStatus.PUBLISHED, null, pageable))
                 .thenReturn(page);
         when(productMapper.toCatalogPageDTO(page)).thenReturn(pageDTO);
 
-        ProductCatalogPageDTO result = productService.findByCompany(companyId, ProductStatus.PUBLICADO, null, pageable);
+        ProductCatalogPageDTO result = productService.findByCompany(companyId, ProductStatus.PUBLISHED, null, pageable);
 
         assertThat(result).isEqualTo(pageDTO);
     }
@@ -402,33 +403,33 @@ class ProductServiceTest {
 
     @Test
     void publish_shouldSetStatusPublicado_whenProductIsRascunhoAndOwnedByCompany() {
-        product.setStatus(ProductStatus.RASCUNHO);
+        product.setStatus(ProductStatus.DRAFT);
         when(productRepository.findById(productId)).thenReturn(Optional.of(product));
         stubSavePassthrough();
         when(productMapper.toResponseDTO(any())).thenReturn(responseDTO);
 
         productService.publish(productId, companyId);
 
-        assertThat(product.getStatus()).isEqualTo(ProductStatus.PUBLICADO);
+        assertThat(product.getStatus()).isEqualTo(ProductStatus.PUBLISHED);
         verify(productRepository).save(product);
     }
 
     @Test
     void publish_shouldSetStatusPublicado_whenProductIsPausadoAndOwnedByCompany() {
-        product.setStatus(ProductStatus.PAUSADO);
+        product.setStatus(ProductStatus.PAUSED);
         when(productRepository.findById(productId)).thenReturn(Optional.of(product));
         stubSavePassthrough();
         when(productMapper.toResponseDTO(any())).thenReturn(responseDTO);
 
         productService.publish(productId, companyId);
 
-        assertThat(product.getStatus()).isEqualTo(ProductStatus.PUBLICADO);
+        assertThat(product.getStatus()).isEqualTo(ProductStatus.PUBLISHED);
         verify(productRepository).save(product);
     }
 
     @Test
     void publish_shouldThrowConflict_whenProductIsAlreadyPublicado() {
-        product.setStatus(ProductStatus.PUBLICADO);
+        product.setStatus(ProductStatus.PUBLISHED);
         when(productRepository.findById(productId)).thenReturn(Optional.of(product));
 
         Throwable thrown = catchThrowable(() -> productService.publish(productId, companyId));
@@ -439,7 +440,7 @@ class ProductServiceTest {
 
     @Test
     void publish_shouldThrowConflict_whenProductIsDeactivated() {
-        product.setStatus(ProductStatus.RASCUNHO);
+        product.setStatus(ProductStatus.DRAFT);
         product.setActive(false);
         when(productRepository.findById(productId)).thenReturn(Optional.of(product));
 
@@ -452,7 +453,7 @@ class ProductServiceTest {
     @Test
     void publish_shouldThrowForbidden_whenCompanyIsNotOwner() {
         UUID otherCompanyId = UUID.randomUUID();
-        product.setStatus(ProductStatus.RASCUNHO);
+        product.setStatus(ProductStatus.DRAFT);
         when(productRepository.findById(productId)).thenReturn(Optional.of(product));
 
         Throwable thrown = catchThrowable(() -> productService.publish(productId, otherCompanyId));
@@ -483,7 +484,7 @@ class ProductServiceTest {
 
     @Test
     void publish_shouldThrowBadRequest_whenPriceIsNull() {
-        product.setStatus(ProductStatus.RASCUNHO);
+        product.setStatus(ProductStatus.DRAFT);
         product.setPrice(null);
         when(productRepository.findById(productId)).thenReturn(Optional.of(product));
 
@@ -497,20 +498,20 @@ class ProductServiceTest {
 
     @Test
     void unpublish_shouldSetStatusPausado_whenProductIsPublicadoAndOwnedByCompany() {
-        product.setStatus(ProductStatus.PUBLICADO);
+        product.setStatus(ProductStatus.PUBLISHED);
         when(productRepository.findById(productId)).thenReturn(Optional.of(product));
         stubSavePassthrough();
         when(productMapper.toResponseDTO(any())).thenReturn(responseDTO);
 
         productService.unpublish(productId, companyId);
 
-        assertThat(product.getStatus()).isEqualTo(ProductStatus.PAUSADO);
+        assertThat(product.getStatus()).isEqualTo(ProductStatus.PAUSED);
         verify(productRepository).save(product);
     }
 
     @Test
     void unpublish_shouldThrowConflict_whenProductIsNotPublicado() {
-        product.setStatus(ProductStatus.RASCUNHO);
+        product.setStatus(ProductStatus.DRAFT);
         when(productRepository.findById(productId)).thenReturn(Optional.of(product));
 
         Throwable thrown = catchThrowable(() -> productService.unpublish(productId, companyId));
@@ -521,7 +522,7 @@ class ProductServiceTest {
 
     @Test
     void unpublish_shouldThrowConflict_whenProductIsDeactivated() {
-        product.setStatus(ProductStatus.PUBLICADO);
+        product.setStatus(ProductStatus.PUBLISHED);
         product.setActive(false);
         when(productRepository.findById(productId)).thenReturn(Optional.of(product));
 
@@ -534,7 +535,7 @@ class ProductServiceTest {
     @Test
     void unpublish_shouldThrowForbidden_whenCompanyIsNotOwner() {
         UUID otherCompanyId = UUID.randomUUID();
-        product.setStatus(ProductStatus.PUBLICADO);
+        product.setStatus(ProductStatus.PUBLISHED);
         when(productRepository.findById(productId)).thenReturn(Optional.of(product));
 
         Throwable thrown = catchThrowable(() -> productService.unpublish(productId, otherCompanyId));

@@ -16,7 +16,7 @@ public interface ProductRepository extends JpaRepository<Product, UUID> {
             SELECT p FROM Product p
             JOIN FETCH p.company
             WHERE p.active = true
-              AND p.status = com.ages.pie.domain.enums.ProductStatus.PUBLICADO
+              AND p.status = com.ages.pie.domain.enums.ProductStatus.PUBLISHED
               AND (:search IS NULL
                 OR cast(function('unaccent', lower(p.name)) as string) LIKE cast(function('unaccent', lower(concat('%', cast(:search as string), '%'))) as string)
                 OR cast(function('unaccent', lower(p.description)) as string) LIKE cast(function('unaccent', lower(concat('%', cast(:search as string), '%'))) as string))
@@ -24,7 +24,7 @@ public interface ProductRepository extends JpaRepository<Product, UUID> {
             countQuery = """
             SELECT COUNT(p) FROM Product p
             WHERE p.active = true
-              AND p.status = com.ages.pie.domain.enums.ProductStatus.PUBLICADO
+              AND p.status = com.ages.pie.domain.enums.ProductStatus.PUBLISHED
               AND (:search IS NULL
                 OR cast(function('unaccent', lower(p.name)) as string) LIKE cast(function('unaccent', lower(concat('%', cast(:search as string), '%'))) as string)
                 OR cast(function('unaccent', lower(p.description)) as string) LIKE cast(function('unaccent', lower(concat('%', cast(:search as string), '%'))) as string))
