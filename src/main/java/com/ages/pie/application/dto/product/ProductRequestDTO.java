@@ -15,6 +15,8 @@ public record ProductRequestDTO(
 
     String category,
 
+    String color,
+
     @NotNull(message = "Preço é obrigatório")
     @Positive(message = "Preço deve ser maior que zero")
     BigDecimal price,

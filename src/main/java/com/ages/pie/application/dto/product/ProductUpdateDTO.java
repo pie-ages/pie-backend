@@ -6,17 +6,21 @@ import java.math.BigDecimal;
 import java.util.UUID;
 
 public record ProductUpdateDTO(
-                String name,
+    String name,
 
-                String description,
+    String description,
 
-                String category,
+    String category,
 
-                @Positive(message = "Preço deve ser maior que zero") BigDecimal price,
+    String color,
 
-                String imageUrl,
+    @Positive(message = "Preço deve ser maior que zero")
+    BigDecimal price,
 
-                String purchaseUrl,
+    String imageUrl,
 
-                UUID companyId) {
+    String purchaseUrl,
+
+    UUID companyId
+) {
 }

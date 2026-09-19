@@ -5,6 +5,8 @@ import com.ages.pie.application.dto.product.ProductRequestDTO;
 import com.ages.pie.application.dto.product.ProductResponseDTO;
 import com.ages.pie.application.dto.product.ProductUpdateDTO;
 import com.ages.pie.application.service.ProductService;
+import com.ages.pie.domain.enums.ProductStatus;
+import com.ages.pie.infrastructure.security.AuthenticatedUserProvider;
 import jakarta.validation.Valid;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
@@ -20,9 +22,12 @@ import java.util.UUID;
 public class ProductController {
 
     private final ProductService productService;
+    private final AuthenticatedUserProvider authenticatedUserProvider;
 
-    public ProductController(ProductService productService) {
+    public ProductController(ProductService productService,
+            AuthenticatedUserProvider authenticatedUserProvider) {
         this.productService = productService;
+        this.authenticatedUserProvider = authenticatedUserProvider;
     }
 
     @PostMapping
@@ -53,6 +58,27 @@ public class ProductController {
     public ResponseEntity<Void> deactivate(@PathVariable UUID id) {
         productService.deactivate(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/company/{companyId}")
+    public ResponseEntity<ProductCatalogPageDTO> findByCompany(
+            @PathVariable UUID companyId,
+            @RequestParam(required = false) ProductStatus status,
+            @RequestParam(required = false) String search,
+            @ParameterObject @PageableDefault(size = 20, sort = "name") Pageable pageable) {
+        return ResponseEntity.ok(productService.findByCompany(companyId, status, search, pageable));
+    }
+
+    @PatchMapping("/{id}/publish")
+    public ResponseEntity<ProductResponseDTO> publish(@PathVariable UUID id) {
+        UUID companyId = authenticatedUserProvider.id();
+        return ResponseEntity.ok(productService.publish(id, companyId));
+    }
+
+    @PatchMapping("/{id}/unpublish")
+    public ResponseEntity<ProductResponseDTO> unpublish(@PathVariable UUID id) {
+        UUID companyId = authenticatedUserProvider.id();
+        return ResponseEntity.ok(productService.unpublish(id, companyId));
     }
 
     @DeleteMapping("/{id}")
