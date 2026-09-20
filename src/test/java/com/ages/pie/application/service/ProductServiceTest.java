@@ -78,18 +78,18 @@ class ProductServiceTest {
         responseDTO = new ProductResponseDTO(productId, "Camiseta", "Camiseta 100% algodão",
                 "Camiseta", "Branco", new BigDecimal("49.90"), "https://exemplo.com/camiseta.jpg",
                 "https://loja.exemplo.com/camiseta", ProductStatus.DRAFT, "Loja X", OffsetDateTime.now(),
-                null, List.of());
+                OffsetDateTime.now(), List.of(), List.of(), List.of());
         lenient().doCallRealMethod().when(productMapper).updateEntityFromDto(any(), any());
     }
 
     private ProductRequestDTO requestDTO() {
-        return new ProductRequestDTO("Camiseta", "Camiseta 100% algodão", "Camiseta", "Branco", null, null,
+        return new ProductRequestDTO("Camiseta", "Camiseta 100% algodão", "Camiseta", "Branco", null, null, null,
                 new BigDecimal("49.90"), "https://exemplo.com/camiseta.jpg",
                 "https://loja.exemplo.com/camiseta", companyId);
     }
 
     private ProductUpdateDTO updateDTO() {
-        return new ProductUpdateDTO("Camiseta Premium", null, null, null, null, null,
+        return new ProductUpdateDTO("Camiseta Premium", null, null, null, null, null, null,
                 new BigDecimal("59.90"), null, null, null);
     }
 
@@ -140,7 +140,7 @@ class ProductServiceTest {
 
     @Test
     void create_shouldThrowBadRequest_whenNameIsBlank() {
-        ProductRequestDTO dto = new ProductRequestDTO("  ", null, null, null, null, null,
+        ProductRequestDTO dto = new ProductRequestDTO("  ", null, null, null, null, null, null,
                 new BigDecimal("49.90"), null, null, companyId);
         when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
 
@@ -193,7 +193,7 @@ class ProductServiceTest {
         UUID otherCompanyId = UUID.randomUUID();
         Company otherCompany = new Company(otherCompanyId, "Loja Y", "98765432000188", "Loja Y LTDA",
                 "Joao", "outra@email.com", "hash(senha456)", null, null);
-        ProductUpdateDTO dto = new ProductUpdateDTO(null, null, null, null, null, null, null, null, null, otherCompanyId);
+        ProductUpdateDTO dto = new ProductUpdateDTO(null, null, null, null, null, null, null, null, null, null, otherCompanyId);
         stubSavePassthrough();
         when(productRepository.findById(productId)).thenReturn(Optional.of(product));
         when(companyRepository.findById(otherCompanyId)).thenReturn(Optional.of(otherCompany));
@@ -217,7 +217,7 @@ class ProductServiceTest {
     @Test
     void update_shouldThrowNotFound_whenNewCompanyDoesNotExist() {
         UUID unknownCompanyId = UUID.randomUUID();
-        ProductUpdateDTO dto = new ProductUpdateDTO(null, null, null, null, null, null, null, null, null, unknownCompanyId);
+        ProductUpdateDTO dto = new ProductUpdateDTO(null, null, null, null, null, null, null, null, null, null, unknownCompanyId);
         when(productRepository.findById(productId)).thenReturn(Optional.of(product));
         when(companyRepository.findById(unknownCompanyId)).thenReturn(Optional.empty());
 
@@ -229,7 +229,7 @@ class ProductServiceTest {
 
     @Test
     void update_shouldThrowBadRequest_whenNameIsBlank() {
-        ProductUpdateDTO dto = new ProductUpdateDTO("  ", null, null, null, null, null, null, null, null, null);
+        ProductUpdateDTO dto = new ProductUpdateDTO("  ", null, null, null, null, null, null, null, null, null, null);
         when(productRepository.findById(productId)).thenReturn(Optional.of(product));
 
         Throwable thrown = catchThrowable(() -> productService.update(productId, dto));
@@ -289,7 +289,7 @@ class ProductServiceTest {
         Page<Product> page = new PageImpl<>(List.of(product), pageable, 1);
         ProductCatalogItemDTO itemDTO = new ProductCatalogItemDTO(productId, "Camiseta",
                 "Camiseta", "Branco", new BigDecimal("49.90"), "https://exemplo.com/camiseta.jpg",
-                "https://loja.exemplo.com/camiseta", "Loja X", ProductStatus.DRAFT, null, List.of());
+                "https://loja.exemplo.com/camiseta", "Loja X", ProductStatus.DRAFT, List.of(), List.of(), List.of());
         ProductCatalogPageDTO pageDTO = new ProductCatalogPageDTO(List.of(itemDTO), 1, 0, 20);
         when(productRepository.findCatalog(isNull(), eq(pageable))).thenReturn(page);
         when(productMapper.toCatalogPageDTO(page)).thenReturn(pageDTO);
@@ -347,7 +347,7 @@ class ProductServiceTest {
         Page<Product> page = new PageImpl<>(List.of(product), pageable, 1);
         ProductCatalogItemDTO itemDTO = new ProductCatalogItemDTO(productId, "Camiseta",
                 "Camiseta", "Branco", new BigDecimal("49.90"), "https://exemplo.com/camiseta.jpg",
-                "https://loja.exemplo.com/camiseta", "Loja X", ProductStatus.PUBLISHED, null, List.of());
+                "https://loja.exemplo.com/camiseta", "Loja X", ProductStatus.PUBLISHED, List.of(), List.of(), List.of());
         ProductCatalogPageDTO pageDTO = new ProductCatalogPageDTO(List.of(itemDTO), 1, 0, 20);
         when(companyRepository.existsById(companyId)).thenReturn(true);
         when(productRepository.findByCompanyFiltered(companyId, ProductStatus.PUBLISHED, null, pageable))

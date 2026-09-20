@@ -18,7 +18,9 @@ public record ProductRequestDTO(
 
     String color,
 
-    String style,
+    List<String> styles,
+
+    List<String> materials,
 
     List<String> sizes,
 

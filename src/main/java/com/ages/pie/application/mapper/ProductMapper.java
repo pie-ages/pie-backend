@@ -25,8 +25,10 @@ public class ProductMapper {
             product.getStatus(),
             companyName,
             product.getCreatedAt(),
-            product.getStyle(),
-            product.getSizes()
+            product.getUpdatedAt(),
+            product.getStyles(),
+            product.getSizes(),
+            product.getMaterials()
         );
     }
 
@@ -35,7 +37,8 @@ public class ProductMapper {
         if (dto.description() != null) product.setDescription(dto.description());
         if (dto.category() != null) product.setCategory(dto.category());
         if (dto.color() != null) product.setColor(dto.color());
-        if (dto.style() != null) product.setStyle(dto.style());
+        if (dto.styles() != null) product.setStyles(dto.styles());
+        if (dto.materials() != null) product.setMaterials(dto.materials());
         if (dto.sizes() != null) product.setSizes(dto.sizes());
         if (dto.price() != null) product.setPrice(dto.price());
         if (dto.imageUrl() != null) product.setImageUrl(dto.imageUrl());
@@ -51,10 +54,11 @@ public class ProductMapper {
             product.getPrice(),
             product.getImageUrl(),
             product.getPurchaseUrl(),
-            product.getCompany().getName(),
+            product.getCompany() != null ? product.getCompany().getName() : null,
             product.getStatus(),
-            product.getStyle(),
-            product.getSizes()
+            product.getStyles(),
+            product.getSizes(),
+            product.getMaterials()
         );
     }
 
