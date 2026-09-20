@@ -23,7 +23,7 @@ public class OpenApiConfig {
 
     @Bean
     public OpenAPI customOpenAPI() {
-        final String securitySchemeName = "bearerAuth";
+        final String securitySchemeName = "X-User-Id";
 
         return new OpenAPI()
             .addSecurityItem(
@@ -33,10 +33,10 @@ public class OpenApiConfig {
                 new Components().addSecuritySchemes(
                     securitySchemeName,
                     new SecurityScheme()
-                        .name(securitySchemeName)
-                        .type(SecurityScheme.Type.HTTP)
-                        .scheme("bearer")
-                        .bearerFormat("JWT")
+                        .name("X-User-Id")
+                        .type(SecurityScheme.Type.APIKEY)
+                        .in(SecurityScheme.In.HEADER)
+                        .description("UUID do usuário autenticado (company ou customer)")
                 )
             )
             .info(
