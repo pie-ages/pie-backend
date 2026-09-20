@@ -17,6 +17,8 @@ import com.ages.pie.domain.enums.ProductStatus;
 import com.ages.pie.domain.enums.ProductStyle;
 import com.ages.pie.infrastructure.repository.CompanyRepository;
 import com.ages.pie.infrastructure.repository.ProductRepository;
+import com.ages.pie.infrastructure.repository.WishlistItemRepository;
+import com.ages.pie.infrastructure.repository.WishlistRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
@@ -27,6 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -37,13 +40,19 @@ public class ProductService {
     private final ProductRepository productRepository;
     private final CompanyRepository companyRepository;
     private final ProductMapper productMapper;
+    private final WishlistRepository wishlistRepository;
+    private final WishlistItemRepository wishlistItemRepository;
 
     public ProductService(ProductRepository productRepository,
             CompanyRepository companyRepository,
-            ProductMapper productMapper) {
+            ProductMapper productMapper,
+            WishlistRepository wishlistRepository,
+            WishlistItemRepository wishlistItemRepository) {
         this.productRepository = productRepository;
         this.companyRepository = companyRepository;
         this.productMapper = productMapper;
+        this.wishlistRepository = wishlistRepository;
+        this.wishlistItemRepository = wishlistItemRepository;
     }
 
     @Transactional
@@ -91,10 +100,14 @@ public class ProductService {
     }
 
     @Transactional(readOnly = true)
-    public ProductPublicDetailDTO findPublicDetail(UUID id) {
+    public ProductPublicDetailDTO findPublicDetail(UUID id, Optional<UUID> customerId) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Produto não encontrado"));
-        return productMapper.toPublicDetailDTO(product);
+        boolean inWishlist = customerId
+                .flatMap(wishlistRepository::findByCustomerId)
+                .map(wishlist -> wishlistItemRepository.existsByWishlistIdAndProductId(wishlist.getId(), id))
+                .orElse(false);
+        return productMapper.toPublicDetailDTO(product, inWishlist);
     }
 
     @Transactional(readOnly = true)

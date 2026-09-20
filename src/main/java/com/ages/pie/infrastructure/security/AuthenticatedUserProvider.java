@@ -1,5 +1,6 @@
 package com.ages.pie.infrastructure.security;
 
+import java.util.Optional;
 import java.util.UUID;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -33,6 +34,18 @@ public class AuthenticatedUserProvider {
             return UUID.fromString(header.trim());
         } catch (IllegalArgumentException e) {
             throw unauthenticated(e);
+        }
+    }
+
+    public Optional<UUID> optionalId() {
+        String header = request.getHeader(USER_ID_HEADER);
+        if (header == null || header.isBlank()) {
+            return Optional.empty();
+        }
+        try {
+            return Optional.of(UUID.fromString(header.trim()));
+        } catch (IllegalArgumentException e) {
+            return Optional.empty();
         }
     }
 

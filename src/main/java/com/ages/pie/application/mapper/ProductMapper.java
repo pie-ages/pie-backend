@@ -86,7 +86,7 @@ public class ProductMapper {
         );
     }
 
-    public ProductPublicDetailDTO toPublicDetailDTO(Product product) {
+    public ProductPublicDetailDTO toPublicDetailDTO(Product product, boolean inWishlist) {
         boolean available = product.isActive() && product.getStatus() == ProductStatus.PUBLISHED;
         List<ProductImageResponseDTO> images = toImageDTOs(product);
         return new ProductPublicDetailDTO(
@@ -103,7 +103,8 @@ public class ProductMapper {
             product.getSizes(),
             product.getMaterials(),
             available,
-            images
+            images,
+            inWishlist
         );
     }
 
