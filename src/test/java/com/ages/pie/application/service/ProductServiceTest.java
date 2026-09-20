@@ -80,7 +80,7 @@ class ProductServiceTest {
         responseDTO = new ProductResponseDTO(productId, "Camiseta", "Camiseta 100% algodão",
                 "Camiseta", "Branco", new BigDecimal("49.90"), "https://exemplo.com/camiseta.jpg",
                 "https://loja.exemplo.com/camiseta", ProductStatus.DRAFT, "Loja X", OffsetDateTime.now(),
-                OffsetDateTime.now(), List.of(), List.of(), List.of());
+                OffsetDateTime.now(), List.of(), List.of(), List.of(), List.of());
         lenient().doCallRealMethod().when(productMapper).updateEntityFromDto(any(), any());
     }
 
@@ -628,7 +628,7 @@ class ProductServiceTest {
         ProductPublicDetailDTO detailDTO = new ProductPublicDetailDTO(
                 productId, "Camiseta", "desc", "camiseta", "branco",
                 new BigDecimal("49.90"), null, null, "Loja X",
-                List.of(), List.of(), List.of(), true);
+                List.of(), List.of(), List.of(), true, List.of());
         when(productRepository.findById(productId)).thenReturn(Optional.of(product));
         when(productMapper.toPublicDetailDTO(product)).thenReturn(detailDTO);
 
@@ -643,7 +643,7 @@ class ProductServiceTest {
         ProductPublicDetailDTO detailDTO = new ProductPublicDetailDTO(
                 productId, "Camiseta", "desc", "camiseta", "branco",
                 new BigDecimal("49.90"), null, null, "Loja X",
-                List.of(), List.of(), List.of(), false);
+                List.of(), List.of(), List.of(), false, List.of());
         when(productRepository.findById(productId)).thenReturn(Optional.of(product));
         when(productMapper.toPublicDetailDTO(product)).thenReturn(detailDTO);
 
@@ -659,7 +659,7 @@ class ProductServiceTest {
         ProductPublicDetailDTO detailDTO = new ProductPublicDetailDTO(
                 productId, "Camiseta", "desc", "camiseta", "branco",
                 new BigDecimal("49.90"), null, null, "Loja X",
-                List.of(), List.of(), List.of(), false);
+                List.of(), List.of(), List.of(), false, List.of());
         when(productRepository.findById(productId)).thenReturn(Optional.of(product));
         when(productMapper.toPublicDetailDTO(product)).thenReturn(detailDTO);
 

@@ -22,6 +22,7 @@ public record ProductResponseDTO(
     OffsetDateTime updatedAt,
     List<String> styles,
     List<String> sizes,
-    List<String> materials
+    List<String> materials,
+    List<ProductImageResponseDTO> images
 ) {
 }
