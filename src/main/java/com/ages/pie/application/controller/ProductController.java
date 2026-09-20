@@ -1,6 +1,8 @@
 package com.ages.pie.application.controller;
 
+import com.ages.pie.application.dto.product.CatalogFiltersDTO;
 import com.ages.pie.application.dto.product.ProductCatalogPageDTO;
+import com.ages.pie.application.dto.product.ProductPublicDetailDTO;
 import com.ages.pie.application.dto.product.ProductRequestDTO;
 import com.ages.pie.application.dto.product.ProductResponseDTO;
 import com.ages.pie.application.dto.product.ProductUpdateDTO;
@@ -15,6 +17,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -39,8 +42,18 @@ public class ProductController {
     @GetMapping
     public ResponseEntity<ProductCatalogPageDTO> findCatalog(
             @RequestParam(required = false) String search,
+            @RequestParam(required = false) List<String> styles,
+            @RequestParam(required = false) List<String> categories,
+            @RequestParam(required = false) List<String> colors,
+            @RequestParam(required = false) List<UUID> companies,
             @ParameterObject @PageableDefault(size = 20, sort = "name") Pageable pageable) {
-        return ResponseEntity.ok(productService.findCatalog(search, pageable));
+        CatalogFiltersDTO filters = new CatalogFiltersDTO(styles, categories, colors, companies);
+        return ResponseEntity.ok(productService.findCatalog(search, filters, pageable));
+    }
+
+    @GetMapping("/{id}/public")
+    public ResponseEntity<ProductPublicDetailDTO> findPublicDetail(@PathVariable UUID id) {
+        return ResponseEntity.ok(productService.findPublicDetail(id));
     }
 
     @GetMapping("/{id}")
