@@ -8,7 +8,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import java.util.List;
 import java.util.UUID;
 
 public interface ProductRepository extends JpaRepository<Product, UUID> {
@@ -20,30 +19,32 @@ public interface ProductRepository extends JpaRepository<Product, UUID> {
               AND p.status = com.ages.pie.domain.enums.ProductStatus.PUBLISHED
               AND (:search IS NULL
                 OR cast(function('unaccent', lower(p.name)) as string) LIKE cast(function('unaccent', lower(concat('%', cast(:search as string), '%'))) as string)
-                OR cast(function('unaccent', lower(p.description)) as string) LIKE cast(function('unaccent', lower(concat('%', cast(:search as string), '%'))) as string))
-              AND (:#{#styles == null || #styles.isEmpty()} = true OR array_overlaps(p.styles, :styles) = true)
-              AND (:#{#categories == null || #categories.isEmpty()} = true OR p.category IN :categories)
-              AND (:#{#colors == null || #colors.isEmpty()} = true OR p.color IN :colors)
-              AND (:#{#companyIds == null || #companyIds.isEmpty()} = true OR p.company.id IN :companyIds)
-            """,
+                OR cast(function('unaccent', lower(p.description)) as string) LIKE cast(function('unaccent', lower(concat('%', cast(:search as string), '%'))) as string)
+                OR cast(function('unaccent', lower(p.company.name)) as string) LIKE cast(function('unaccent', lower(concat('%', cast(:search as string), '%'))) as string))
+              AND (:#{#styles == null} = true OR array_overlaps(p.styles, :styles) = true)
+              AND (:#{#categories == null} = true OR p.category IN :categories)
+              AND (:#{#colors == null} = true OR p.color IN :colors)
+              AND (:#{#companyIds == null} = true OR p.company.id IN :companyIds)
+""",
             countQuery = """
             SELECT COUNT(p) FROM Product p
             WHERE p.active = true
               AND p.status = com.ages.pie.domain.enums.ProductStatus.PUBLISHED
               AND (:search IS NULL
                 OR cast(function('unaccent', lower(p.name)) as string) LIKE cast(function('unaccent', lower(concat('%', cast(:search as string), '%'))) as string)
-                OR cast(function('unaccent', lower(p.description)) as string) LIKE cast(function('unaccent', lower(concat('%', cast(:search as string), '%'))) as string))
-              AND (:#{#styles == null || #styles.isEmpty()} = true OR array_overlaps(p.styles, :styles) = true)
-              AND (:#{#categories == null || #categories.isEmpty()} = true OR p.category IN :categories)
-              AND (:#{#colors == null || #colors.isEmpty()} = true OR p.color IN :colors)
-              AND (:#{#companyIds == null || #companyIds.isEmpty()} = true OR p.company.id IN :companyIds)
-            """)
+                OR cast(function('unaccent', lower(p.description)) as string) LIKE cast(function('unaccent', lower(concat('%', cast(:search as string), '%'))) as string)
+                OR cast(function('unaccent', lower(p.company.name)) as string) LIKE cast(function('unaccent', lower(concat('%', cast(:search as string), '%'))) as string))
+              AND (:#{#styles == null} = true OR array_overlaps(p.styles, :styles) = true)
+              AND (:#{#categories == null} = true OR p.category IN :categories)
+              AND (:#{#colors == null} = true OR p.color IN :colors)
+              AND (:#{#companyIds == null} = true OR p.company.id IN :companyIds)
+""")
     Page<Product> findCatalog(
             @Param("search") String search,
-            @Param("styles") List<String> styles,
-            @Param("categories") List<String> categories,
-            @Param("colors") List<String> colors,
-            @Param("companyIds") List<UUID> companyIds,
+            @Param("styles") String[] styles,
+            @Param("categories") String[] categories,
+            @Param("colors") String[] colors,
+            @Param("companyIds") UUID[] companyIds,
             Pageable pageable);
 
     @Query(value = """

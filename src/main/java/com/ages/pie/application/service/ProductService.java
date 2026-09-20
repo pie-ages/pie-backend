@@ -82,10 +82,10 @@ public class ProductService {
         String normalizedSearch = normalize(search);
         Page<Product> page = productRepository.findCatalog(
                 normalizedSearch,
-                nullIfEmpty(filters.styles()),
-                nullIfEmpty(filters.categories()),
-                nullIfEmpty(filters.colors()),
-                nullIfEmpty(filters.companies()),
+                toArrayOrNull(filters.styles()),
+                toArrayOrNull(filters.categories()),
+                toArrayOrNull(filters.colors()),
+                toUuidArrayOrNull(filters.companies()),
                 pageable);
         return productMapper.toCatalogPageDTO(page);
     }
@@ -258,8 +258,12 @@ public class ProductService {
         }
     }
 
-    private <T> List<T> nullIfEmpty(List<T> list) {
-        return (list == null || list.isEmpty()) ? null : list;
+    private String[] toArrayOrNull(List<String> list) {
+        return (list == null || list.isEmpty()) ? null : list.toArray(new String[0]);
+    }
+
+    private UUID[] toUuidArrayOrNull(List<UUID> list) {
+        return (list == null || list.isEmpty()) ? null : list.toArray(new UUID[0]);
     }
 
     private String normalize(String search) {

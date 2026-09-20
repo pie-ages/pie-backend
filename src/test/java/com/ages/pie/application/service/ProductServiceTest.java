@@ -350,13 +350,13 @@ class ProductServiceTest {
         Pageable pageable = PageRequest.of(0, 20);
         Page<Product> page = new PageImpl<>(List.of(product), pageable, 1);
         CatalogFiltersDTO filters = new CatalogFiltersDTO(List.of("casual"), List.of("camiseta"), null, null);
-        when(productRepository.findCatalog(isNull(), eq(List.of("casual")), eq(List.of("camiseta")), isNull(), isNull(), eq(pageable)))
+        when(productRepository.findCatalog(isNull(), eq(new String[]{"casual"}), eq(new String[]{"camiseta"}), isNull(), isNull(), eq(pageable)))
                 .thenReturn(page);
         when(productMapper.toCatalogPageDTO(page)).thenReturn(new ProductCatalogPageDTO(List.of(), 1, 0, 20));
 
         productService.findCatalog(null, filters, pageable);
 
-        verify(productRepository).findCatalog(isNull(), eq(List.of("casual")), eq(List.of("camiseta")), isNull(), isNull(), eq(pageable));
+        verify(productRepository).findCatalog(isNull(), eq(new String[]{"casual"}), eq(new String[]{"camiseta"}), isNull(), isNull(), eq(pageable));
     }
 
     @Test
