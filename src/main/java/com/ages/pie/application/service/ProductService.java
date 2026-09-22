@@ -257,6 +257,14 @@ public class ProductService {
                         "Cor(es) inválida(s): " + invalid);
             }
         }
+        if (filters.materials() != null) {
+            List<String> invalid = filters.materials().stream()
+                    .filter(c -> !ProductMaterial.isValid(c)).toList();
+            if (!invalid.isEmpty()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Material(is) inválido(s): " + invalid);
+            }
+        }
     }
 
     private String[] toArrayOrNull(List<String> list) {
