@@ -86,6 +86,7 @@ public class ProductService {
                 toArrayOrNull(filters.categories()),
                 toArrayOrNull(filters.colors()),
                 toUuidArrayOrNull(filters.companies()),
+                toArrayOrNull(filters.materials()),
                 pageable);
         return productMapper.toCatalogPageDTO(page);
     }

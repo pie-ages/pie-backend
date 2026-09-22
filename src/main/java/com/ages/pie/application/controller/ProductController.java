@@ -46,8 +46,9 @@ public class ProductController {
             @RequestParam(required = false) List<String> categories,
             @RequestParam(required = false) List<String> colors,
             @RequestParam(required = false) List<UUID> companies,
+            @RequestParam(required = false) List<String> materials,
             @ParameterObject @PageableDefault(size = 20, sort = "name") Pageable pageable) {
-        CatalogFiltersDTO filters = new CatalogFiltersDTO(styles, categories, colors, companies);
+        CatalogFiltersDTO filters = new CatalogFiltersDTO(styles, categories, colors, companies, materials);
         return ResponseEntity.ok(productService.findCatalog(search, filters, pageable));
     }
 
