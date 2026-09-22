@@ -56,7 +56,13 @@ public class Product extends AuditableEntity {
     @Column(name = "status")
     private ProductStatus status = ProductStatus.DRAFT;
 
-    private String style;
+    @JdbcTypeCode(SqlTypes.ARRAY)
+    @Column(name = "style", columnDefinition = "varchar[]")
+    private List<String> styles = new ArrayList<>();
+
+    @JdbcTypeCode(SqlTypes.ARRAY)
+    @Column(name = "material", columnDefinition = "varchar[]")
+    private List<String> materials = new ArrayList<>();
 
     @JdbcTypeCode(SqlTypes.ARRAY)
     @Column(name = "sizes", columnDefinition = "varchar[]")
@@ -153,12 +159,20 @@ public class Product extends AuditableEntity {
         this.color = color;
     }
 
-    public String getStyle() {
-        return style;
+    public List<String> getStyles() {
+        return styles;
     }
 
-    public void setStyle(String style) {
-        this.style = style;
+    public void setStyles(List<String> styles) {
+        this.styles = styles;
+    }
+
+    public List<String> getMaterials() {
+        return materials;
+    }
+
+    public void setMaterials(List<String> materials) {
+        this.materials = materials;
     }
 
     public List<String> getSizes() {

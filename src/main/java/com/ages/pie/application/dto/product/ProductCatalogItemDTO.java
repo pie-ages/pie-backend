@@ -16,7 +16,8 @@ public record ProductCatalogItemDTO(
     String purchaseUrl,
     String companyName,
     ProductStatus status,
-    String style,
-    List<String> sizes
+    List<String> styles,
+    List<String> sizes,
+    List<String> materials
 ) {
 }

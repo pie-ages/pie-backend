@@ -7,7 +7,12 @@ import com.ages.pie.application.dto.product.ProductUpdateDTO;
 import com.ages.pie.application.mapper.ProductMapper;
 import com.ages.pie.domain.entity.Company;
 import com.ages.pie.domain.entity.Product;
+import com.ages.pie.domain.enums.ProductCategory;
+import com.ages.pie.domain.enums.ProductColor;
+import com.ages.pie.domain.enums.ProductMaterial;
+import com.ages.pie.domain.enums.ProductSize;
 import com.ages.pie.domain.enums.ProductStatus;
+import com.ages.pie.domain.enums.ProductStyle;
 import com.ages.pie.infrastructure.repository.CompanyRepository;
 import com.ages.pie.infrastructure.repository.ProductRepository;
 import org.slf4j.Logger;
@@ -19,6 +24,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -56,6 +62,13 @@ public class ProductService {
         product.setImageUrl(requestDTO.imageUrl());
         product.setPurchaseUrl(requestDTO.purchaseUrl());
 
+        validateTaxonomy(requestDTO.category(), requestDTO.color(),
+                requestDTO.styles(), requestDTO.sizes(), requestDTO.materials());
+
+        if (requestDTO.styles() != null) product.setStyles(requestDTO.styles());
+        if (requestDTO.materials() != null) product.setMaterials(requestDTO.materials());
+        if (requestDTO.sizes() != null) product.setSizes(requestDTO.sizes());
+
         Product salvo = productRepository.save(product);
         logger.info("Product criado com id: {}", salvo.getId());
         return productMapper.toResponseDTO(salvo);
@@ -85,6 +98,8 @@ public class ProductService {
         if (dto.name() != null && dto.name().isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Nome é obrigatório");
         }
+
+        validateTaxonomy(dto.category(), dto.color(), dto.styles(), dto.sizes(), dto.materials());
 
         productMapper.updateEntityFromDto(dto, product);
 
@@ -205,5 +220,38 @@ public class ProductService {
             return null;
         }
         return search.trim();
+    }
+
+    private void validateTaxonomy(String category, String color,
+            List<String> styles, List<String> sizes, List<String> materials) {
+        if (category != null && !ProductCategory.isValid(category)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                "Categoria inválida: '" + category + "'");
+        }
+        if (color != null && !ProductColor.isValid(color)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                "Cor inválida: '" + color + "'");
+        }
+        if (styles != null) {
+            List<String> invalid = styles.stream().filter(s -> !ProductStyle.isValid(s)).toList();
+            if (!invalid.isEmpty()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Estilo(s) inválido(s): " + invalid);
+            }
+        }
+        if (sizes != null) {
+            List<String> invalid = sizes.stream().filter(s -> !ProductSize.isValid(s)).toList();
+            if (!invalid.isEmpty()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Tamanho(s) inválido(s): " + invalid);
+            }
+        }
+        if (materials != null) {
+            List<String> invalid = materials.stream().filter(m -> !ProductMaterial.isValid(m)).toList();
+            if (!invalid.isEmpty()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Material(ais) inválido(s): " + invalid);
+            }
+        }
     }
 }
