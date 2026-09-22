@@ -25,6 +25,7 @@ import com.ages.pie.infrastructure.repository.StyleQuestionRepository;
 import com.ages.pie.infrastructure.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.ages.pie.application.mapper.StyleMapper;
 
 @Service
 public class StyleService {
@@ -53,16 +54,23 @@ public class StyleService {
                 .findByQuestionIdInOrderByDisplayOrderAsc(ids)
                 .stream()
                 .collect(Collectors.groupingBy(option -> option.getQuestion().getId()));
-
+                
         return questions.stream()
-                .map(question -> toQuestionDTO(question,
-                        optionsByQuestion.getOrDefault(question.getId(), List.of())))
+                .map(q -> new StyleMapper().toQuestionDTO(q, optionsByQuestion.getOrDefault(q.getId(), List.of())))
                 .toList();
     }
 
+    @Transactional(readOnly = true)
+    public StyleResultResponseDTO calculateAnswers(List<StyleAnswerRequestDTO> answers) {
+        List<StyleQuestion> questions = loadActiveQuestions();
+        Map<UUID, StyleAnswerRequestDTO> answerByQuestionId = validateAndIndex(questions, answers);
+        List<StyleOption> options = resolveOptionsInQuestionOrder(questions, answerByQuestionId);
+        List<Style> styles = options.stream().map(StyleOption::getStyle).toList();
+        return new StyleResultResponseDTO(StyleScoreCalculator.calculate(styles).name());
+    }
+
     @Transactional
-    public StyleResultResponseDTO submitAnswers(UUID userId, List<StyleAnswerRequestDTO> answers) {
-        User user = userRepository.findById(userId)
+    public StyleResultResponseDTO submitAnswers(UUID userId, List<StyleAnswerRequestDTO> answers) {        User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado: " + userId));
 
         List<StyleQuestion> questions = loadActiveQuestions();
@@ -146,18 +154,4 @@ public class StyleService {
         return toSave;
     }
 
-    private StyleQuestionResponseDTO toQuestionDTO(StyleQuestion question, List<StyleOption> options) {
-        List<StyleOptionResponseDTO> optionDTOs = options.stream()
-                .map(option -> new StyleOptionResponseDTO(
-                        option.getId(),
-                        option.getLabel(),
-                        option.getImageUrl(),
-                        option.getDisplayOrder()))
-                .toList();
-        return new StyleQuestionResponseDTO(
-                question.getId(),
-                question.getText(),
-                question.getDisplayOrder(),
-                optionDTOs);
-    }
 }
