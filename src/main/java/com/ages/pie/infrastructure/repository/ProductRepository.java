@@ -19,17 +19,36 @@ public interface ProductRepository extends JpaRepository<Product, UUID> {
               AND p.status = com.ages.pie.domain.enums.ProductStatus.PUBLISHED
               AND (:search IS NULL
                 OR cast(function('unaccent', lower(p.name)) as string) LIKE cast(function('unaccent', lower(concat('%', cast(:search as string), '%'))) as string)
-                OR cast(function('unaccent', lower(p.description)) as string) LIKE cast(function('unaccent', lower(concat('%', cast(:search as string), '%'))) as string))
-            """,
+                OR cast(function('unaccent', lower(p.description)) as string) LIKE cast(function('unaccent', lower(concat('%', cast(:search as string), '%'))) as string)
+                OR cast(function('unaccent', lower(p.company.name)) as string) LIKE cast(function('unaccent', lower(concat('%', cast(:search as string), '%'))) as string))
+              AND (:#{#styles == null} = true OR array_overlaps(p.styles, :styles) = true)
+              AND (:#{#categories == null} = true OR p.category IN :categories)
+              AND (:#{#colors == null} = true OR p.color IN :colors)
+              AND (:#{#companyIds == null} = true OR p.company.id IN :companyIds)
+              AND (:#{#materials == null} = true OR array_overlaps(p.materials, :materials) = true)
+""",
             countQuery = """
             SELECT COUNT(p) FROM Product p
             WHERE p.active = true
               AND p.status = com.ages.pie.domain.enums.ProductStatus.PUBLISHED
               AND (:search IS NULL
                 OR cast(function('unaccent', lower(p.name)) as string) LIKE cast(function('unaccent', lower(concat('%', cast(:search as string), '%'))) as string)
-                OR cast(function('unaccent', lower(p.description)) as string) LIKE cast(function('unaccent', lower(concat('%', cast(:search as string), '%'))) as string))
-            """)
-    Page<Product> findCatalog(@Param("search") String search, Pageable pageable);
+                OR cast(function('unaccent', lower(p.description)) as string) LIKE cast(function('unaccent', lower(concat('%', cast(:search as string), '%'))) as string)
+                OR cast(function('unaccent', lower(p.company.name)) as string) LIKE cast(function('unaccent', lower(concat('%', cast(:search as string), '%'))) as string))
+              AND (:#{#styles == null} = true OR array_overlaps(p.styles, :styles) = true)
+              AND (:#{#categories == null} = true OR p.category IN :categories)
+              AND (:#{#colors == null} = true OR p.color IN :colors)
+              AND (:#{#companyIds == null} = true OR p.company.id IN :companyIds)
+              AND (:#{#materials == null} = true OR array_overlaps(p.materials, :materials) = true)
+""")
+    Page<Product> findCatalog(
+            @Param("search") String search,
+            @Param("styles") String[] styles,
+            @Param("categories") String[] categories,
+            @Param("colors") String[] colors,
+            @Param("companyIds") UUID[] companyIds,
+            @Param("materials") String[] materials,
+            Pageable pageable);
 
     @Query(value = """
             SELECT p FROM Product p

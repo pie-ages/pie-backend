@@ -2,9 +2,11 @@ package com.ages.pie.application.mapper;
 
 import com.ages.pie.application.dto.product.ProductCatalogItemDTO;
 import com.ages.pie.application.dto.product.ProductCatalogPageDTO;
+import com.ages.pie.application.dto.product.ProductPublicDetailDTO;
 import com.ages.pie.application.dto.product.ProductResponseDTO;
 import com.ages.pie.application.dto.product.ProductUpdateDTO;
 import com.ages.pie.domain.entity.Product;
+import com.ages.pie.domain.enums.ProductStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Component;
 
@@ -68,6 +70,25 @@ public class ProductMapper {
             page.getTotalElements(),
             page.getNumber(),
             page.getSize()
+        );
+    }
+
+    public ProductPublicDetailDTO toPublicDetailDTO(Product product) {
+        boolean available = product.isActive() && product.getStatus() == ProductStatus.PUBLISHED;
+        return new ProductPublicDetailDTO(
+            product.getId(),
+            product.getName(),
+            product.getDescription(),
+            product.getCategory(),
+            product.getColor(),
+            product.getPrice(),
+            product.getImageUrl(),
+            product.getPurchaseUrl(),
+            product.getCompany() != null ? product.getCompany().getName() : null,
+            product.getStyles(),
+            product.getSizes(),
+            product.getMaterials(),
+            available
         );
     }
 }

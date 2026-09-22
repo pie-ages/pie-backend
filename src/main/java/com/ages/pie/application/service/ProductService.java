@@ -1,6 +1,8 @@
 package com.ages.pie.application.service;
 
+import com.ages.pie.application.dto.product.CatalogFiltersDTO;
 import com.ages.pie.application.dto.product.ProductCatalogPageDTO;
+import com.ages.pie.application.dto.product.ProductPublicDetailDTO;
 import com.ages.pie.application.dto.product.ProductRequestDTO;
 import com.ages.pie.application.dto.product.ProductResponseDTO;
 import com.ages.pie.application.dto.product.ProductUpdateDTO;
@@ -75,10 +77,25 @@ public class ProductService {
     }
 
     @Transactional(readOnly = true)
-    public ProductCatalogPageDTO findCatalog(String search, Pageable pageable) {
+    public ProductCatalogPageDTO findCatalog(String search, CatalogFiltersDTO filters, Pageable pageable) {
+        validateCatalogFilters(filters);
         String normalizedSearch = normalize(search);
-        Page<Product> page = productRepository.findCatalog(normalizedSearch, pageable);
+        Page<Product> page = productRepository.findCatalog(
+                normalizedSearch,
+                toArrayOrNull(filters.styles()),
+                toArrayOrNull(filters.categories()),
+                toArrayOrNull(filters.colors()),
+                toUuidArrayOrNull(filters.companies()),
+                toArrayOrNull(filters.materials()),
+                pageable);
         return productMapper.toCatalogPageDTO(page);
+    }
+
+    @Transactional(readOnly = true)
+    public ProductPublicDetailDTO findPublicDetail(UUID id) {
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Produto não encontrado"));
+        return productMapper.toPublicDetailDTO(product);
     }
 
     @Transactional(readOnly = true)
@@ -213,6 +230,49 @@ public class ProductService {
 
         productRepository.deleteById(id);
         logger.info("Product deletado: {}", id);
+    }
+
+    private void validateCatalogFilters(CatalogFiltersDTO filters) {
+        if (filters.styles() != null) {
+            List<String> invalid = filters.styles().stream()
+                    .filter(s -> !ProductStyle.isValid(s)).toList();
+            if (!invalid.isEmpty()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Estilo(s) inválido(s): " + invalid);
+            }
+        }
+        if (filters.categories() != null) {
+            List<String> invalid = filters.categories().stream()
+                    .filter(c -> !ProductCategory.isValid(c)).toList();
+            if (!invalid.isEmpty()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Categoria(s) inválida(s): " + invalid);
+            }
+        }
+        if (filters.colors() != null) {
+            List<String> invalid = filters.colors().stream()
+                    .filter(c -> !ProductColor.isValid(c)).toList();
+            if (!invalid.isEmpty()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Cor(es) inválida(s): " + invalid);
+            }
+        }
+        if (filters.materials() != null) {
+            List<String> invalid = filters.materials().stream()
+                    .filter(c -> !ProductMaterial.isValid(c)).toList();
+            if (!invalid.isEmpty()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Material(is) inválido(s): " + invalid);
+            }
+        }
+    }
+
+    private String[] toArrayOrNull(List<String> list) {
+        return (list == null || list.isEmpty()) ? null : list.toArray(new String[0]);
+    }
+
+    private UUID[] toUuidArrayOrNull(List<UUID> list) {
+        return (list == null || list.isEmpty()) ? null : list.toArray(new UUID[0]);
     }
 
     private String normalize(String search) {
