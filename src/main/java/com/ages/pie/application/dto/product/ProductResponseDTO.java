@@ -19,7 +19,9 @@ public record ProductResponseDTO(
     ProductStatus status,
     String companyName,
     OffsetDateTime createdAt,
-    String style,
-    List<String> sizes
+    OffsetDateTime updatedAt,
+    List<String> styles,
+    List<String> sizes,
+    List<String> materials
 ) {
 }
