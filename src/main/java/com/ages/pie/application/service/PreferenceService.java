@@ -7,6 +7,7 @@ import com.ages.pie.domain.entity.BodyProfile;
 import com.ages.pie.domain.entity.User;
 import com.ages.pie.infrastructure.repository.BodyProfileRepository;
 import com.ages.pie.infrastructure.repository.UserRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,6 +25,7 @@ public class PreferenceService {
     private final UserRepository userRepository;
     private final Random random;
 
+    @Autowired
     public PreferenceService(BodyProfileRepository bodyProfileRepository,
                              UserRepository userRepository) {
         this.bodyProfileRepository = bodyProfileRepository;
