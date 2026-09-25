@@ -9,6 +9,7 @@ import com.ages.pie.application.dto.product.ProductUpdateDTO;
 import com.ages.pie.application.service.ProductService;
 import com.ages.pie.domain.enums.ProductStatus;
 import com.ages.pie.infrastructure.security.AuthenticatedUserProvider;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
@@ -84,12 +85,14 @@ public class ProductController {
     }
 
     @PatchMapping("/{id}/publish")
+    @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<ProductResponseDTO> publish(@PathVariable UUID id) {
         UUID companyId = authenticatedUserProvider.id();
         return ResponseEntity.ok(productService.publish(id, companyId));
     }
 
     @PatchMapping("/{id}/unpublish")
+    @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<ProductResponseDTO> unpublish(@PathVariable UUID id) {
         UUID companyId = authenticatedUserProvider.id();
         return ResponseEntity.ok(productService.unpublish(id, companyId));

@@ -8,6 +8,7 @@ import com.ages.pie.application.dto.user.UserUpdateDTO;
 import com.ages.pie.application.service.PreferenceService;
 import com.ages.pie.application.service.UserService;
 import com.ages.pie.infrastructure.security.AuthenticatedUserProvider;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -61,12 +62,14 @@ public class UserController {
     }
 
     @GetMapping("/me/preferences")
+    @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<PreferencesResponseDTO> getPreferences() {
         UUID userId = authProvider.id();
         return ResponseEntity.ok(preferenceService.getPreferences(userId));
     }
 
     @PutMapping("/me/preferences")
+    @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<PreferencesResponseDTO> updatePreferences(
             @Valid @RequestBody PreferencesRequestDTO dto) {
         UUID userId = authProvider.id();
