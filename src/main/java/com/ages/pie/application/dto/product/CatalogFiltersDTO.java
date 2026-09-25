@@ -7,5 +7,6 @@ public record CatalogFiltersDTO(
     List<String> styles,
     List<String> categories,
     List<String> colors,
-    List<UUID> companies
+    List<UUID> companies,
+    List<String> materials
 ) {}

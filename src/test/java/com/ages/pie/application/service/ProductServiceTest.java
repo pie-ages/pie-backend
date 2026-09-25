@@ -302,36 +302,36 @@ class ProductServiceTest {
                 "Camiseta", "Branco", new BigDecimal("49.90"), "https://exemplo.com/camiseta.jpg",
                 "https://loja.exemplo.com/camiseta", "Loja X", ProductStatus.DRAFT, List.of(), List.of(), List.of());
         ProductCatalogPageDTO pageDTO = new ProductCatalogPageDTO(List.of(itemDTO), 1, 0, 20);
-        CatalogFiltersDTO emptyFilters = new CatalogFiltersDTO(null, null, null, null);
-        when(productRepository.findCatalog(isNull(), isNull(), isNull(), isNull(), isNull(), eq(pageable))).thenReturn(page);
+        CatalogFiltersDTO emptyFilters = new CatalogFiltersDTO(null, null, null, null, null);
+        when(productRepository.findCatalog(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), eq(pageable))).thenReturn(page);
         when(productMapper.toCatalogPageDTO(page)).thenReturn(pageDTO);
 
         ProductCatalogPageDTO result = productService.findCatalog(null, emptyFilters, pageable);
 
         assertThat(result).isEqualTo(pageDTO);
-        verify(productRepository).findCatalog(isNull(), isNull(), isNull(), isNull(), isNull(), eq(pageable));
+        verify(productRepository).findCatalog(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), eq(pageable));
     }
 
     @Test
     void findCatalog_shouldPassNullSearch_whenSearchIsBlank() {
         Pageable pageable = PageRequest.of(0, 20);
         Page<Product> page = new PageImpl<>(List.of(product), pageable, 1);
-        CatalogFiltersDTO emptyFilters = new CatalogFiltersDTO(null, null, null, null);
-        when(productRepository.findCatalog(isNull(), isNull(), isNull(), isNull(), isNull(), eq(pageable))).thenReturn(page);
+        CatalogFiltersDTO emptyFilters = new CatalogFiltersDTO(null, null, null, null, null);
+        when(productRepository.findCatalog(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), eq(pageable))).thenReturn(page);
         when(productMapper.toCatalogPageDTO(page)).thenReturn(new ProductCatalogPageDTO(List.of(), 1, 0, 20));
 
         productService.findCatalog("   ", emptyFilters, pageable);
 
-        verify(productRepository).findCatalog(isNull(), isNull(), isNull(), isNull(), isNull(), eq(pageable));
+        verify(productRepository).findCatalog(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), eq(pageable));
     }
 
     @Test
     void findCatalog_shouldTrimSearch_whenSearchHasSurroundingWhitespace() {
         Pageable pageable = PageRequest.of(0, 20);
         Page<Product> page = new PageImpl<>(List.of(product), pageable, 1);
-        CatalogFiltersDTO emptyFilters = new CatalogFiltersDTO(null, null, null, null);
+        CatalogFiltersDTO emptyFilters = new CatalogFiltersDTO(null, null, null, null, null);
         ArgumentCaptor<String> searchCaptor = ArgumentCaptor.forClass(String.class);
-        when(productRepository.findCatalog(searchCaptor.capture(), isNull(), isNull(), isNull(), isNull(), eq(pageable))).thenReturn(page);
+        when(productRepository.findCatalog(searchCaptor.capture(), isNull(), isNull(), isNull(), isNull(), isNull(), eq(pageable))).thenReturn(page);
         when(productMapper.toCatalogPageDTO(page)).thenReturn(new ProductCatalogPageDTO(List.of(), 1, 0, 20));
 
         productService.findCatalog("  camiseta  ", emptyFilters, pageable);
@@ -344,8 +344,8 @@ class ProductServiceTest {
         Pageable pageable = PageRequest.of(0, 20);
         Page<Product> emptyPage = new PageImpl<>(List.of(), pageable, 0);
         ProductCatalogPageDTO emptyDTO = new ProductCatalogPageDTO(List.of(), 0, 0, 20);
-        CatalogFiltersDTO emptyFilters = new CatalogFiltersDTO(null, null, null, null);
-        when(productRepository.findCatalog(any(), isNull(), isNull(), isNull(), isNull(), eq(pageable))).thenReturn(emptyPage);
+        CatalogFiltersDTO emptyFilters = new CatalogFiltersDTO(null, null, null, null, null);
+        when(productRepository.findCatalog(any(), isNull(), isNull(), isNull(), isNull(), isNull(), eq(pageable))).thenReturn(emptyPage);
         when(productMapper.toCatalogPageDTO(emptyPage)).thenReturn(emptyDTO);
 
         ProductCatalogPageDTO result = productService.findCatalog("inexistente", emptyFilters, pageable);
@@ -358,60 +358,60 @@ class ProductServiceTest {
     void findCatalog_shouldPassFiltersToRepo_whenFiltersAreValid() {
         Pageable pageable = PageRequest.of(0, 20);
         Page<Product> page = new PageImpl<>(List.of(product), pageable, 1);
-        CatalogFiltersDTO filters = new CatalogFiltersDTO(List.of("casual"), List.of("camiseta"), null, null);
-        when(productRepository.findCatalog(isNull(), eq(new String[]{"casual"}), eq(new String[]{"camiseta"}), isNull(), isNull(), eq(pageable)))
+        CatalogFiltersDTO filters = new CatalogFiltersDTO(List.of("casual"), List.of("camiseta"), null, null, null);
+        when(productRepository.findCatalog(isNull(), eq(new String[]{"casual"}), eq(new String[]{"camiseta"}), isNull(), isNull(), isNull(), eq(pageable)))
                 .thenReturn(page);
         when(productMapper.toCatalogPageDTO(page)).thenReturn(new ProductCatalogPageDTO(List.of(), 1, 0, 20));
 
         productService.findCatalog(null, filters, pageable);
 
-        verify(productRepository).findCatalog(isNull(), eq(new String[]{"casual"}), eq(new String[]{"camiseta"}), isNull(), isNull(), eq(pageable));
+        verify(productRepository).findCatalog(isNull(), eq(new String[]{"casual"}), eq(new String[]{"camiseta"}), isNull(), isNull(), isNull(), eq(pageable));
     }
 
     @Test
     void findCatalog_shouldConvertEmptyListToNull_beforeCallingRepo() {
         Pageable pageable = PageRequest.of(0, 20);
         Page<Product> page = new PageImpl<>(List.of(), pageable, 0);
-        CatalogFiltersDTO filters = new CatalogFiltersDTO(List.of(), List.of(), List.of(), List.of());
-        when(productRepository.findCatalog(isNull(), isNull(), isNull(), isNull(), isNull(), eq(pageable))).thenReturn(page);
+        CatalogFiltersDTO filters = new CatalogFiltersDTO(List.of(), List.of(), List.of(), List.of(), List.of());
+        when(productRepository.findCatalog(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), eq(pageable))).thenReturn(page);
         when(productMapper.toCatalogPageDTO(page)).thenReturn(new ProductCatalogPageDTO(List.of(), 0, 0, 20));
 
         productService.findCatalog(null, filters, pageable);
 
-        verify(productRepository).findCatalog(isNull(), isNull(), isNull(), isNull(), isNull(), eq(pageable));
+        verify(productRepository).findCatalog(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), eq(pageable));
     }
 
     @Test
     void findCatalog_shouldThrowBadRequest_whenStyleIsInvalid() {
         Pageable pageable = PageRequest.of(0, 20);
-        CatalogFiltersDTO filters = new CatalogFiltersDTO(List.of("invalido"), null, null, null);
+        CatalogFiltersDTO filters = new CatalogFiltersDTO(List.of("invalido"), null, null, null, null);
 
         Throwable thrown = catchThrowable(() -> productService.findCatalog(null, filters, pageable));
 
         assertThat(statusOf(thrown)).isEqualTo(HttpStatus.BAD_REQUEST.value());
-        verify(productRepository, never()).findCatalog(any(), any(), any(), any(), any(), any());
+        verify(productRepository, never()).findCatalog(any(), any(), any(), any(), any(), any(), any());
     }
 
     @Test
     void findCatalog_shouldThrowBadRequest_whenCategoryIsInvalid() {
         Pageable pageable = PageRequest.of(0, 20);
-        CatalogFiltersDTO filters = new CatalogFiltersDTO(null, List.of("invalido"), null, null);
+        CatalogFiltersDTO filters = new CatalogFiltersDTO(null, List.of("invalido"), null, null, null);
 
         Throwable thrown = catchThrowable(() -> productService.findCatalog(null, filters, pageable));
 
         assertThat(statusOf(thrown)).isEqualTo(HttpStatus.BAD_REQUEST.value());
-        verify(productRepository, never()).findCatalog(any(), any(), any(), any(), any(), any());
+        verify(productRepository, never()).findCatalog(any(), any(), any(), any(), any(), any(), any());
     }
 
     @Test
     void findCatalog_shouldThrowBadRequest_whenColorIsInvalid() {
         Pageable pageable = PageRequest.of(0, 20);
-        CatalogFiltersDTO filters = new CatalogFiltersDTO(null, null, List.of("invalido"), null);
+        CatalogFiltersDTO filters = new CatalogFiltersDTO(null, null, List.of("invalido"), null, null);
 
         Throwable thrown = catchThrowable(() -> productService.findCatalog(null, filters, pageable));
 
         assertThat(statusOf(thrown)).isEqualTo(HttpStatus.BAD_REQUEST.value());
-        verify(productRepository, never()).findCatalog(any(), any(), any(), any(), any(), any());
+        verify(productRepository, never()).findCatalog(any(), any(), any(), any(), any(), any(), any());
     }
 
     // ── findByCompany ─────────────────────────────────────────────────────

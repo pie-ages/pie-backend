@@ -95,6 +95,7 @@ public class ProductService {
                 toArrayOrNull(filters.categories()),
                 toArrayOrNull(filters.colors()),
                 toUuidArrayOrNull(filters.companies()),
+                toArrayOrNull(filters.materials()),
                 pageable);
         return productMapper.toCatalogPageDTO(page);
     }
@@ -267,6 +268,14 @@ public class ProductService {
             if (!invalid.isEmpty()) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                         "Cor(es) inválida(s): " + invalid);
+            }
+        }
+        if (filters.materials() != null) {
+            List<String> invalid = filters.materials().stream()
+                    .filter(c -> !ProductMaterial.isValid(c)).toList();
+            if (!invalid.isEmpty()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Material(is) inválido(s): " + invalid);
             }
         }
     }
