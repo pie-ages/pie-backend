@@ -1,13 +1,16 @@
 package com.ages.pie.application.service;
 
+import com.ages.pie.application.dto.product.CatalogFiltersDTO;
 import com.ages.pie.application.dto.product.ProductCatalogItemDTO;
 import com.ages.pie.application.dto.product.ProductCatalogPageDTO;
+import com.ages.pie.application.dto.product.ProductPublicDetailDTO;
 import com.ages.pie.application.dto.product.ProductRequestDTO;
 import com.ages.pie.application.dto.product.ProductResponseDTO;
 import com.ages.pie.application.dto.product.ProductUpdateDTO;
 import com.ages.pie.application.mapper.ProductMapper;
 import com.ages.pie.domain.entity.Company;
 import com.ages.pie.domain.entity.Product;
+import com.ages.pie.domain.enums.ProductStatus;
 import com.ages.pie.infrastructure.repository.CompanyRepository;
 import com.ages.pie.infrastructure.repository.ProductRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -69,24 +72,26 @@ class ProductServiceTest {
                 "loja@email.com", "hash(senha123)", null, null);
         product = new Product(company, "Camiseta");
         product.setDescription("Camiseta 100% algodão");
-        product.setCategory("Roupas");
+        product.setCategory("Camiseta");
+        product.setColor("Branco");
         product.setPrice(new BigDecimal("49.90"));
         product.setImageUrl("https://exemplo.com/camiseta.jpg");
         product.setPurchaseUrl("https://loja.exemplo.com/camiseta");
         responseDTO = new ProductResponseDTO(productId, "Camiseta", "Camiseta 100% algodão",
-                "Roupas", new BigDecimal("49.90"), "https://exemplo.com/camiseta.jpg",
-                "https://loja.exemplo.com/camiseta", true, "Loja X", OffsetDateTime.now());
+                "Camiseta", "Branco", new BigDecimal("49.90"), "https://exemplo.com/camiseta.jpg",
+                "https://loja.exemplo.com/camiseta", ProductStatus.DRAFT, "Loja X", OffsetDateTime.now(),
+                OffsetDateTime.now(), List.of(), List.of(), List.of());
         lenient().doCallRealMethod().when(productMapper).updateEntityFromDto(any(), any());
     }
 
     private ProductRequestDTO requestDTO() {
-        return new ProductRequestDTO("Camiseta", "Camiseta 100% algodão", "Roupas",
+        return new ProductRequestDTO("Camiseta", "Camiseta 100% algodão", "Camiseta", "Branco", null, null, null,
                 new BigDecimal("49.90"), "https://exemplo.com/camiseta.jpg",
                 "https://loja.exemplo.com/camiseta", companyId);
     }
 
     private ProductUpdateDTO updateDTO() {
-        return new ProductUpdateDTO("Camiseta Premium", null, null,
+        return new ProductUpdateDTO("Camiseta Premium", null, null, null, null, null, null,
                 new BigDecimal("59.90"), null, null, null);
     }
 
@@ -105,6 +110,8 @@ class ProductServiceTest {
         when(productRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
     }
 
+    // ── create ────────────────────────────────────────────────────────────
+
     @Test
     void create_shouldReturnResponseDTO_whenDataIsValid() {
         ProductRequestDTO dto = requestDTO();
@@ -118,7 +125,9 @@ class ProductServiceTest {
         Product saved = savedProduct();
         assertThat(saved.getName()).isEqualTo("Camiseta");
         assertThat(saved.getPrice()).isEqualByComparingTo("49.90");
+        assertThat(saved.getColor()).isEqualTo("Branco");
         assertThat(saved.getCompany()).isEqualTo(company);
+        assertThat(saved.getStatus()).isEqualTo(ProductStatus.DRAFT);
     }
 
     @Test
@@ -133,7 +142,7 @@ class ProductServiceTest {
 
     @Test
     void create_shouldThrowBadRequest_whenNameIsBlank() {
-        ProductRequestDTO dto = new ProductRequestDTO("  ", null, null,
+        ProductRequestDTO dto = new ProductRequestDTO("  ", null, null, null, null, null, null,
                 new BigDecimal("49.90"), null, null, companyId);
         when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
 
@@ -142,6 +151,8 @@ class ProductServiceTest {
         assertThat(statusOf(thrown)).isEqualTo(HttpStatus.BAD_REQUEST.value());
         verify(productRepository, never()).save(any());
     }
+
+    // ── findById ──────────────────────────────────────────────────────────
 
     @Test
     void findById_shouldReturnResponseDTO_whenProductExists() {
@@ -160,6 +171,8 @@ class ProductServiceTest {
         assertThat(statusOf(thrown)).isEqualTo(HttpStatus.NOT_FOUND.value());
     }
 
+    // ── update ────────────────────────────────────────────────────────────
+
     @Test
     void update_shouldApplyOnlyProvidedFields_whenProductExists() {
         stubSavePassthrough();
@@ -173,6 +186,7 @@ class ProductServiceTest {
         assertThat(saved.getName()).isEqualTo("Camiseta Premium");
         assertThat(saved.getPrice()).isEqualByComparingTo("59.90");
         assertThat(saved.getDescription()).isEqualTo("Camiseta 100% algodão");
+        assertThat(saved.getColor()).isEqualTo("Branco");
         assertThat(saved.getCompany()).isEqualTo(company);
     }
 
@@ -181,7 +195,7 @@ class ProductServiceTest {
         UUID otherCompanyId = UUID.randomUUID();
         Company otherCompany = new Company(otherCompanyId, "Loja Y", "98765432000188", "Loja Y LTDA",
                 "Joao", "outra@email.com", "hash(senha456)", null, null);
-        ProductUpdateDTO dto = new ProductUpdateDTO(null, null, null, null, null, null, otherCompanyId);
+        ProductUpdateDTO dto = new ProductUpdateDTO(null, null, null, null, null, null, null, null, null, null, otherCompanyId);
         stubSavePassthrough();
         when(productRepository.findById(productId)).thenReturn(Optional.of(product));
         when(companyRepository.findById(otherCompanyId)).thenReturn(Optional.of(otherCompany));
@@ -205,7 +219,7 @@ class ProductServiceTest {
     @Test
     void update_shouldThrowNotFound_whenNewCompanyDoesNotExist() {
         UUID unknownCompanyId = UUID.randomUUID();
-        ProductUpdateDTO dto = new ProductUpdateDTO(null, null, null, null, null, null, unknownCompanyId);
+        ProductUpdateDTO dto = new ProductUpdateDTO(null, null, null, null, null, null, null, null, null, null, unknownCompanyId);
         when(productRepository.findById(productId)).thenReturn(Optional.of(product));
         when(companyRepository.findById(unknownCompanyId)).thenReturn(Optional.empty());
 
@@ -217,7 +231,7 @@ class ProductServiceTest {
 
     @Test
     void update_shouldThrowBadRequest_whenNameIsBlank() {
-        ProductUpdateDTO dto = new ProductUpdateDTO("  ", null, null, null, null, null, null);
+        ProductUpdateDTO dto = new ProductUpdateDTO("  ", null, null, null, null, null, null, null, null, null, null);
         when(productRepository.findById(productId)).thenReturn(Optional.of(product));
 
         Throwable thrown = catchThrowable(() -> productService.update(productId, dto));
@@ -225,6 +239,8 @@ class ProductServiceTest {
         assertThat(statusOf(thrown)).isEqualTo(HttpStatus.BAD_REQUEST.value());
         verify(productRepository, never()).save(any());
     }
+
+    // ── deactivate ────────────────────────────────────────────────────────
 
     @Test
     void deactivate_shouldDeactivateProduct_whenProductExists() {
@@ -246,6 +262,8 @@ class ProductServiceTest {
         verify(productRepository, never()).save(any());
     }
 
+    // ── delete ────────────────────────────────────────────────────────────
+
     @Test
     void delete_shouldDeleteProduct_whenProductExists() {
         when(productRepository.existsById(productId)).thenReturn(true);
@@ -265,44 +283,49 @@ class ProductServiceTest {
         verify(productRepository, never()).deleteById(any());
     }
 
+    // ── findCatalog ───────────────────────────────────────────────────────
+
     @Test
     void findCatalog_shouldPassNullSearch_whenSearchIsNull() {
         Pageable pageable = PageRequest.of(0, 20);
         Page<Product> page = new PageImpl<>(List.of(product), pageable, 1);
         ProductCatalogItemDTO itemDTO = new ProductCatalogItemDTO(productId, "Camiseta",
-                new BigDecimal("49.90"), "https://exemplo.com/camiseta.jpg",
-                "https://loja.exemplo.com/camiseta", "Loja X");
+                "Camiseta", "Branco", new BigDecimal("49.90"), "https://exemplo.com/camiseta.jpg",
+                "https://loja.exemplo.com/camiseta", "Loja X", ProductStatus.DRAFT, List.of(), List.of(), List.of());
         ProductCatalogPageDTO pageDTO = new ProductCatalogPageDTO(List.of(itemDTO), 1, 0, 20);
-        when(productRepository.findCatalog(isNull(), eq(pageable))).thenReturn(page);
+        CatalogFiltersDTO emptyFilters = new CatalogFiltersDTO(null, null, null, null, null);
+        when(productRepository.findCatalog(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), eq(pageable))).thenReturn(page);
         when(productMapper.toCatalogPageDTO(page)).thenReturn(pageDTO);
 
-        ProductCatalogPageDTO result = productService.findCatalog(null, pageable);
+        ProductCatalogPageDTO result = productService.findCatalog(null, emptyFilters, pageable);
 
         assertThat(result).isEqualTo(pageDTO);
-        verify(productRepository).findCatalog(isNull(), eq(pageable));
+        verify(productRepository).findCatalog(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), eq(pageable));
     }
 
     @Test
     void findCatalog_shouldPassNullSearch_whenSearchIsBlank() {
         Pageable pageable = PageRequest.of(0, 20);
         Page<Product> page = new PageImpl<>(List.of(product), pageable, 1);
-        when(productRepository.findCatalog(isNull(), eq(pageable))).thenReturn(page);
+        CatalogFiltersDTO emptyFilters = new CatalogFiltersDTO(null, null, null, null, null);
+        when(productRepository.findCatalog(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), eq(pageable))).thenReturn(page);
         when(productMapper.toCatalogPageDTO(page)).thenReturn(new ProductCatalogPageDTO(List.of(), 1, 0, 20));
 
-        productService.findCatalog("   ", pageable);
+        productService.findCatalog("   ", emptyFilters, pageable);
 
-        verify(productRepository).findCatalog(isNull(), eq(pageable));
+        verify(productRepository).findCatalog(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), eq(pageable));
     }
 
     @Test
     void findCatalog_shouldTrimSearch_whenSearchHasSurroundingWhitespace() {
         Pageable pageable = PageRequest.of(0, 20);
         Page<Product> page = new PageImpl<>(List.of(product), pageable, 1);
+        CatalogFiltersDTO emptyFilters = new CatalogFiltersDTO(null, null, null, null, null);
         ArgumentCaptor<String> searchCaptor = ArgumentCaptor.forClass(String.class);
-        when(productRepository.findCatalog(searchCaptor.capture(), eq(pageable))).thenReturn(page);
+        when(productRepository.findCatalog(searchCaptor.capture(), isNull(), isNull(), isNull(), isNull(), isNull(), eq(pageable))).thenReturn(page);
         when(productMapper.toCatalogPageDTO(page)).thenReturn(new ProductCatalogPageDTO(List.of(), 1, 0, 20));
 
-        productService.findCatalog("  camiseta  ", pageable);
+        productService.findCatalog("  camiseta  ", emptyFilters, pageable);
 
         assertThat(searchCaptor.getValue()).isEqualTo("camiseta");
     }
@@ -312,12 +335,345 @@ class ProductServiceTest {
         Pageable pageable = PageRequest.of(0, 20);
         Page<Product> emptyPage = new PageImpl<>(List.of(), pageable, 0);
         ProductCatalogPageDTO emptyDTO = new ProductCatalogPageDTO(List.of(), 0, 0, 20);
-        when(productRepository.findCatalog(any(), eq(pageable))).thenReturn(emptyPage);
+        CatalogFiltersDTO emptyFilters = new CatalogFiltersDTO(null, null, null, null, null);
+        when(productRepository.findCatalog(any(), isNull(), isNull(), isNull(), isNull(), isNull(), eq(pageable))).thenReturn(emptyPage);
         when(productMapper.toCatalogPageDTO(emptyPage)).thenReturn(emptyDTO);
 
-        ProductCatalogPageDTO result = productService.findCatalog("inexistente", pageable);
+        ProductCatalogPageDTO result = productService.findCatalog("inexistente", emptyFilters, pageable);
 
         assertThat(result.items()).isEmpty();
         assertThat(result.total()).isZero();
+    }
+
+    @Test
+    void findCatalog_shouldPassFiltersToRepo_whenFiltersAreValid() {
+        Pageable pageable = PageRequest.of(0, 20);
+        Page<Product> page = new PageImpl<>(List.of(product), pageable, 1);
+        CatalogFiltersDTO filters = new CatalogFiltersDTO(List.of("casual"), List.of("camiseta"), null, null, null);
+        when(productRepository.findCatalog(isNull(), eq(new String[]{"casual"}), eq(new String[]{"camiseta"}), isNull(), isNull(), isNull(), eq(pageable)))
+                .thenReturn(page);
+        when(productMapper.toCatalogPageDTO(page)).thenReturn(new ProductCatalogPageDTO(List.of(), 1, 0, 20));
+
+        productService.findCatalog(null, filters, pageable);
+
+        verify(productRepository).findCatalog(isNull(), eq(new String[]{"casual"}), eq(new String[]{"camiseta"}), isNull(), isNull(), isNull(), eq(pageable));
+    }
+
+    @Test
+    void findCatalog_shouldConvertEmptyListToNull_beforeCallingRepo() {
+        Pageable pageable = PageRequest.of(0, 20);
+        Page<Product> page = new PageImpl<>(List.of(), pageable, 0);
+        CatalogFiltersDTO filters = new CatalogFiltersDTO(List.of(), List.of(), List.of(), List.of(), List.of());
+        when(productRepository.findCatalog(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), eq(pageable))).thenReturn(page);
+        when(productMapper.toCatalogPageDTO(page)).thenReturn(new ProductCatalogPageDTO(List.of(), 0, 0, 20));
+
+        productService.findCatalog(null, filters, pageable);
+
+        verify(productRepository).findCatalog(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), eq(pageable));
+    }
+
+    @Test
+    void findCatalog_shouldThrowBadRequest_whenStyleIsInvalid() {
+        Pageable pageable = PageRequest.of(0, 20);
+        CatalogFiltersDTO filters = new CatalogFiltersDTO(List.of("invalido"), null, null, null, null);
+
+        Throwable thrown = catchThrowable(() -> productService.findCatalog(null, filters, pageable));
+
+        assertThat(statusOf(thrown)).isEqualTo(HttpStatus.BAD_REQUEST.value());
+        verify(productRepository, never()).findCatalog(any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void findCatalog_shouldThrowBadRequest_whenCategoryIsInvalid() {
+        Pageable pageable = PageRequest.of(0, 20);
+        CatalogFiltersDTO filters = new CatalogFiltersDTO(null, List.of("invalido"), null, null, null);
+
+        Throwable thrown = catchThrowable(() -> productService.findCatalog(null, filters, pageable));
+
+        assertThat(statusOf(thrown)).isEqualTo(HttpStatus.BAD_REQUEST.value());
+        verify(productRepository, never()).findCatalog(any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void findCatalog_shouldThrowBadRequest_whenColorIsInvalid() {
+        Pageable pageable = PageRequest.of(0, 20);
+        CatalogFiltersDTO filters = new CatalogFiltersDTO(null, null, List.of("invalido"), null, null);
+
+        Throwable thrown = catchThrowable(() -> productService.findCatalog(null, filters, pageable));
+
+        assertThat(statusOf(thrown)).isEqualTo(HttpStatus.BAD_REQUEST.value());
+        verify(productRepository, never()).findCatalog(any(), any(), any(), any(), any(), any(), any());
+    }
+
+    // ── findByCompany ─────────────────────────────────────────────────────
+
+    @Test
+    void findByCompany_shouldReturnFilteredProducts_whenCompanyExists() {
+        Pageable pageable = PageRequest.of(0, 20);
+        Page<Product> page = new PageImpl<>(List.of(product), pageable, 1);
+        ProductCatalogItemDTO itemDTO = new ProductCatalogItemDTO(productId, "Camiseta",
+                "Camiseta", "Branco", new BigDecimal("49.90"), "https://exemplo.com/camiseta.jpg",
+                "https://loja.exemplo.com/camiseta", "Loja X", ProductStatus.PUBLISHED, List.of(), List.of(), List.of());
+        ProductCatalogPageDTO pageDTO = new ProductCatalogPageDTO(List.of(itemDTO), 1, 0, 20);
+        when(companyRepository.existsById(companyId)).thenReturn(true);
+        when(productRepository.findByCompanyFiltered(companyId, ProductStatus.PUBLISHED, null, pageable))
+                .thenReturn(page);
+        when(productMapper.toCatalogPageDTO(page)).thenReturn(pageDTO);
+
+        ProductCatalogPageDTO result = productService.findByCompany(companyId, ProductStatus.PUBLISHED, null, pageable);
+
+        assertThat(result).isEqualTo(pageDTO);
+    }
+
+    @Test
+    void findByCompany_shouldReturnAllProducts_whenStatusIsNull() {
+        Pageable pageable = PageRequest.of(0, 20);
+        Page<Product> page = new PageImpl<>(List.of(product), pageable, 1);
+        ProductCatalogPageDTO pageDTO = new ProductCatalogPageDTO(List.of(), 1, 0, 20);
+        when(companyRepository.existsById(companyId)).thenReturn(true);
+        when(productRepository.findByCompanyFiltered(eq(companyId), isNull(), isNull(), eq(pageable)))
+                .thenReturn(page);
+        when(productMapper.toCatalogPageDTO(page)).thenReturn(pageDTO);
+
+        productService.findByCompany(companyId, null, null, pageable);
+
+        verify(productRepository).findByCompanyFiltered(eq(companyId), isNull(), isNull(), eq(pageable));
+    }
+
+    @Test
+    void findByCompany_shouldThrowNotFound_whenCompanyDoesNotExist() {
+        Pageable pageable = PageRequest.of(0, 20);
+        when(companyRepository.existsById(companyId)).thenReturn(false);
+
+        Throwable thrown = catchThrowable(
+                () -> productService.findByCompany(companyId, null, null, pageable));
+
+        assertThat(statusOf(thrown)).isEqualTo(HttpStatus.NOT_FOUND.value());
+    }
+
+    @Test
+    void findByCompany_shouldPassNullSearch_whenSearchIsBlank() {
+        Pageable pageable = PageRequest.of(0, 20);
+        Page<Product> page = new PageImpl<>(List.of(), pageable, 0);
+        when(companyRepository.existsById(companyId)).thenReturn(true);
+        when(productRepository.findByCompanyFiltered(eq(companyId), isNull(), isNull(), eq(pageable)))
+                .thenReturn(page);
+        when(productMapper.toCatalogPageDTO(page)).thenReturn(new ProductCatalogPageDTO(List.of(), 0, 0, 20));
+
+        productService.findByCompany(companyId, null, "   ", pageable);
+
+        verify(productRepository).findByCompanyFiltered(eq(companyId), isNull(), isNull(), eq(pageable));
+    }
+
+    // ── publish ───────────────────────────────────────────────────────────
+
+    @Test
+    void publish_shouldSetStatusPublicado_whenProductIsRascunhoAndOwnedByCompany() {
+        product.setStatus(ProductStatus.DRAFT);
+        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+        stubSavePassthrough();
+        when(productMapper.toResponseDTO(any())).thenReturn(responseDTO);
+
+        productService.publish(productId, companyId);
+
+        assertThat(product.getStatus()).isEqualTo(ProductStatus.PUBLISHED);
+        verify(productRepository).save(product);
+    }
+
+    @Test
+    void publish_shouldSetStatusPublicado_whenProductIsPausadoAndOwnedByCompany() {
+        product.setStatus(ProductStatus.PAUSED);
+        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+        stubSavePassthrough();
+        when(productMapper.toResponseDTO(any())).thenReturn(responseDTO);
+
+        productService.publish(productId, companyId);
+
+        assertThat(product.getStatus()).isEqualTo(ProductStatus.PUBLISHED);
+        verify(productRepository).save(product);
+    }
+
+    @Test
+    void publish_shouldThrowConflict_whenProductIsAlreadyPublicado() {
+        product.setStatus(ProductStatus.PUBLISHED);
+        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+
+        Throwable thrown = catchThrowable(() -> productService.publish(productId, companyId));
+
+        assertThat(statusOf(thrown)).isEqualTo(HttpStatus.CONFLICT.value());
+        verify(productRepository, never()).save(any());
+    }
+
+    @Test
+    void publish_shouldThrowConflict_whenProductIsDeactivated() {
+        product.setStatus(ProductStatus.DRAFT);
+        product.setActive(false);
+        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+
+        Throwable thrown = catchThrowable(() -> productService.publish(productId, companyId));
+
+        assertThat(statusOf(thrown)).isEqualTo(HttpStatus.CONFLICT.value());
+        verify(productRepository, never()).save(any());
+    }
+
+    @Test
+    void publish_shouldThrowForbidden_whenCompanyIsNotOwner() {
+        UUID otherCompanyId = UUID.randomUUID();
+        product.setStatus(ProductStatus.DRAFT);
+        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+
+        Throwable thrown = catchThrowable(() -> productService.publish(productId, otherCompanyId));
+
+        assertThat(statusOf(thrown)).isEqualTo(HttpStatus.FORBIDDEN.value());
+        verify(productRepository, never()).save(any());
+    }
+
+    @Test
+    void publish_shouldThrowUnauthorized_whenCompanyIdIsNull() {
+        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+
+        Throwable thrown = catchThrowable(() -> productService.publish(productId, null));
+
+        assertThat(statusOf(thrown)).isEqualTo(HttpStatus.UNAUTHORIZED.value());
+        verify(productRepository, never()).save(any());
+    }
+
+    @Test
+    void publish_shouldThrowNotFound_whenProductDoesNotExist() {
+        when(productRepository.findById(productId)).thenReturn(Optional.empty());
+
+        Throwable thrown = catchThrowable(() -> productService.publish(productId, companyId));
+
+        assertThat(statusOf(thrown)).isEqualTo(HttpStatus.NOT_FOUND.value());
+        verify(productRepository, never()).save(any());
+    }
+
+    @Test
+    void publish_shouldThrowBadRequest_whenPriceIsNull() {
+        product.setStatus(ProductStatus.DRAFT);
+        product.setPrice(null);
+        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+
+        Throwable thrown = catchThrowable(() -> productService.publish(productId, companyId));
+
+        assertThat(statusOf(thrown)).isEqualTo(HttpStatus.BAD_REQUEST.value());
+        verify(productRepository, never()).save(any());
+    }
+
+    // ── unpublish ─────────────────────────────────────────────────────────
+
+    @Test
+    void unpublish_shouldSetStatusPausado_whenProductIsPublicadoAndOwnedByCompany() {
+        product.setStatus(ProductStatus.PUBLISHED);
+        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+        stubSavePassthrough();
+        when(productMapper.toResponseDTO(any())).thenReturn(responseDTO);
+
+        productService.unpublish(productId, companyId);
+
+        assertThat(product.getStatus()).isEqualTo(ProductStatus.PAUSED);
+        verify(productRepository).save(product);
+    }
+
+    @Test
+    void unpublish_shouldThrowConflict_whenProductIsNotPublicado() {
+        product.setStatus(ProductStatus.DRAFT);
+        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+
+        Throwable thrown = catchThrowable(() -> productService.unpublish(productId, companyId));
+
+        assertThat(statusOf(thrown)).isEqualTo(HttpStatus.CONFLICT.value());
+        verify(productRepository, never()).save(any());
+    }
+
+    @Test
+    void unpublish_shouldThrowConflict_whenProductIsDeactivated() {
+        product.setStatus(ProductStatus.PUBLISHED);
+        product.setActive(false);
+        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+
+        Throwable thrown = catchThrowable(() -> productService.unpublish(productId, companyId));
+
+        assertThat(statusOf(thrown)).isEqualTo(HttpStatus.CONFLICT.value());
+        verify(productRepository, never()).save(any());
+    }
+
+    @Test
+    void unpublish_shouldThrowForbidden_whenCompanyIsNotOwner() {
+        UUID otherCompanyId = UUID.randomUUID();
+        product.setStatus(ProductStatus.PUBLISHED);
+        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+
+        Throwable thrown = catchThrowable(() -> productService.unpublish(productId, otherCompanyId));
+
+        assertThat(statusOf(thrown)).isEqualTo(HttpStatus.FORBIDDEN.value());
+        verify(productRepository, never()).save(any());
+    }
+
+    @Test
+    void unpublish_shouldThrowNotFound_whenProductDoesNotExist() {
+        when(productRepository.findById(productId)).thenReturn(Optional.empty());
+
+        Throwable thrown = catchThrowable(() -> productService.unpublish(productId, companyId));
+
+        assertThat(statusOf(thrown)).isEqualTo(HttpStatus.NOT_FOUND.value());
+        verify(productRepository, never()).save(any());
+    }
+
+    // ── findPublicDetail ──────────────────────────────────────────────────
+
+    @Test
+    void findPublicDetail_shouldReturnAvailableTrue_whenProductIsPublished() {
+        product.setStatus(ProductStatus.PUBLISHED);
+        ProductPublicDetailDTO detailDTO = new ProductPublicDetailDTO(
+                productId, "Camiseta", "desc", "camiseta", "branco",
+                new BigDecimal("49.90"), null, null, "Loja X",
+                List.of(), List.of(), List.of(), true);
+        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+        when(productMapper.toPublicDetailDTO(product)).thenReturn(detailDTO);
+
+        ProductPublicDetailDTO result = productService.findPublicDetail(productId);
+
+        assertThat(result.available()).isTrue();
+    }
+
+    @Test
+    void findPublicDetail_shouldReturnAvailableFalse_whenProductIsPaused() {
+        product.setStatus(ProductStatus.PAUSED);
+        ProductPublicDetailDTO detailDTO = new ProductPublicDetailDTO(
+                productId, "Camiseta", "desc", "camiseta", "branco",
+                new BigDecimal("49.90"), null, null, "Loja X",
+                List.of(), List.of(), List.of(), false);
+        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+        when(productMapper.toPublicDetailDTO(product)).thenReturn(detailDTO);
+
+        ProductPublicDetailDTO result = productService.findPublicDetail(productId);
+
+        assertThat(result.available()).isFalse();
+    }
+
+    @Test
+    void findPublicDetail_shouldReturnAvailableFalse_whenProductIsInactive() {
+        product.setStatus(ProductStatus.PUBLISHED);
+        product.setActive(false);
+        ProductPublicDetailDTO detailDTO = new ProductPublicDetailDTO(
+                productId, "Camiseta", "desc", "camiseta", "branco",
+                new BigDecimal("49.90"), null, null, "Loja X",
+                List.of(), List.of(), List.of(), false);
+        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+        when(productMapper.toPublicDetailDTO(product)).thenReturn(detailDTO);
+
+        ProductPublicDetailDTO result = productService.findPublicDetail(productId);
+
+        assertThat(result.available()).isFalse();
+    }
+
+    @Test
+    void findPublicDetail_shouldThrowNotFound_whenProductDoesNotExist() {
+        when(productRepository.findById(productId)).thenReturn(Optional.empty());
+
+        Throwable thrown = catchThrowable(() -> productService.findPublicDetail(productId));
+
+        assertThat(statusOf(thrown)).isEqualTo(HttpStatus.NOT_FOUND.value());
     }
 }

@@ -1,9 +1,14 @@
 package com.ages.pie.application.controller;
 
+import com.ages.pie.application.dto.user.PreferencesRequestDTO;
+import com.ages.pie.application.dto.user.PreferencesResponseDTO;
 import com.ages.pie.application.dto.user.UserRequestDTO;
 import com.ages.pie.application.dto.user.UserResponseDTO;
 import com.ages.pie.application.dto.user.UserUpdateDTO;
+import com.ages.pie.application.service.PreferenceService;
 import com.ages.pie.application.service.UserService;
+import com.ages.pie.infrastructure.security.AuthenticatedUserProvider;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -17,9 +22,15 @@ import java.util.UUID;
 public class UserController {
 
     private final UserService userService;
+    private final PreferenceService preferenceService;
+    private final AuthenticatedUserProvider authProvider;
 
-    public UserController(UserService userService) {
+    public UserController(UserService userService,
+                          PreferenceService preferenceService,
+                          AuthenticatedUserProvider authProvider) {
         this.userService = userService;
+        this.preferenceService = preferenceService;
+        this.authProvider = authProvider;
     }
 
     @PostMapping
@@ -49,4 +60,20 @@ public class UserController {
         userService.delete(id);
         return ResponseEntity.noContent().build();
     }
+
+    @GetMapping("/me/preferences")
+    @SecurityRequirement(name = "bearerAuth")
+    public ResponseEntity<PreferencesResponseDTO> getPreferences() {
+        UUID userId = authProvider.id();
+        return ResponseEntity.ok(preferenceService.getPreferences(userId));
+    }
+
+    @PutMapping("/me/preferences")
+    @SecurityRequirement(name = "bearerAuth")
+    public ResponseEntity<PreferencesResponseDTO> updatePreferences(
+            @Valid @RequestBody PreferencesRequestDTO dto) {
+        UUID userId = authProvider.id();
+        return ResponseEntity.ok(preferenceService.updateFavoriteColors(userId, dto));
+    }
 }
+

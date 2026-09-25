@@ -1,18 +1,25 @@
 package com.ages.pie.domain.entity;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
+import com.ages.pie.domain.enums.ProductStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UuidGenerator;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "product")
@@ -44,6 +51,22 @@ public class Product extends AuditableEntity {
     private String purchaseUrl;
 
     private boolean active = true;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status")
+    private ProductStatus status = ProductStatus.DRAFT;
+
+    @JdbcTypeCode(SqlTypes.ARRAY)
+    @Column(name = "style", columnDefinition = "varchar[]")
+    private List<String> styles = new ArrayList<>();
+
+    @JdbcTypeCode(SqlTypes.ARRAY)
+    @Column(name = "material", columnDefinition = "varchar[]")
+    private List<String> materials = new ArrayList<>();
+
+    @JdbcTypeCode(SqlTypes.ARRAY)
+    @Column(name = "sizes", columnDefinition = "varchar[]")
+    private List<String> sizes = new ArrayList<>();
 
     protected Product() {
     }
@@ -96,6 +119,10 @@ public class Product extends AuditableEntity {
         return active;
     }
 
+    public ProductStatus getStatus() {
+        return status;
+    }
+
     public void setName(String name) {
         this.name = name;
     }
@@ -122,6 +149,38 @@ public class Product extends AuditableEntity {
 
     public void setActive(boolean active) {
         this.active = active;
+    }
+
+    public void setStatus(ProductStatus status) {
+        this.status = status;
+    }
+
+    public void setColor(String color) {
+        this.color = color;
+    }
+
+    public List<String> getStyles() {
+        return styles;
+    }
+
+    public void setStyles(List<String> styles) {
+        this.styles = styles;
+    }
+
+    public List<String> getMaterials() {
+        return materials;
+    }
+
+    public void setMaterials(List<String> materials) {
+        this.materials = materials;
+    }
+
+    public List<String> getSizes() {
+        return sizes;
+    }
+
+    public void setSizes(List<String> sizes) {
+        this.sizes = sizes;
     }
 
     public void setCompany(Company company) {

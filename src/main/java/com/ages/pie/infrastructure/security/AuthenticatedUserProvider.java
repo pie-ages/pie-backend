@@ -2,36 +2,41 @@ package com.ages.pie.infrastructure.security;
 
 import java.util.UUID;
 
+import io.jsonwebtoken.JwtException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ResponseStatusException;
 
-/**
- * Identificação provisória do usuário autenticado: enquanto não existe
- * validação de token, o id vem do header {@code X-User-Id}. Quando a
- * autenticação real entrar, apenas o corpo de {@link #id()} muda.
- */
 @Component
 public class AuthenticatedUserProvider {
 
-    private static final String USER_ID_HEADER = "X-User-Id";
+    private static final String AUTHORIZATION_HEADER = "Authorization";
+    private static final String BEARER_PREFIX = "Bearer ";
 
     private final HttpServletRequest request;
+    private final JwtTokenProvider jwtTokenProvider;
 
-    public AuthenticatedUserProvider(HttpServletRequest request) {
+    public AuthenticatedUserProvider(HttpServletRequest request, JwtTokenProvider jwtTokenProvider) {
         this.request = request;
+        this.jwtTokenProvider = jwtTokenProvider;
     }
 
     public UUID id() {
-        String header = request.getHeader(USER_ID_HEADER);
-        if (header == null || header.isBlank()) {
+        String authorization = request.getHeader(AUTHORIZATION_HEADER);
+        if (authorization == null
+                || !authorization.regionMatches(true, 0, BEARER_PREFIX, 0, BEARER_PREFIX.length())) {
+            throw unauthenticated(null);
+        }
+
+        String token = authorization.substring(BEARER_PREFIX.length()).trim();
+        if (token.isEmpty()) {
             throw unauthenticated(null);
         }
 
         try {
-            return UUID.fromString(header.trim());
-        } catch (IllegalArgumentException e) {
+            return jwtTokenProvider.extractUserId(token);
+        } catch (JwtException | IllegalArgumentException e) {
             throw unauthenticated(e);
         }
     }

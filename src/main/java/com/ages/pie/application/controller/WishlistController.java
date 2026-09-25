@@ -7,6 +7,7 @@ import com.ages.pie.application.dto.wishlist.WishlistItemResponseDTO;
 import com.ages.pie.application.dto.wishlist.WishlistResponseDTO;
 import com.ages.pie.application.service.WishlistService;
 import com.ages.pie.infrastructure.security.AuthenticatedUserProvider;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -20,6 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/wishlist")
+@SecurityRequirement(name = "bearerAuth")
 public class WishlistController {
 
     private final WishlistService wishlistService;
