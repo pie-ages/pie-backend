@@ -85,17 +85,29 @@ public class ProductController {
     }
 
     @PatchMapping("/{id}/publish")
-    @SecurityRequirement(name = "bearerAuth")
-    public ResponseEntity<ProductResponseDTO> publish(@PathVariable UUID id) {
-        UUID companyId = authenticatedUserProvider.id();
-        return ResponseEntity.ok(productService.publish(id, companyId));
+    public ResponseEntity<ProductResponseDTO> publish(
+            @PathVariable UUID id,
+            @RequestParam(required = false) UUID companyId) {
+        UUID effectiveCompanyId = companyId != null
+                ? companyId
+                : authenticatedUserProvider.optionalId().orElse(null);
+        if (effectiveCompanyId == null) {
+            return ResponseEntity.status(401).build();
+        }
+        return ResponseEntity.ok(productService.publish(id, effectiveCompanyId));
     }
 
     @PatchMapping("/{id}/unpublish")
-    @SecurityRequirement(name = "bearerAuth")
-    public ResponseEntity<ProductResponseDTO> unpublish(@PathVariable UUID id) {
-        UUID companyId = authenticatedUserProvider.id();
-        return ResponseEntity.ok(productService.unpublish(id, companyId));
+    public ResponseEntity<ProductResponseDTO> unpublish(
+            @PathVariable UUID id,
+            @RequestParam(required = false) UUID companyId) {
+        UUID effectiveCompanyId = companyId != null
+                ? companyId
+                : authenticatedUserProvider.optionalId().orElse(null);
+        if (effectiveCompanyId == null) {
+            return ResponseEntity.status(401).build();
+        }
+        return ResponseEntity.ok(productService.unpublish(id, effectiveCompanyId));
     }
 
     @DeleteMapping("/{id}")
