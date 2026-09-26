@@ -2,19 +2,31 @@ package com.ages.pie.application.mapper;
 
 import com.ages.pie.application.dto.product.ProductCatalogItemDTO;
 import com.ages.pie.application.dto.product.ProductCatalogPageDTO;
+import com.ages.pie.application.dto.product.ProductImageResponseDTO;
 import com.ages.pie.application.dto.product.ProductPublicDetailDTO;
 import com.ages.pie.application.dto.product.ProductResponseDTO;
 import com.ages.pie.application.dto.product.ProductUpdateDTO;
 import com.ages.pie.domain.entity.Product;
+import com.ages.pie.domain.entity.ProductImage;
 import com.ages.pie.domain.enums.ProductStatus;
+import com.ages.pie.infrastructure.repository.ProductImageRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Component;
+
+import java.util.List;
 
 @Component
 public class ProductMapper {
 
+    private final ProductImageRepository productImageRepository;
+
+    public ProductMapper(ProductImageRepository productImageRepository) {
+        this.productImageRepository = productImageRepository;
+    }
+
     public ProductResponseDTO toResponseDTO(Product product) {
         String companyName = product.getCompany() != null ? product.getCompany().getName() : null;
+        List<ProductImageResponseDTO> images = toImageDTOs(product);
         return new ProductResponseDTO(
             product.getId(),
             product.getName(),
@@ -30,7 +42,8 @@ public class ProductMapper {
             product.getUpdatedAt(),
             product.getStyles(),
             product.getSizes(),
-            product.getMaterials()
+            product.getMaterials(),
+            images
         );
     }
 
@@ -73,8 +86,9 @@ public class ProductMapper {
         );
     }
 
-    public ProductPublicDetailDTO toPublicDetailDTO(Product product) {
+    public ProductPublicDetailDTO toPublicDetailDTO(Product product, boolean inWishlist) {
         boolean available = product.isActive() && product.getStatus() == ProductStatus.PUBLISHED;
+        List<ProductImageResponseDTO> images = toImageDTOs(product);
         return new ProductPublicDetailDTO(
             product.getId(),
             product.getName(),
@@ -88,7 +102,25 @@ public class ProductMapper {
             product.getStyles(),
             product.getSizes(),
             product.getMaterials(),
-            available
+            available,
+            images,
+            inWishlist
+        );
+    }
+
+    private List<ProductImageResponseDTO> toImageDTOs(Product product) {
+        return productImageRepository.findByProductIdOrderByDisplayOrderAsc(product.getId())
+                .stream()
+                .map(this::toImageDTO)
+                .toList();
+    }
+
+    private ProductImageResponseDTO toImageDTO(ProductImage image) {
+        return new ProductImageResponseDTO(
+                image.getId(),
+                image.getUrl(),
+                image.isPrimary(),
+                image.getDisplayOrder()
         );
     }
 }

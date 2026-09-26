@@ -55,7 +55,7 @@ public class ProductController {
 
     @GetMapping("/{id}/public")
     public ResponseEntity<ProductPublicDetailDTO> findPublicDetail(@PathVariable UUID id) {
-        return ResponseEntity.ok(productService.findPublicDetail(id));
+        return ResponseEntity.ok(productService.findPublicDetail(id, authenticatedUserProvider.optionalId()));
     }
 
     @GetMapping("/{id}")
