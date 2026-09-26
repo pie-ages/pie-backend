@@ -43,13 +43,18 @@ public class AuthenticatedUserProvider {
     }
 
     public Optional<UUID> optionalId() {
-        String header = request.getHeader(USER_ID_HEADER);
-        if (header == null || header.isBlank()) {
+        String authorization = request.getHeader(AUTHORIZATION_HEADER);
+        if (authorization == null
+                || !authorization.regionMatches(true, 0, BEARER_PREFIX, 0, BEARER_PREFIX.length())) {
+            return Optional.empty();
+        }
+        String token = authorization.substring(BEARER_PREFIX.length()).trim();
+        if (token.isEmpty()) {
             return Optional.empty();
         }
         try {
-            return Optional.of(UUID.fromString(header.trim()));
-        } catch (IllegalArgumentException e) {
+            return Optional.of(jwtTokenProvider.extractUserId(token));
+        } catch (JwtException | IllegalArgumentException e) {
             return Optional.empty();
         }
     }

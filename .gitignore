@@ -12,3 +12,4 @@ application-local.properties
 .settings/
 .metadata/
 *.factorypath
+scripts/
