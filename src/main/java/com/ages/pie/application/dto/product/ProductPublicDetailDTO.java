@@ -17,5 +17,6 @@ public record ProductPublicDetailDTO(
     List<String> styles,
     List<String> sizes,
     List<String> materials,
-    boolean available
+    boolean available,
+    List<ProductImageResponseDTO> images
 ) {}
