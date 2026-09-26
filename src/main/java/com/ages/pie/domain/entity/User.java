@@ -35,6 +35,9 @@ public class User extends AuditableEntity {
     @Column(name = "photo_url")
     private String photoUrl;
 
+    @Column(name = "style_result")
+    private String styleResult;
+
     @OneToOne(mappedBy = "customer", fetch = FetchType.LAZY)
     private BodyProfile bodyProfile;
 
@@ -61,6 +64,10 @@ public class User extends AuditableEntity {
             this.name = name;
         }
         this.photoUrl = photoUrl;
+    }
+
+    public void updateStyleResult(String styleResult) {
+        this.styleResult = styleResult;
     }
 
     private String validateName(String name) {
@@ -91,6 +98,10 @@ public class User extends AuditableEntity {
 
     public String getPhotoUrl() {
         return photoUrl;
+    }
+
+    public String getStyleResult() {
+        return styleResult;
     }
 
     public BodyProfile getBodyProfile() {
