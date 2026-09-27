@@ -2,7 +2,6 @@ package com.ages.pie.application.service;
 
 import com.ages.pie.application.dto.wardrobe.WardrobeItemRequestDTO;
 import com.ages.pie.application.dto.wardrobe.WardrobeItemResponseDTO;
-import com.ages.pie.application.dto.wardrobe.WardrobeItemUpdateDTO;
 import com.ages.pie.domain.entity.Product;
 import com.ages.pie.domain.entity.User;
 import com.ages.pie.domain.entity.WardrobeItem;
@@ -72,7 +71,7 @@ public class WardrobeItemService {
     }
 
     @Transactional
-    public WardrobeItemResponseDTO update(UUID itemId, WardrobeItemUpdateDTO request, MultipartFile file) {
+    public WardrobeItemResponseDTO update(UUID itemId, WardrobeItemRequestDTO request, MultipartFile file) {
         WardrobeItem item = findOwnedItem(itemId);
         Product product = findProduct(request.productId());
         String previousStorageKey = item.getStorageKey();
@@ -80,22 +79,23 @@ public class WardrobeItemService {
         item.update(product, request.category(), request.color());
         String newStorageKey = null;
         if (file != null && !file.isEmpty()) {
-            newStorageKey = imageStorageService.uploadForWardrobe(file, item.getId());
-            item.setImageReference(imageStorageService.toPublicUrl(newStorageKey), newStorageKey);
+            try {
+                newStorageKey = imageStorageService.uploadForWardrobe(file, item.getId());
+                item.setImageReference(imageStorageService.toPublicUrl(newStorageKey), newStorageKey);
+                WardrobeItemResponseDTO response = toResponse(wardrobeItemRepository.save(item));
+                if (previousStorageKey != null) {
+                    imageStorageService.delete(previousStorageKey);
+                }
+                return response;
+            } catch (RuntimeException exception) {
+                if (newStorageKey != null) {
+                    imageStorageService.delete(newStorageKey);
+                }
+                throw exception;
+            }
         }
 
-        try {
-            WardrobeItemResponseDTO response = toResponse(wardrobeItemRepository.save(item));
-            if (newStorageKey != null && previousStorageKey != null) {
-                imageStorageService.delete(previousStorageKey);
-            }
-            return response;
-        } catch (RuntimeException exception) {
-            if (newStorageKey != null) {
-                imageStorageService.delete(newStorageKey);
-            }
-            throw exception;
-        }
+        return toResponse(wardrobeItemRepository.save(item));
     }
 
     @Transactional

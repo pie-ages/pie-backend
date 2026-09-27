@@ -2,7 +2,6 @@ package com.ages.pie.application.controller;
 
 import com.ages.pie.application.dto.wardrobe.WardrobeItemRequestDTO;
 import com.ages.pie.application.dto.wardrobe.WardrobeItemResponseDTO;
-import com.ages.pie.application.dto.wardrobe.WardrobeItemUpdateDTO;
 import com.ages.pie.application.service.WardrobeItemService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -51,7 +50,7 @@ public class WardrobeItemController {
     @PatchMapping(value = "/{itemId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<WardrobeItemResponseDTO> update(
             @PathVariable UUID itemId,
-            @Valid @RequestPart("item") WardrobeItemUpdateDTO request,
+            @Valid @RequestPart("item") WardrobeItemRequestDTO request,
             @RequestPart(value = "file", required = false) MultipartFile file) {
         return ResponseEntity.ok(wardrobeItemService.update(itemId, request, file));
     }
