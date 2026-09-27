@@ -1,0 +1,7 @@
+.git
+.gitignore
+.mvn/wrapper/maven-wrapper.jar
+target/
+
+# Nunca empacotar credenciais locais na imagem Docker
+src/main/resources/application-local.properties
