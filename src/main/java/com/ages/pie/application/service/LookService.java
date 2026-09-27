@@ -31,11 +31,13 @@ import com.ages.pie.infrastructure.repository.UserRepository;
 import com.ages.pie.infrastructure.repository.WardrobeItemRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 @Service
 public class LookService {
 
     private static final int SUGGESTION_SIZE = 4;
+    private static final String IMAGE_KEY_PREFIX = "looks/";
 
     private final LookRepository lookRepository;
     private final LookWardrobeItemRepository lookWardrobeItemRepository;
@@ -43,6 +45,7 @@ public class LookService {
     private final WardrobeItemRepository wardrobeItemRepository;
     private final ProductRepository productRepository;
     private final UserRepository userRepository;
+    private final ImageStorageService imageStorageService;
     private final LookMapper lookMapper;
 
     public LookService(LookRepository lookRepository,
@@ -51,6 +54,7 @@ public class LookService {
             WardrobeItemRepository wardrobeItemRepository,
             ProductRepository productRepository,
             UserRepository userRepository,
+            ImageStorageService imageStorageService,
             LookMapper lookMapper) {
         this.lookRepository = lookRepository;
         this.lookWardrobeItemRepository = lookWardrobeItemRepository;
@@ -58,6 +62,7 @@ public class LookService {
         this.wardrobeItemRepository = wardrobeItemRepository;
         this.productRepository = productRepository;
         this.userRepository = userRepository;
+        this.imageStorageService = imageStorageService;
         this.lookMapper = lookMapper;
     }
 
@@ -115,6 +120,40 @@ public class LookService {
         lookWardrobeItemRepository.deleteByLookId(lookId);
         lookProductRepository.deleteByLookId(lookId);
         lookRepository.delete(look);
+
+        if (look.getPhotoStorageKey() != null) {
+            imageStorageService.delete(look.getPhotoStorageKey());
+        }
+    }
+
+    @Transactional
+    public LookResponseDTO updatePhoto(UUID userId, UUID lookId, MultipartFile file) {
+        Look look = findOwnedLook(userId, lookId);
+        String previousKey = look.getPhotoStorageKey();
+
+        String storageKey = imageStorageService.uploadWithPrefix(file, IMAGE_KEY_PREFIX + lookId);
+        look.updatePhoto(imageStorageService.toPublicUrl(storageKey), storageKey);
+        lookRepository.save(look);
+
+        if (previousKey != null) {
+            imageStorageService.delete(previousKey);
+        }
+
+        return lookMapper.toResponseDTO(look);
+    }
+
+    @Transactional
+    public void removePhoto(UUID userId, UUID lookId) {
+        Look look = findOwnedLook(userId, lookId);
+        String storageKey = look.getPhotoStorageKey();
+
+        if (storageKey == null) {
+            throw new ResourceNotFoundException("Look não possui imagem: " + lookId);
+        }
+
+        look.clearPhoto();
+        lookRepository.save(look);
+        imageStorageService.delete(storageKey);
     }
 
     @Transactional

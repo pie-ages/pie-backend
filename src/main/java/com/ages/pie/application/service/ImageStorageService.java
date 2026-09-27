@@ -11,6 +11,11 @@ public interface ImageStorageService {
      */
     String upload(MultipartFile file, UUID productId);
 
+    /**
+     * Uploads file under an arbitrary key prefix. Returns the storage key.
+     */
+    String uploadWithPrefix(MultipartFile file, String keyPrefix);
+
     void delete(String storageKey);
 
     String toPublicUrl(String storageKey);

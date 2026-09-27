@@ -29,6 +29,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
@@ -67,6 +68,9 @@ class LookServiceTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private ImageStorageService imageStorageService;
 
     @Mock
     private LookMapper lookMapper;
@@ -263,6 +267,80 @@ class LookServiceTest {
         verify(lookWardrobeItemRepository).deleteByLookId(lookId);
         verify(lookProductRepository).deleteByLookId(lookId);
         verify(lookRepository).delete(look);
+    }
+
+    @Test
+    void delete_shouldRemoveImageFromStorage_whenLookHasPhoto() {
+        look.updatePhoto("https://storage/looks/a.jpg", "looks/a.jpg");
+        when(lookRepository.findByIdAndCustomerId(lookId, userId)).thenReturn(Optional.of(look));
+
+        lookService.delete(userId, lookId);
+
+        verify(imageStorageService).delete("looks/a.jpg");
+    }
+
+    @Test
+    void updatePhoto_shouldStoreUrlAndKey_whenFileIsValid() {
+        MockMultipartFile file = new MockMultipartFile("file", "look.jpg", "image/jpeg", new byte[] { 1 });
+        when(lookRepository.findByIdAndCustomerId(lookId, userId)).thenReturn(Optional.of(look));
+        when(imageStorageService.uploadWithPrefix(file, "looks/" + lookId)).thenReturn("looks/" + lookId + "/a.jpg");
+        when(imageStorageService.toPublicUrl("looks/" + lookId + "/a.jpg"))
+                .thenReturn("https://storage/looks/" + lookId + "/a.jpg");
+        when(lookMapper.toResponseDTO(look)).thenReturn(responseDTO());
+
+        lookService.updatePhoto(userId, lookId, file);
+
+        assertThat(look.getPhotoStorageKey()).isEqualTo("looks/" + lookId + "/a.jpg");
+        assertThat(look.getPhotoUrl()).isEqualTo("https://storage/looks/" + lookId + "/a.jpg");
+        verify(lookRepository).save(look);
+    }
+
+    @Test
+    void updatePhoto_shouldDeletePreviousImage_whenLookAlreadyHadPhoto() {
+        MockMultipartFile file = new MockMultipartFile("file", "look.jpg", "image/jpeg", new byte[] { 1 });
+        look.updatePhoto("https://storage/looks/antiga.jpg", "looks/antiga.jpg");
+        when(lookRepository.findByIdAndCustomerId(lookId, userId)).thenReturn(Optional.of(look));
+        when(imageStorageService.uploadWithPrefix(file, "looks/" + lookId)).thenReturn("looks/nova.jpg");
+        when(imageStorageService.toPublicUrl("looks/nova.jpg")).thenReturn("https://storage/looks/nova.jpg");
+        when(lookMapper.toResponseDTO(look)).thenReturn(responseDTO());
+
+        lookService.updatePhoto(userId, lookId, file);
+
+        verify(imageStorageService).delete("looks/antiga.jpg");
+        assertThat(look.getPhotoStorageKey()).isEqualTo("looks/nova.jpg");
+    }
+
+    @Test
+    void updatePhoto_shouldThrowResourceNotFoundException_whenLookBelongsToAnotherUser() {
+        MockMultipartFile file = new MockMultipartFile("file", "look.jpg", "image/jpeg", new byte[] { 1 });
+        when(lookRepository.findByIdAndCustomerId(lookId, otherUserId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> lookService.updatePhoto(otherUserId, lookId, file))
+                .isInstanceOf(ResourceNotFoundException.class);
+        verifyNoInteractions(imageStorageService);
+    }
+
+    @Test
+    void removePhoto_shouldClearFieldsAndDeleteFromStorage_whenLookHasPhoto() {
+        look.updatePhoto("https://storage/looks/a.jpg", "looks/a.jpg");
+        when(lookRepository.findByIdAndCustomerId(lookId, userId)).thenReturn(Optional.of(look));
+
+        lookService.removePhoto(userId, lookId);
+
+        assertThat(look.getPhotoUrl()).isNull();
+        assertThat(look.getPhotoStorageKey()).isNull();
+        verify(imageStorageService).delete("looks/a.jpg");
+        verify(lookRepository).save(look);
+    }
+
+    @Test
+    void removePhoto_shouldThrowResourceNotFoundException_whenLookHasNoPhoto() {
+        when(lookRepository.findByIdAndCustomerId(lookId, userId)).thenReturn(Optional.of(look));
+
+        assertThatThrownBy(() -> lookService.removePhoto(userId, lookId))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessageContaining(lookId.toString());
+        verifyNoInteractions(imageStorageService);
     }
 
     @Test

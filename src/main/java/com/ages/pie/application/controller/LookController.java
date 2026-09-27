@@ -23,7 +23,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/users/me/looks")
@@ -68,6 +70,18 @@ public class LookController {
     @DeleteMapping("/{lookId}")
     public ResponseEntity<Void> delete(@PathVariable UUID lookId) {
         lookService.delete(authenticatedUser.id(), lookId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping(path = "/{lookId}/image", consumes = "multipart/form-data")
+    public ResponseEntity<LookResponseDTO> updatePhoto(@PathVariable UUID lookId,
+            @RequestParam("file") MultipartFile file) {
+        return ResponseEntity.ok(lookService.updatePhoto(authenticatedUser.id(), lookId, file));
+    }
+
+    @DeleteMapping("/{lookId}/image")
+    public ResponseEntity<Void> removePhoto(@PathVariable UUID lookId) {
+        lookService.removePhoto(authenticatedUser.id(), lookId);
         return ResponseEntity.noContent().build();
     }
 

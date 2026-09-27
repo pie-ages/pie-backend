@@ -53,17 +53,22 @@ public class SupabaseImageStorageService implements ImageStorageService {
 
     @Override
     public String upload(MultipartFile file, UUID productId) {
+        return uploadWithPrefix(file, "products/" + productId);
+    }
+
+    @Override
+    public String uploadWithPrefix(MultipartFile file, String keyPrefix) {
         validateFile(file);
 
         String contentType = file.getContentType();
         String ext = CONTENT_TYPE_TO_EXT.get(contentType);
-        String storageKey = "products/" + productId + "/" + UUID.randomUUID() + "." + ext;
+        String storageKey = keyPrefix + "/" + UUID.randomUUID() + "." + ext;
 
         byte[] bytes;
         try {
             bytes = file.getBytes();
         } catch (IOException e) {
-            logger.error("Falha ao ler bytes do arquivo para produto {}", productId, e);
+            logger.error("Falha ao ler bytes do arquivo para {}", keyPrefix, e);
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
                     "Falha ao armazenar a imagem. Tente novamente.");
         }
