@@ -1,5 +1,6 @@
 package com.ages.pie.infrastructure.security;
 
+import java.util.Optional;
 import java.util.UUID;
 
 import io.jsonwebtoken.JwtException;
@@ -38,6 +39,23 @@ public class AuthenticatedUserProvider {
             return jwtTokenProvider.extractUserId(token);
         } catch (JwtException | IllegalArgumentException e) {
             throw unauthenticated(e);
+        }
+    }
+
+    public Optional<UUID> optionalId() {
+        String authorization = request.getHeader(AUTHORIZATION_HEADER);
+        if (authorization == null
+                || !authorization.regionMatches(true, 0, BEARER_PREFIX, 0, BEARER_PREFIX.length())) {
+            return Optional.empty();
+        }
+        String token = authorization.substring(BEARER_PREFIX.length()).trim();
+        if (token.isEmpty()) {
+            return Optional.empty();
+        }
+        try {
+            return Optional.of(jwtTokenProvider.extractUserId(token));
+        } catch (JwtException | IllegalArgumentException e) {
+            return Optional.empty();
         }
     }
 

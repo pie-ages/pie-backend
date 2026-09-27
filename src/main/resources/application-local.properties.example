@@ -1,0 +1,14 @@
+# Copie este arquivo para application-local.properties e preencha os valores.
+# O arquivo application-local.properties NAO deve ser commitado (ver .gitignore).
+
+# Banco de dados (Neon)
+spring.datasource.url=jdbc:postgresql://<host>.neon.tech/neondb?sslmode=require
+spring.datasource.username=neondb_owner
+spring.datasource.password=<senha>
+spring.flyway.validate-on-migrate=false
+
+# Supabase Storage
+# Obter em: Project Settings > API > Legacy anon, service_role API keys > service_role > Reveal
+supabase.storage.url=https://<ref>.supabase.co
+supabase.storage.service-role-key=eyJ...
+supabase.storage.bucket=product-images

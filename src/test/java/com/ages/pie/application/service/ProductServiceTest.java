@@ -13,6 +13,8 @@ import com.ages.pie.domain.entity.Product;
 import com.ages.pie.domain.enums.ProductStatus;
 import com.ages.pie.infrastructure.repository.CompanyRepository;
 import com.ages.pie.infrastructure.repository.ProductRepository;
+import com.ages.pie.infrastructure.repository.WishlistItemRepository;
+import com.ages.pie.infrastructure.repository.WishlistRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -36,6 +38,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.lenient;
@@ -54,6 +57,12 @@ class ProductServiceTest {
 
     @Mock
     private ProductMapper productMapper;
+
+    @Mock
+    private WishlistRepository wishlistRepository;
+
+    @Mock
+    private WishlistItemRepository wishlistItemRepository;
 
     @InjectMocks
     private ProductService productService;
@@ -80,7 +89,7 @@ class ProductServiceTest {
         responseDTO = new ProductResponseDTO(productId, "Camiseta", "Camiseta 100% algodão",
                 "Camiseta", "Branco", new BigDecimal("49.90"), "https://exemplo.com/camiseta.jpg",
                 "https://loja.exemplo.com/camiseta", ProductStatus.DRAFT, "Loja X", OffsetDateTime.now(),
-                OffsetDateTime.now(), List.of(), List.of(), List.of());
+                OffsetDateTime.now(), List.of(), List.of(), List.of(), List.of());
         lenient().doCallRealMethod().when(productMapper).updateEntityFromDto(any(), any());
     }
 
@@ -628,11 +637,11 @@ class ProductServiceTest {
         ProductPublicDetailDTO detailDTO = new ProductPublicDetailDTO(
                 productId, "Camiseta", "desc", "camiseta", "branco",
                 new BigDecimal("49.90"), null, null, "Loja X",
-                List.of(), List.of(), List.of(), true);
+                List.of(), List.of(), List.of(), true, List.of(), false);
         when(productRepository.findById(productId)).thenReturn(Optional.of(product));
-        when(productMapper.toPublicDetailDTO(product)).thenReturn(detailDTO);
+        when(productMapper.toPublicDetailDTO(eq(product), anyBoolean())).thenReturn(detailDTO);
 
-        ProductPublicDetailDTO result = productService.findPublicDetail(productId);
+        ProductPublicDetailDTO result = productService.findPublicDetail(productId, Optional.empty());
 
         assertThat(result.available()).isTrue();
     }
@@ -643,11 +652,11 @@ class ProductServiceTest {
         ProductPublicDetailDTO detailDTO = new ProductPublicDetailDTO(
                 productId, "Camiseta", "desc", "camiseta", "branco",
                 new BigDecimal("49.90"), null, null, "Loja X",
-                List.of(), List.of(), List.of(), false);
+                List.of(), List.of(), List.of(), false, List.of(), false);
         when(productRepository.findById(productId)).thenReturn(Optional.of(product));
-        when(productMapper.toPublicDetailDTO(product)).thenReturn(detailDTO);
+        when(productMapper.toPublicDetailDTO(eq(product), anyBoolean())).thenReturn(detailDTO);
 
-        ProductPublicDetailDTO result = productService.findPublicDetail(productId);
+        ProductPublicDetailDTO result = productService.findPublicDetail(productId, Optional.empty());
 
         assertThat(result.available()).isFalse();
     }
@@ -659,11 +668,11 @@ class ProductServiceTest {
         ProductPublicDetailDTO detailDTO = new ProductPublicDetailDTO(
                 productId, "Camiseta", "desc", "camiseta", "branco",
                 new BigDecimal("49.90"), null, null, "Loja X",
-                List.of(), List.of(), List.of(), false);
+                List.of(), List.of(), List.of(), false, List.of(), false);
         when(productRepository.findById(productId)).thenReturn(Optional.of(product));
-        when(productMapper.toPublicDetailDTO(product)).thenReturn(detailDTO);
+        when(productMapper.toPublicDetailDTO(eq(product), anyBoolean())).thenReturn(detailDTO);
 
-        ProductPublicDetailDTO result = productService.findPublicDetail(productId);
+        ProductPublicDetailDTO result = productService.findPublicDetail(productId, Optional.empty());
 
         assertThat(result.available()).isFalse();
     }
@@ -672,7 +681,7 @@ class ProductServiceTest {
     void findPublicDetail_shouldThrowNotFound_whenProductDoesNotExist() {
         when(productRepository.findById(productId)).thenReturn(Optional.empty());
 
-        Throwable thrown = catchThrowable(() -> productService.findPublicDetail(productId));
+        Throwable thrown = catchThrowable(() -> productService.findPublicDetail(productId, Optional.empty()));
 
         assertThat(statusOf(thrown)).isEqualTo(HttpStatus.NOT_FOUND.value());
     }
