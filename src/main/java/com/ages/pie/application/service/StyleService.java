@@ -60,17 +60,9 @@ public class StyleService {
                 .toList();
     }
 
-    @Transactional(readOnly = true)
-    public StyleResultResponseDTO calculateAnswers(List<StyleAnswerRequestDTO> answers) {
-        List<StyleQuestion> questions = loadActiveQuestions();
-        Map<UUID, StyleAnswerRequestDTO> answerByQuestionId = validateAndIndex(questions, answers);
-        List<StyleOption> options = resolveOptionsInQuestionOrder(questions, answerByQuestionId);
-        List<Style> styles = options.stream().map(StyleOption::getStyle).toList();
-        return new StyleResultResponseDTO(StyleScoreCalculator.calculate(styles).name());
-    }
-
     @Transactional
-    public StyleResultResponseDTO submitAnswers(UUID userId, List<StyleAnswerRequestDTO> answers) {        User user = userRepository.findById(userId)
+    public StyleResultResponseDTO submitAnswers(UUID userId, List<StyleAnswerRequestDTO> answers) {
+        User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado: " + userId));
 
         List<StyleQuestion> questions = loadActiveQuestions();
@@ -82,11 +74,13 @@ public class StyleService {
         answerRepository.saveAll(buildAnswers(user, questions, options));
 
         List<Style> styles = options.stream().map(StyleOption::getStyle).toList();
-        Style winner = StyleScoreCalculator.calculate(styles);
-        user.updateStyleResult(winner.name());
+        List<String> topStyles = StyleScoreCalculator.calculateTopStyles(styles).stream()
+                .map(Style::name)
+                .toList();
+        user.updateStyleResult(topStyles);
         userRepository.save(user);
 
-        return new StyleResultResponseDTO(winner.name());
+        return new StyleResultResponseDTO(topStyles);
     }
 
     private List<StyleQuestion> loadActiveQuestions() {

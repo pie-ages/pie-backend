@@ -11,7 +11,7 @@ public final class StyleScoreCalculator {
     private StyleScoreCalculator() {
     }
 
-    public static Style calculate(List<Style> stylesInAnswerOrder) {
+    public static List<Style> calculateTopStyles(List<Style> stylesInAnswerOrder) {
         if (stylesInAnswerOrder == null || stylesInAnswerOrder.isEmpty()) {
             throw new IllegalArgumentException("Respostas são obrigatórias para calcular o estilo");
         }
@@ -21,14 +21,16 @@ public final class StyleScoreCalculator {
             votes.merge(style, 1, Integer::sum);
         }
 
-        Style winner = null;
         int best = -1;
         for (Map.Entry<Style, Integer> entry : votes.entrySet()) {
             if (entry.getValue() > best) {
                 best = entry.getValue();
-                winner = entry.getKey();
             }
         }
-        return winner;
+        final int winningScore = best;
+        return votes.entrySet().stream()
+                .filter(entry -> entry.getValue() == winningScore)
+                .map(Map.Entry::getKey)
+                .toList();
     }
 }

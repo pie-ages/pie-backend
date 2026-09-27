@@ -13,7 +13,9 @@ import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UuidGenerator;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "customer")
@@ -35,8 +37,9 @@ public class User extends AuditableEntity {
     @Column(name = "photo_url")
     private String photoUrl;
 
-    @Column(name = "style_result")
-    private String styleResult;
+    @JdbcTypeCode(SqlTypes.ARRAY)
+    @Column(name = "style_result", columnDefinition = "varchar[]")
+    private List<String> styleResult = new ArrayList<>();
 
     @OneToOne(mappedBy = "customer", fetch = FetchType.LAZY)
     private BodyProfile bodyProfile;
@@ -66,8 +69,8 @@ public class User extends AuditableEntity {
         this.photoUrl = photoUrl;
     }
 
-    public void updateStyleResult(String styleResult) {
-        this.styleResult = styleResult;
+    public void updateStyleResult(List<String> styleResult) {
+        this.styleResult = styleResult == null ? new ArrayList<>() : new ArrayList<>(styleResult);
     }
 
     private String validateName(String name) {
@@ -100,7 +103,7 @@ public class User extends AuditableEntity {
         return photoUrl;
     }
 
-    public String getStyleResult() {
+    public List<String> getStyleResult() {
         return styleResult;
     }
 

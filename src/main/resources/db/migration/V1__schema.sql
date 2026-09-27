@@ -10,7 +10,7 @@ CREATE TABLE customer (
     email         varchar      UNIQUE,
     password_hash varchar,
     photo_url     varchar,
-    style_result  varchar,
+    style_result  varchar[] DEFAULT '{}',
     created_at    timestamptz,
     updated_at    timestamptz
 );

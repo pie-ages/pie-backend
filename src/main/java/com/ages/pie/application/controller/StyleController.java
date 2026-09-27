@@ -1,6 +1,7 @@
 package com.ages.pie.application.controller;
 
 import java.util.List;
+import java.util.UUID;
 
 import com.ages.pie.application.dto.style.StyleQuestionResponseDTO;
 import com.ages.pie.application.dto.style.StyleResultResponseDTO;
@@ -9,6 +10,7 @@ import com.ages.pie.application.service.StyleService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
@@ -27,9 +29,10 @@ public class StyleController {
         return ResponseEntity.ok(styleService.findQuestions());
     }
 
-    @PostMapping("/users/me/style/answers")
+    @PostMapping("/users/{userId}/style/answers")
     public ResponseEntity<StyleResultResponseDTO> submitAnswers(
+            @PathVariable UUID userId,
             @Valid @RequestBody SubmitStyleAnswersRequestDTO dto) {
-        return ResponseEntity.ok(styleService.calculateAnswers(dto.answers()));
+        return ResponseEntity.ok(styleService.submitAnswers(userId, dto.answers()));
     }
 }
