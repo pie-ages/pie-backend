@@ -7,11 +7,14 @@ import com.ages.pie.application.dto.style.StyleQuestionResponseDTO;
 import com.ages.pie.application.dto.style.StyleResultResponseDTO;
 import com.ages.pie.application.dto.style.SubmitStyleAnswersRequestDTO;
 import com.ages.pie.application.service.StyleService;
+import com.ages.pie.infrastructure.security.AuthenticatedUserProvider;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -19,9 +22,24 @@ import org.springframework.web.bind.annotation.RestController;
 public class StyleController {
 
     private final StyleService styleService;
+    private final AuthenticatedUserProvider authProvider;
 
-    public StyleController(StyleService styleService) {
+    public StyleController(StyleService styleService, AuthenticatedUserProvider authProvider) {
         this.styleService = styleService;
+        this.authProvider = authProvider;
+    }
+
+    @GetMapping("/users/me/style")
+    @SecurityRequirement(name = "bearerAuth")
+    public ResponseEntity<StyleResultResponseDTO> getMyStyle() {
+        return ResponseEntity.ok(styleService.getStyleResult(authProvider.id()));
+    }
+
+    @PutMapping("/users/me/style/answers")
+    @SecurityRequirement(name = "bearerAuth")
+    public ResponseEntity<StyleResultResponseDTO> updateMyAnswers(
+            @Valid @RequestBody SubmitStyleAnswersRequestDTO dto) {
+        return ResponseEntity.ok(styleService.submitAnswers(authProvider.id(), dto.answers()));
     }
 
     @GetMapping("/style/questions")

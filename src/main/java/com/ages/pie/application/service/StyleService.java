@@ -19,6 +19,7 @@ import com.ages.pie.domain.entity.StyleOption;
 import com.ages.pie.domain.entity.StyleQuestion;
 import com.ages.pie.domain.entity.User;
 import com.ages.pie.domain.enums.Style;
+import com.ages.pie.domain.enums.StyleAnswerType;
 import com.ages.pie.infrastructure.repository.StyleAnswerRepository;
 import com.ages.pie.infrastructure.repository.StyleOptionRepository;
 import com.ages.pie.infrastructure.repository.StyleQuestionRepository;
@@ -67,20 +68,34 @@ public class StyleService {
 
         List<StyleQuestion> questions = loadActiveQuestions();
         Map<UUID, StyleAnswerRequestDTO> answerByQuestionId = validateAndIndex(questions, answers);
-        List<StyleOption> options = resolveOptionsInQuestionOrder(questions, answerByQuestionId);
+        Map<UUID, StyleOption> optionById = resolveOptions(questions, answerByQuestionId);
 
 
         answerRepository.deleteByCustomerId(userId);
-        answerRepository.saveAll(buildAnswers(user, questions, options));
+        answerRepository.saveAll(buildAnswers(user, questions, answerByQuestionId, optionById));
 
-        List<Style> styles = options.stream().map(StyleOption::getStyle).toList();
-        List<String> topStyles = StyleScoreCalculator.calculateTopStyles(styles).stream()
-                .map(Style::name)
+        List<Style> styles = questions.stream()
+                .map(question -> answerByQuestionId.get(question.getId()).optionId())
+                .filter(optionId -> optionId != null)
+                .map(optionById::get)
+                .filter(option -> option != null)
+                .map(StyleOption::getStyle)
                 .toList();
+        List<String> topStyles = styles.isEmpty() ? List.of()
+                : StyleScoreCalculator.calculateTopStyles(styles).stream()
+                        .map(Style::name)
+                        .toList();
         user.updateStyleResult(topStyles);
         userRepository.save(user);
 
         return new StyleResultResponseDTO(topStyles);
+    }
+
+    @Transactional(readOnly = true)
+    public StyleResultResponseDTO getStyleResult(UUID userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado: " + userId));
+        return new StyleResultResponseDTO(List.copyOf(user.getStyleResult()));
     }
 
     private List<StyleQuestion> loadActiveQuestions() {
@@ -111,39 +126,60 @@ public class StyleService {
         if (answerByQuestionId.size() != expectedQuestionIds.size()) {
             throw new IllegalArgumentException("Todas as perguntas devem ser respondidas");
         }
+        for (StyleAnswerRequestDTO answer : answerByQuestionId.values()) {
+            if (answer.answerType() == null) {
+                throw new IllegalArgumentException("Tipo de resposta é obrigatório");
+            }
+            if (answer.answerType() == StyleAnswerType.OPTION && answer.optionId() == null) {
+                throw new IllegalArgumentException(
+                        "Opção é obrigatória para resposta do tipo OPTION: " + answer.questionId());
+            }
+            if (answer.answerType() != StyleAnswerType.OPTION && answer.optionId() != null) {
+                throw new IllegalArgumentException(
+                        "Opção deve ser nula para resposta do tipo " + answer.answerType()
+                                + ": " + answer.questionId());
+            }
+        }
         return answerByQuestionId;
     }
 
-    private List<StyleOption> resolveOptionsInQuestionOrder(
+    private Map<UUID, StyleOption> resolveOptions(
             List<StyleQuestion> questions, Map<UUID, StyleAnswerRequestDTO> answerByQuestionId) {
         Set<UUID> optionIds = answerByQuestionId.values().stream()
                 .map(StyleAnswerRequestDTO::optionId)
+                .filter(optionId -> optionId != null)
                 .collect(Collectors.toSet());
-        Map<UUID, StyleOption> optionById = optionRepository.findAllById(optionIds)
-                .stream()
-                .collect(Collectors.toMap(StyleOption::getId, Function.identity()));
+        Map<UUID, StyleOption> optionById = optionIds.isEmpty() ? Map.of()
+                : optionRepository.findAllById(optionIds)
+                        .stream()
+                        .collect(Collectors.toMap(StyleOption::getId, Function.identity()));
 
-        List<StyleOption> options = new ArrayList<>();
         for (StyleQuestion question : questions) {
-            UUID optionId = answerByQuestionId.get(question.getId()).optionId();
+            StyleAnswerRequestDTO answer = answerByQuestionId.get(question.getId());
+            if (answer.answerType() != StyleAnswerType.OPTION) {
+                continue;
+            }
+            UUID optionId = answer.optionId();
             StyleOption option = optionById.get(optionId);
             if (option == null) {
                 throw new ResourceNotFoundException("Opção não encontrada: " + optionId);
             }
-            if (!option.getQuestion().getId().equals(question.getId())) {
+            if (option.getQuestion() == null || !option.getQuestion().getId().equals(question.getId())) {
                 throw new IllegalArgumentException(
                         "Opção não pertence à pergunta: " + optionId);
             }
-            options.add(option);
         }
-        return options;
+        return optionById;
     }
 
     private List<StyleAnswer> buildAnswers(
-            User user, List<StyleQuestion> questions, List<StyleOption> options) {
+            User user, List<StyleQuestion> questions,
+            Map<UUID, StyleAnswerRequestDTO> answerByQuestionId, Map<UUID, StyleOption> optionById) {
         List<StyleAnswer> toSave = new ArrayList<>();
-        for (int i = 0; i < questions.size(); i++) {
-            toSave.add(new StyleAnswer(user, questions.get(i), options.get(i)));
+        for (StyleQuestion question : questions) {
+            StyleAnswerRequestDTO answer = answerByQuestionId.get(question.getId());
+            StyleOption option = answer.optionId() == null ? null : optionById.get(answer.optionId());
+            toSave.add(new StyleAnswer(user, question, option, answer.answerType()));
         }
         return toSave;
     }

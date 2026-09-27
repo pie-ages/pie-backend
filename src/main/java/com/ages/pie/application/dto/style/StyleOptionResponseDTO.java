@@ -6,6 +6,7 @@ public record StyleOptionResponseDTO(
     UUID id,
     String label,
     String imageUrl,
+    String style,
     int displayOrder
 ) {
 }

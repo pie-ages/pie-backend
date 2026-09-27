@@ -29,6 +29,7 @@ public class StyleMapper {
                 option.getId(),
                 option.getLabel(),
                 option.getImageUrl(),
+                option.getStyle() == null ? null : option.getStyle().name(),
                 option.getDisplayOrder()
         );
     }
