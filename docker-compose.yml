@@ -9,6 +9,8 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/mydb
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: postgres
+      SUPABASE_STORAGE_URL: ${SUPABASE_STORAGE_URL:-}
+      SUPABASE_STORAGE_SERVICE_ROLE_KEY: ${SUPABASE_STORAGE_SERVICE_ROLE_KEY:-}
     depends_on:
       postgres:
         condition: service_healthy

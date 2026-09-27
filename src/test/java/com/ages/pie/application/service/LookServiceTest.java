@@ -283,7 +283,7 @@ class LookServiceTest {
     void updatePhoto_shouldStoreUrlAndKey_whenFileIsValid() {
         MockMultipartFile file = new MockMultipartFile("file", "look.jpg", "image/jpeg", new byte[] { 1 });
         when(lookRepository.findByIdAndCustomerId(lookId, userId)).thenReturn(Optional.of(look));
-        when(imageStorageService.uploadWithPrefix(file, "looks/" + lookId)).thenReturn("looks/" + lookId + "/a.jpg");
+        when(imageStorageService.uploadForLook(file, lookId)).thenReturn("looks/" + lookId + "/a.jpg");
         when(imageStorageService.toPublicUrl("looks/" + lookId + "/a.jpg"))
                 .thenReturn("https://storage/looks/" + lookId + "/a.jpg");
         when(lookMapper.toResponseDTO(look)).thenReturn(responseDTO());
@@ -300,7 +300,7 @@ class LookServiceTest {
         MockMultipartFile file = new MockMultipartFile("file", "look.jpg", "image/jpeg", new byte[] { 1 });
         look.updatePhoto("https://storage/looks/antiga.jpg", "looks/antiga.jpg");
         when(lookRepository.findByIdAndCustomerId(lookId, userId)).thenReturn(Optional.of(look));
-        when(imageStorageService.uploadWithPrefix(file, "looks/" + lookId)).thenReturn("looks/nova.jpg");
+        when(imageStorageService.uploadForLook(file, lookId)).thenReturn("looks/nova.jpg");
         when(imageStorageService.toPublicUrl("looks/nova.jpg")).thenReturn("https://storage/looks/nova.jpg");
         when(lookMapper.toResponseDTO(look)).thenReturn(responseDTO());
 
@@ -463,7 +463,7 @@ class LookServiceTest {
     @Test
     void suggestion_shouldMixWardrobeItemsAndProducts_whenBothAreAvailable() {
         LookSuggestionDTO dto = new LookSuggestionDTO(List.of());
-        when(wardrobeItemRepository.findByCustomerId(userId))
+        when(wardrobeItemRepository.findAllByCustomerIdOrderByCreatedAtDesc(userId))
                 .thenReturn(List.of(wardrobeItem, wardrobeItem, wardrobeItem));
         when(productRepository.findByActiveTrueAndStatus(ProductStatus.PUBLISHED))
                 .thenReturn(List.of(product, product, product));
@@ -480,7 +480,7 @@ class LookServiceTest {
 
     @Test
     void suggestion_shouldCompleteWithProducts_whenWardrobeIsEmpty() {
-        when(wardrobeItemRepository.findByCustomerId(userId)).thenReturn(List.of());
+        when(wardrobeItemRepository.findAllByCustomerIdOrderByCreatedAtDesc(userId)).thenReturn(List.of());
         when(productRepository.findByActiveTrueAndStatus(ProductStatus.PUBLISHED))
                 .thenReturn(List.of(product, product, product, product, product));
         when(lookMapper.toSuggestionDTO(anyList(), anyList())).thenReturn(new LookSuggestionDTO(List.of()));
@@ -494,7 +494,7 @@ class LookServiceTest {
 
     @Test
     void suggestion_shouldNotPersistAnything() {
-        when(wardrobeItemRepository.findByCustomerId(userId)).thenReturn(List.of(wardrobeItem));
+        when(wardrobeItemRepository.findAllByCustomerIdOrderByCreatedAtDesc(userId)).thenReturn(List.of(wardrobeItem));
         when(productRepository.findByActiveTrueAndStatus(ProductStatus.PUBLISHED))
                 .thenReturn(List.of(product));
         when(lookMapper.toSuggestionDTO(anyList(), anyList())).thenReturn(new LookSuggestionDTO(List.of()));
@@ -506,5 +506,124 @@ class LookServiceTest {
         verify(lookWardrobeItemRepository, never()).saveAll(anyList());
         verify(lookProductRepository, never()).save(any());
         verify(lookProductRepository, never()).saveAll(anyList());
+    }
+
+    @Test
+    void create_shouldPersistLook_whenItemListsAreEmpty() {
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        when(lookRepository.save(any(Look.class))).thenReturn(look);
+        when(lookMapper.toResponseDTO(eq(look), anyList())).thenReturn(responseDTO());
+
+        lookService.create(userId, new LookRequestDTO("Sem pecas", null, null, List.of(), List.of()));
+
+        ArgumentCaptor<List<LookWardrobeItem>> wardrobeCaptor = ArgumentCaptor.captor();
+        ArgumentCaptor<List<LookProduct>> productCaptor = ArgumentCaptor.captor();
+        verify(lookWardrobeItemRepository).saveAll(wardrobeCaptor.capture());
+        verify(lookProductRepository).saveAll(productCaptor.capture());
+        assertThat(wardrobeCaptor.getValue()).isEmpty();
+        assertThat(productCaptor.getValue()).isEmpty();
+        verifyNoInteractions(wardrobeItemRepository);
+    }
+
+    @Test
+    void create_shouldReportOnlyTheMissingProduct_whenOneOfSeveralIsMissing() {
+        UUID missingProductId = UUID.randomUUID();
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        when(productRepository.findAllById(anySet())).thenReturn(List.of(product));
+
+        assertThatThrownBy(() -> lookService.create(userId, new LookRequestDTO(
+                "Look", null, null, null, List.of(productId, missingProductId))))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessageContaining(missingProductId.toString())
+                .hasMessageNotContaining(productId.toString());
+    }
+
+    @Test
+    void addProduct_shouldThrowResourceNotFoundException_whenProductDoesNotExist() {
+        when(lookRepository.findByIdAndCustomerId(lookId, userId)).thenReturn(Optional.of(look));
+        when(productRepository.findById(productId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> lookService.addProduct(userId, lookId, productId))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessageContaining(productId.toString());
+        verify(lookProductRepository, never()).save(any());
+    }
+
+    @Test
+    void addProduct_shouldThrowResourceNotFoundException_whenLookBelongsToAnotherUser() {
+        when(lookRepository.findByIdAndCustomerId(lookId, otherUserId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> lookService.addProduct(otherUserId, lookId, productId))
+                .isInstanceOf(ResourceNotFoundException.class);
+        verifyNoInteractions(productRepository);
+    }
+
+    @Test
+    void removeWardrobeItem_shouldThrowResourceNotFoundException_whenLookBelongsToAnotherUser() {
+        when(lookRepository.findByIdAndCustomerId(lookId, otherUserId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> lookService.removeWardrobeItem(otherUserId, lookId, wardrobeItemId))
+                .isInstanceOf(ResourceNotFoundException.class);
+        verify(lookWardrobeItemRepository, never()).delete(any());
+    }
+
+    @Test
+    void removeProduct_shouldThrowResourceNotFoundException_whenProductIsNotInLook() {
+        when(lookRepository.findByIdAndCustomerId(lookId, userId)).thenReturn(Optional.of(look));
+        when(lookProductRepository.findByLookIdAndProductId(lookId, productId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> lookService.removeProduct(userId, lookId, productId))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessageContaining(productId.toString());
+    }
+
+    @Test
+    void update_shouldThrowIllegalArgumentException_whenTitleIsBlank() {
+        when(lookRepository.findByIdAndCustomerId(lookId, userId)).thenReturn(Optional.of(look));
+
+        assertThatThrownBy(() -> lookService.update(userId, lookId, new LookUpdateDTO(" ", null, null)))
+                .isInstanceOf(IllegalArgumentException.class);
+        verify(lookRepository, never()).save(any());
+    }
+
+    @Test
+    void findAllByUser_shouldReturnEmptyList_whenUserHasNoLooks() {
+        when(lookRepository.findByCustomerIdOrderByCreatedAtDesc(userId)).thenReturn(List.of());
+
+        assertThat(lookService.findAllByUser(userId)).isEmpty();
+        verifyNoInteractions(lookMapper);
+    }
+
+    @Test
+    void delete_shouldNotCallStorage_whenLookHasNoPhoto() {
+        when(lookRepository.findByIdAndCustomerId(lookId, userId)).thenReturn(Optional.of(look));
+
+        lookService.delete(userId, lookId);
+
+        verifyNoInteractions(imageStorageService);
+    }
+
+    @Test
+    void suggestion_shouldReturnOnlyWardrobeItems_whenCatalogIsEmpty() {
+        when(wardrobeItemRepository.findAllByCustomerIdOrderByCreatedAtDesc(userId))
+                .thenReturn(List.of(wardrobeItem, wardrobeItem, wardrobeItem));
+        when(productRepository.findByActiveTrueAndStatus(ProductStatus.PUBLISHED)).thenReturn(List.of());
+        when(lookMapper.toSuggestionDTO(anyList(), anyList())).thenReturn(new LookSuggestionDTO(List.of()));
+
+        lookService.suggestion(userId);
+
+        ArgumentCaptor<List<WardrobeItem>> wardrobeCaptor = ArgumentCaptor.captor();
+        verify(lookMapper).toSuggestionDTO(wardrobeCaptor.capture(), anyList());
+        assertThat(wardrobeCaptor.getValue()).hasSize(2);
+    }
+
+    @Test
+    void suggestion_shouldReturnEmptyComposition_whenNothingIsAvailable() {
+        LookSuggestionDTO empty = new LookSuggestionDTO(List.of());
+        when(wardrobeItemRepository.findAllByCustomerIdOrderByCreatedAtDesc(userId)).thenReturn(List.of());
+        when(productRepository.findByActiveTrueAndStatus(ProductStatus.PUBLISHED)).thenReturn(List.of());
+        when(lookMapper.toSuggestionDTO(List.of(), List.of())).thenReturn(empty);
+
+        assertThat(lookService.suggestion(userId)).isEqualTo(empty);
     }
 }

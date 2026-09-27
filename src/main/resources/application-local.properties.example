@@ -11,4 +11,13 @@ spring.flyway.validate-on-migrate=false
 # Obter em: Project Settings > API > Legacy anon, service_role API keys > service_role > Reveal
 supabase.storage.url=https://<ref>.supabase.co
 supabase.storage.service-role-key=eyJ...
+
+# Bucket para imagens de produtos (padrão: product-images)
 supabase.storage.bucket=product-images
+
+# Bucket para imagens do guarda-roupa (padrão: wardrobe-items)
+# Criar o bucket em: Supabase Dashboard > Storage > New bucket > Name: wardrobe-items
+supabase.storage.wardrobe-bucket=wardrobe-items
+
+# Bucket para imagens dos looks (padrão: look-images)
+supabase.storage.look-bucket=look-images

@@ -3,8 +3,6 @@ package com.ages.pie.application.controller;
 import java.util.List;
 import java.util.UUID;
 
-import com.ages.pie.application.dto.look.AddLookProductRequestDTO;
-import com.ages.pie.application.dto.look.AddLookWardrobeItemRequestDTO;
 import com.ages.pie.application.dto.look.LookItemDTO;
 import com.ages.pie.application.dto.look.LookRequestDTO;
 import com.ages.pie.application.dto.look.LookResponseDTO;
@@ -85,11 +83,10 @@ public class LookController {
         return ResponseEntity.noContent().build();
     }
 
-    @PostMapping("/{lookId}/wardrobe-items")
+    @PostMapping("/{lookId}/wardrobe-items/{wardrobeItemId}")
     public ResponseEntity<LookItemDTO> addWardrobeItem(@PathVariable UUID lookId,
-            @Valid @RequestBody AddLookWardrobeItemRequestDTO dto) {
-        LookItemDTO item = lookService.addWardrobeItem(
-                authenticatedUser.id(), lookId, dto.wardrobeItemId());
+            @PathVariable UUID wardrobeItemId) {
+        LookItemDTO item = lookService.addWardrobeItem(authenticatedUser.id(), lookId, wardrobeItemId);
         return ResponseEntity.status(HttpStatus.CREATED).body(item);
     }
 
@@ -100,10 +97,10 @@ public class LookController {
         return ResponseEntity.noContent().build();
     }
 
-    @PostMapping("/{lookId}/products")
+    @PostMapping("/{lookId}/products/{productId}")
     public ResponseEntity<LookItemDTO> addProduct(@PathVariable UUID lookId,
-            @Valid @RequestBody AddLookProductRequestDTO dto) {
-        LookItemDTO item = lookService.addProduct(authenticatedUser.id(), lookId, dto.productId());
+            @PathVariable UUID productId) {
+        LookItemDTO item = lookService.addProduct(authenticatedUser.id(), lookId, productId);
         return ResponseEntity.status(HttpStatus.CREATED).body(item);
     }
 

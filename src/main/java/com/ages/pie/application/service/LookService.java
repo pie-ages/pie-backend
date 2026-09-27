@@ -37,7 +37,6 @@ import org.springframework.web.multipart.MultipartFile;
 public class LookService {
 
     private static final int SUGGESTION_SIZE = 4;
-    private static final String IMAGE_KEY_PREFIX = "looks/";
 
     private final LookRepository lookRepository;
     private final LookWardrobeItemRepository lookWardrobeItemRepository;
@@ -131,7 +130,7 @@ public class LookService {
         Look look = findOwnedLook(userId, lookId);
         String previousKey = look.getPhotoStorageKey();
 
-        String storageKey = imageStorageService.uploadWithPrefix(file, IMAGE_KEY_PREFIX + lookId);
+        String storageKey = imageStorageService.uploadForLook(file, lookId);
         look.updatePhoto(imageStorageService.toPublicUrl(storageKey), storageKey);
         lookRepository.save(look);
 
@@ -209,7 +208,7 @@ public class LookService {
     @Transactional(readOnly = true)
     public LookSuggestionDTO suggestion(UUID userId) {
         List<WardrobeItem> wardrobeItems = pickRandom(
-                wardrobeItemRepository.findByCustomerId(userId), SUGGESTION_SIZE / 2);
+                wardrobeItemRepository.findAllByCustomerIdOrderByCreatedAtDesc(userId), SUGGESTION_SIZE / 2);
         List<Product> products = pickRandom(
                 productRepository.findByActiveTrueAndStatus(ProductStatus.PUBLISHED),
                 SUGGESTION_SIZE - wardrobeItems.size());
