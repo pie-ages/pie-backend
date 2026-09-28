@@ -5,15 +5,21 @@ import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
+import com.ages.pie.domain.enums.ProductStyle;
+import com.ages.pie.domain.enums.Style;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UuidGenerator;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "customer")
@@ -34,6 +40,19 @@ public class User extends AuditableEntity {
 
     @Column(name = "photo_url")
     private String photoUrl;
+
+    @JdbcTypeCode(SqlTypes.ARRAY)
+    @Enumerated(EnumType.STRING)
+    @Column(name = "styles", columnDefinition = "varchar[]")
+    private List<ProductStyle> styles;
+
+    @JdbcTypeCode(SqlTypes.ARRAY)
+    @Column(name = "style_result", columnDefinition = "varchar[]")
+    private List<String> styleResult = new ArrayList<>();
+
+    @JdbcTypeCode(SqlTypes.ARRAY)
+    @Column(name = "style_preference", columnDefinition = "varchar[]", nullable = false)
+    private List<String> stylePreference = new ArrayList<>();
 
     @OneToOne(mappedBy = "customer", fetch = FetchType.LAZY)
     private BodyProfile bodyProfile;
@@ -61,6 +80,16 @@ public class User extends AuditableEntity {
             this.name = name;
         }
         this.photoUrl = photoUrl;
+    }
+
+    public void updateStyleResult(List<String> styleResult) {
+        this.styleResult = styleResult == null ? new ArrayList<>() : new ArrayList<>(styleResult);
+    }
+
+    public void updateStylePreference(List<Style> styles) {
+        this.stylePreference = new ArrayList<>(Objects.requireNonNull(styles, "Estilos são obrigatórios").stream()
+            .map(style -> Objects.requireNonNull(style, "Estilo não pode ser nulo").name())
+            .toList());
     }
 
     private String validateName(String name) {
@@ -91,6 +120,22 @@ public class User extends AuditableEntity {
 
     public String getPhotoUrl() {
         return photoUrl;
+    }
+
+    public List<ProductStyle> getStyles() {
+        return styles;
+    }
+
+    public void updateStyles(List<ProductStyle> styles) {
+        this.styles = styles;
+    }
+
+    public List<String> getStyleResult() {
+        return styleResult;
+    }
+
+    public List<Style> getStylePreference() {
+        return stylePreference == null ? List.of() : stylePreference.stream().map(Style::valueOf).toList();
     }
 
     public BodyProfile getBodyProfile() {

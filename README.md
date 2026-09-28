@@ -35,6 +35,10 @@ Após a inicialização, a API fica disponível em `http://localhost:8080` e a d
 ./mvnw test
 ```
 
+## Estilos do usuário
+
+`GET/PUT /users/me/style` usa os estilos `Style` do questionário e as preferências da US09. `GET/PUT /users/me/product-styles` usa `ProductStyle` na coluna `customer.styles`. As duas rotas exigem autenticação e persistem dados separados; os valores de um enum não são convertidos automaticamente para o outro.
+
 ## Object Storage
 
 O projeto usa **Supabase Storage** para armazenar imagens. Há dois buckets:
