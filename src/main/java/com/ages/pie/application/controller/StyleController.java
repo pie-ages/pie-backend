@@ -14,12 +14,12 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/users/me/style")
-public class UserStyleController {
+public class StyleController {
 
     private final UserStyleService userStyleService;
     private final AuthenticatedUserProvider authenticatedUser;
 
-    public UserStyleController(UserStyleService userStyleService,
+    public StyleController(UserStyleService userStyleService,
             AuthenticatedUserProvider authenticatedUser) {
         this.userStyleService = userStyleService;
         this.authenticatedUser = authenticatedUser;
