@@ -37,6 +37,9 @@ public class WardrobeItem extends AuditableEntity {
     @Column(name = "photo_url")
     private String photoUrl;
 
+    @Column(name = "storage_key")
+    private String storageKey;
+
     protected WardrobeItem() {
     }
 
@@ -69,5 +72,20 @@ public class WardrobeItem extends AuditableEntity {
 
     public String getPhotoUrl() {
         return photoUrl;
+    }
+
+    public String getStorageKey() {
+        return storageKey;
+    }
+
+    public void update(Product product, String category, String color) {
+        this.product = product;
+        this.category = category;
+        this.color = color;
+    }
+
+    public void setImageReference(String photoUrl, String storageKey) {
+        this.photoUrl = photoUrl;
+        this.storageKey = storageKey;
     }
 }

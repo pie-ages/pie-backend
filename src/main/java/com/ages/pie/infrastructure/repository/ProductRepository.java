@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
 import java.util.UUID;
 
 public interface ProductRepository extends JpaRepository<Product, UUID> {
@@ -74,4 +75,6 @@ public interface ProductRepository extends JpaRepository<Product, UUID> {
             @Param("status") ProductStatus status,
             @Param("search") String search,
             Pageable pageable);
+
+    List<Product> findByActiveTrueAndStatus(ProductStatus status);
 }

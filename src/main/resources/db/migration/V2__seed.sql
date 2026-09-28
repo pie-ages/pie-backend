@@ -291,3 +291,12 @@ BEGIN
     INSERT INTO look_product (look_id, product_id, created_at) VALUES (v_look_almoco,    v_prod_trench,  NOW());
     INSERT INTO look_product (look_id, product_id, created_at) VALUES (v_look_minimalist,v_prod_blazer,  NOW());
 END $$;
+
+ALTER TABLE wardrobe_item
+    ADD COLUMN storage_key varchar;
+
+CREATE INDEX idx_wardrobe_item_customer
+    ON wardrobe_item (customer_id);
+
+CREATE INDEX idx_wardrobe_item_customer_category
+    ON wardrobe_item (customer_id, category);

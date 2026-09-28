@@ -9,6 +9,7 @@ import com.ages.pie.application.dto.product.ProductUpdateDTO;
 import com.ages.pie.application.service.ProductService;
 import com.ages.pie.domain.enums.ProductStatus;
 import com.ages.pie.infrastructure.security.AuthenticatedUserProvider;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
@@ -54,7 +55,7 @@ public class ProductController {
 
     @GetMapping("/{id}/public")
     public ResponseEntity<ProductPublicDetailDTO> findPublicDetail(@PathVariable UUID id) {
-        return ResponseEntity.ok(productService.findPublicDetail(id));
+        return ResponseEntity.ok(productService.findPublicDetail(id, authenticatedUserProvider.optionalId()));
     }
 
     @GetMapping("/{id}")
@@ -84,15 +85,29 @@ public class ProductController {
     }
 
     @PatchMapping("/{id}/publish")
-    public ResponseEntity<ProductResponseDTO> publish(@PathVariable UUID id) {
-        UUID companyId = authenticatedUserProvider.id();
-        return ResponseEntity.ok(productService.publish(id, companyId));
+    public ResponseEntity<ProductResponseDTO> publish(
+            @PathVariable UUID id,
+            @RequestParam(required = false) UUID companyId) {
+        UUID effectiveCompanyId = companyId != null
+                ? companyId
+                : authenticatedUserProvider.optionalId().orElse(null);
+        if (effectiveCompanyId == null) {
+            return ResponseEntity.status(401).build();
+        }
+        return ResponseEntity.ok(productService.publish(id, effectiveCompanyId));
     }
 
     @PatchMapping("/{id}/unpublish")
-    public ResponseEntity<ProductResponseDTO> unpublish(@PathVariable UUID id) {
-        UUID companyId = authenticatedUserProvider.id();
-        return ResponseEntity.ok(productService.unpublish(id, companyId));
+    public ResponseEntity<ProductResponseDTO> unpublish(
+            @PathVariable UUID id,
+            @RequestParam(required = false) UUID companyId) {
+        UUID effectiveCompanyId = companyId != null
+                ? companyId
+                : authenticatedUserProvider.optionalId().orElse(null);
+        if (effectiveCompanyId == null) {
+            return ResponseEntity.status(401).build();
+        }
+        return ResponseEntity.ok(productService.unpublish(id, effectiveCompanyId));
     }
 
     @DeleteMapping("/{id}")

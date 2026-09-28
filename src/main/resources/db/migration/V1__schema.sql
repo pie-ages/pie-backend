@@ -41,6 +41,7 @@ CREATE TABLE body_profile (
     color_palette       varchar,
     zyla_palette        varchar,
     style_preference    varchar[],
+    favorite_colors     varchar[],
     measurements        jsonb,
     ai_analysis_s3_key  varchar,
     created_at          timestamptz,
@@ -172,3 +173,20 @@ ALTER TABLE look_product
     ADD FOREIGN KEY (product_id) REFERENCES product(id) DEFERRABLE INITIALLY IMMEDIATE;
 
 CREATE UNIQUE INDEX ON look_product (look_id, product_id);
+
+-- -------------------------------------------------------------
+-- product_image
+-- -------------------------------------------------------------
+
+CREATE TABLE product_image (
+    id            uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+    product_id    uuid        NOT NULL REFERENCES product(id) ON DELETE CASCADE,
+    url           varchar     NOT NULL,
+    storage_key   varchar     NOT NULL,
+    is_primary    boolean     NOT NULL DEFAULT false,
+    display_order integer     NOT NULL DEFAULT 0,
+    created_at    timestamptz,
+    updated_at    timestamptz
+);
+
+CREATE INDEX idx_product_image_product_id ON product_image(product_id);
