@@ -10,7 +10,10 @@ import com.ages.pie.application.dto.style.StyleQuizResponseDTO;
 import com.ages.pie.application.dto.style.StyleResultResponseDTO;
 import com.ages.pie.application.dto.style.SubmitStyleAnswersRequestDTO;
 import com.ages.pie.application.dto.style.UpdateStylesRequestDTO;
+import com.ages.pie.application.dto.user.UserStyleResponseDTO;
+import com.ages.pie.application.dto.user.UserStyleUpdateDTO;
 import com.ages.pie.application.service.StyleService;
+import com.ages.pie.application.service.UserStyleService;
 import com.ages.pie.domain.enums.Style;
 import com.ages.pie.infrastructure.security.AuthenticatedUserProvider;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -30,10 +33,13 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 public class StyleController {
 
     private final StyleService styleService;
+    private final UserStyleService userStyleService;
     private final AuthenticatedUserProvider authenticatedUserProvider;
 
-    public StyleController(StyleService styleService, AuthenticatedUserProvider authenticatedUserProvider) {
+    public StyleController(StyleService styleService, UserStyleService userStyleService,
+            AuthenticatedUserProvider authenticatedUserProvider) {
         this.styleService = styleService;
+        this.userStyleService = userStyleService;
         this.authenticatedUserProvider = authenticatedUserProvider;
     }
 
@@ -87,4 +93,16 @@ public class StyleController {
         return ResponseEntity.ok(styleService.updateStyles(authenticatedUserProvider.id(), dto.styles()));
     }
 
+    @GetMapping("/users/me/product-styles")
+    @SecurityRequirement(name = "bearerAuth")
+    public ResponseEntity<UserStyleResponseDTO> getMyProductStyles() {
+        return ResponseEntity.ok(userStyleService.getMyStyle(authenticatedUserProvider.id()));
+    }
+
+    @PutMapping("/users/me/product-styles")
+    @SecurityRequirement(name = "bearerAuth")
+    public ResponseEntity<UserStyleResponseDTO> updateMyProductStyles(
+            @Valid @RequestBody UserStyleUpdateDTO dto) {
+        return ResponseEntity.ok(userStyleService.updateMyStyle(authenticatedUserProvider.id(), dto.styles()));
+    }
 }

@@ -5,9 +5,12 @@ import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
+import com.ages.pie.domain.enums.ProductStyle;
 import com.ages.pie.domain.enums.Style;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
@@ -37,6 +40,11 @@ public class User extends AuditableEntity {
 
     @Column(name = "photo_url")
     private String photoUrl;
+
+    @JdbcTypeCode(SqlTypes.ARRAY)
+    @Enumerated(EnumType.STRING)
+    @Column(name = "styles", columnDefinition = "varchar[]")
+    private List<ProductStyle> styles;
 
     @JdbcTypeCode(SqlTypes.ARRAY)
     @Column(name = "style_result", columnDefinition = "varchar[]")
@@ -112,6 +120,14 @@ public class User extends AuditableEntity {
 
     public String getPhotoUrl() {
         return photoUrl;
+    }
+
+    public List<ProductStyle> getStyles() {
+        return styles;
+    }
+
+    public void updateStyles(List<ProductStyle> styles) {
+        this.styles = styles;
     }
 
     public List<String> getStyleResult() {

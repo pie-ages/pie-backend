@@ -17,6 +17,9 @@ import com.ages.pie.application.dto.style.StyleOptionResponseDTO;
 import com.ages.pie.application.dto.style.StyleQuestionResponseDTO;
 import com.ages.pie.application.exception.ResourceNotFoundException;
 import com.ages.pie.application.service.StyleService;
+import com.ages.pie.application.dto.user.UserStyleResponseDTO;
+import com.ages.pie.application.service.UserStyleService;
+import com.ages.pie.domain.enums.ProductStyle;
 import com.ages.pie.infrastructure.security.AuthenticatedUserProvider;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,6 +34,7 @@ import org.springframework.web.server.ResponseStatusException;
 class StyleControllerTest {
     @Autowired MockMvc mockMvc;
     @MockitoBean StyleService styleService;
+        @MockitoBean UserStyleService userStyleService;
     @MockitoBean AuthenticatedUserProvider authenticatedUserProvider;
 
     @Test
@@ -107,6 +111,27 @@ class StyleControllerTest {
         mockMvc.perform(get("/users/me/style"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.styles[1]").value("BOHO"));
+    }
+
+    @Test
+    void keepsProductStylesSeparateFromQuestionnaireStyles() throws Exception {
+        UUID userId = UUID.randomUUID();
+        when(authenticatedUserProvider.id()).thenReturn(userId);
+        when(userStyleService.updateMyStyle(userId, List.of("classico")))
+                .thenReturn(new UserStyleResponseDTO(List.of(ProductStyle.CLASSICO)));
+        when(userStyleService.getMyStyle(userId))
+                .thenReturn(new UserStyleResponseDTO(List.of(ProductStyle.CLASSICO)));
+
+        mockMvc.perform(put("/users/me/product-styles")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"styles\":[\"classico\"]}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.styles[0]").value("CLASSICO"));
+        mockMvc.perform(get("/users/me/product-styles"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.styles[0]").value("CLASSICO"));
+        verify(userStyleService).updateMyStyle(userId, List.of("classico"));
+        verify(userStyleService).getMyStyle(userId);
     }
 
     @Test
