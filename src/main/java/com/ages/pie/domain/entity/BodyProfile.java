@@ -98,6 +98,10 @@ public class BodyProfile extends AuditableEntity {
         this.stylePreference = stylePreference;
     }
 
+    public void setStylePreference(String[] stylePreference) {
+        this.stylePreference = stylePreference;
+    }
+
     public Map<String, Object> getMeasurements() {
         return measurements;
     }

@@ -87,5 +87,11 @@ public class UserController {
         UUID userId = authProvider.id();
         return ResponseEntity.ok(styleIdentificationService.identify(userId));
     }
+
+    @GetMapping("/me/style/identified")
+    @SecurityRequirement(name = "bearerAuth")
+    public ResponseEntity<StyleIdentificationResponseDTO> getIdentifiedStyle() {
+        return ResponseEntity.ok(styleIdentificationService.getIdentified(authProvider.id()));
+    }
 }
 
