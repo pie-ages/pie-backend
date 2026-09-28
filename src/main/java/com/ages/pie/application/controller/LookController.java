@@ -1,9 +1,9 @@
 package com.ages.pie.application.controller;
 
-import java.util.List;
 import java.util.UUID;
 
 import com.ages.pie.application.dto.look.LookItemDTO;
+import com.ages.pie.application.dto.look.LookPageDTO;
 import com.ages.pie.application.dto.look.LookRequestDTO;
 import com.ages.pie.application.dto.look.LookResponseDTO;
 import com.ages.pie.application.dto.look.LookSuggestionDTO;
@@ -14,6 +14,9 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -39,8 +42,9 @@ public class LookController {
     }
 
     @GetMapping
-    public ResponseEntity<List<LookResponseDTO>> findAll() {
-        return ResponseEntity.ok(lookService.findAllByUser(authenticatedUser.id()));
+    public ResponseEntity<LookPageDTO> findAll(
+            @ParameterObject @PageableDefault(size = 20) Pageable pageable) {
+        return ResponseEntity.ok(lookService.findAllByUser(authenticatedUser.id(), pageable));
     }
 
     @PostMapping

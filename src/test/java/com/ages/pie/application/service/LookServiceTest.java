@@ -1,6 +1,7 @@
 package com.ages.pie.application.service;
 
 import com.ages.pie.application.dto.look.LookItemDTO;
+import com.ages.pie.application.dto.look.LookPageDTO;
 import com.ages.pie.application.dto.look.LookRequestDTO;
 import com.ages.pie.application.dto.look.LookResponseDTO;
 import com.ages.pie.application.dto.look.LookSuggestionDTO;
@@ -29,6 +30,8 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -215,6 +218,24 @@ class LookServiceTest {
         when(lookMapper.toResponseDTO(look)).thenReturn(dto);
 
         assertThat(lookService.findAllByUser(userId)).containsExactly(dto);
+    }
+
+    @Test
+    void findAllByUser_shouldReturnPageWithLookItemsAndNextFlag() {
+        LookResponseDTO firstDto = responseDTO();
+        PageRequest pageable = PageRequest.of(0, 1);
+        when(lookRepository.findByCustomerId(userId, pageable))
+                .thenReturn(new PageImpl<>(List.of(look), pageable, 2));
+        when(lookMapper.toResponseDTO(look)).thenReturn(firstDto);
+
+        LookPageDTO result = lookService.findAllByUser(userId, pageable);
+
+        assertThat(result.items()).containsExactly(firstDto);
+        assertThat(result.total()).isEqualTo(2);
+        assertThat(result.page()).isZero();
+        assertThat(result.size()).isEqualTo(1);
+        assertThat(result.hasNext()).isTrue();
+        verify(lookRepository).findByCustomerId(userId, pageable);
     }
 
     @Test
@@ -591,6 +612,20 @@ class LookServiceTest {
         when(lookRepository.findByCustomerIdOrderByCreatedAtDesc(userId)).thenReturn(List.of());
 
         assertThat(lookService.findAllByUser(userId)).isEmpty();
+        verifyNoInteractions(lookMapper);
+    }
+
+    @Test
+    void findAllByUser_shouldReturnEmptyPage_whenUserHasNoLooks() {
+        PageRequest pageable = PageRequest.of(0, 20);
+        when(lookRepository.findByCustomerId(userId, pageable))
+                .thenReturn(new PageImpl<>(List.of(), pageable, 0));
+
+        LookPageDTO result = lookService.findAllByUser(userId, pageable);
+
+        assertThat(result.items()).isEmpty();
+        assertThat(result.total()).isZero();
+        assertThat(result.hasNext()).isFalse();
         verifyNoInteractions(lookMapper);
     }
 

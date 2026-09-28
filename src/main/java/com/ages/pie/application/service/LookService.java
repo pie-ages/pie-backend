@@ -9,6 +9,7 @@ import java.util.UUID;
 import java.util.stream.Stream;
 
 import com.ages.pie.application.dto.look.LookItemDTO;
+import com.ages.pie.application.dto.look.LookPageDTO;
 import com.ages.pie.application.dto.look.LookRequestDTO;
 import com.ages.pie.application.dto.look.LookResponseDTO;
 import com.ages.pie.application.dto.look.LookSuggestionDTO;
@@ -29,6 +30,8 @@ import com.ages.pie.infrastructure.repository.LookWardrobeItemRepository;
 import com.ages.pie.infrastructure.repository.ProductRepository;
 import com.ages.pie.infrastructure.repository.UserRepository;
 import com.ages.pie.infrastructure.repository.WardrobeItemRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -92,12 +95,21 @@ public class LookService {
     }
 
     @Transactional(readOnly = true)
-    public List<LookResponseDTO> findAllByUser(UUID userId) {
-        return lookRepository.findByCustomerIdOrderByCreatedAtDesc(userId)
-                .stream()
+    public LookPageDTO findAllByUser(UUID userId, Pageable pageable) {
+        Page<Look> looks = lookRepository.findByCustomerId(userId, pageable);
+        List<LookResponseDTO> items = looks.getContent().stream()
                 .map(lookMapper::toResponseDTO)
                 .toList();
+        return new LookPageDTO(items, looks.getTotalElements(), looks.getNumber(),
+                looks.getSize(), looks.hasNext());
     }
+
+        public List<LookResponseDTO> findAllByUser(UUID userId) {
+        return lookRepository.findByCustomerIdOrderByCreatedAtDesc(userId)
+            .stream()
+            .map(lookMapper::toResponseDTO)
+            .toList();
+        }
 
     @Transactional(readOnly = true)
     public LookResponseDTO findById(UUID userId, UUID lookId) {
