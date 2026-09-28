@@ -52,6 +52,9 @@ public class BodyProfile extends AuditableEntity {
     @Column(name = "ai_analysis_s3_key")
     private String aiAnalysisS3Key;
 
+    @Column(name = "identified_style")
+    private String identifiedStyle;
+
     @JdbcTypeCode(SqlTypes.ARRAY)
     @Column(name = "favorite_colors", columnDefinition = "varchar[]")
     private String[] favoriteColors;
@@ -105,5 +108,13 @@ public class BodyProfile extends AuditableEntity {
 
     public void setFavoriteColors(String[] favoriteColors) {
         this.favoriteColors = favoriteColors;
+    }
+
+    public String getIdentifiedStyle() {
+        return identifiedStyle;
+    }
+
+    public void setIdentifiedStyle(String identifiedStyle) {
+        this.identifiedStyle = identifiedStyle;
     }
 }

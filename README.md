@@ -78,6 +78,22 @@ Em ambientes Docker e CI/CD, use as env vars. Localmente via IDE ou `./mvnw`, us
 
 > **Segurança:** O arquivo `application-local.properties` está no `.gitignore` e nunca deve ser commitado.
 
+## Identificação de estilo
+
+`POST /users/me/style/identify` consolida o estilo do usuário autenticado a partir dos dados já cadastrados e grava o resultado em `body_profile.identified_style`. A regra é determinística e não usa IA.
+
+| Fonte | Origem | Peso |
+| --- | --- | --- |
+| Respostas de estilo | `body_profile.style_preference` | 2 por ocorrência |
+| Cores favoritas | `body_profile.favorite_colors` | 1 por ocorrência |
+
+- Valores de `style_preference` que não correspondem a um id de `ProductStyle` são ignorados; nenhum estilo novo é criado.
+- Cada cor favorita (hexadecimal) é associada ao estilo cuja cor de referência está mais próxima em distância RGB.
+- Vence o estilo de maior pontuação. Em caso de empate, vale a ordem de declaração do enum `ProductStyle`.
+- Sem nenhum dado aproveitável, a resposta é `{"styles": []}` e nada é gravado, preservando um estilo definido manualmente.
+
+A identificação só ocorre nesta chamada explícita, e nenhum outro fluxo escreve em `identified_style`.
+
 ## Convenções de branch e commit
 
 ### Fluxo de branches

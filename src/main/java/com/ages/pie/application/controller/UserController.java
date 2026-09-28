@@ -2,10 +2,12 @@ package com.ages.pie.application.controller;
 
 import com.ages.pie.application.dto.user.PreferencesRequestDTO;
 import com.ages.pie.application.dto.user.PreferencesResponseDTO;
+import com.ages.pie.application.dto.user.StyleIdentificationResponseDTO;
 import com.ages.pie.application.dto.user.UserRequestDTO;
 import com.ages.pie.application.dto.user.UserResponseDTO;
 import com.ages.pie.application.dto.user.UserUpdateDTO;
 import com.ages.pie.application.service.PreferenceService;
+import com.ages.pie.application.service.StyleIdentificationService;
 import com.ages.pie.application.service.UserService;
 import com.ages.pie.infrastructure.security.AuthenticatedUserProvider;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -23,13 +25,16 @@ public class UserController {
 
     private final UserService userService;
     private final PreferenceService preferenceService;
+    private final StyleIdentificationService styleIdentificationService;
     private final AuthenticatedUserProvider authProvider;
 
     public UserController(UserService userService,
                           PreferenceService preferenceService,
+                          StyleIdentificationService styleIdentificationService,
                           AuthenticatedUserProvider authProvider) {
         this.userService = userService;
         this.preferenceService = preferenceService;
+        this.styleIdentificationService = styleIdentificationService;
         this.authProvider = authProvider;
     }
 
@@ -74,6 +79,13 @@ public class UserController {
             @Valid @RequestBody PreferencesRequestDTO dto) {
         UUID userId = authProvider.id();
         return ResponseEntity.ok(preferenceService.updateFavoriteColors(userId, dto));
+    }
+
+    @PostMapping("/me/style/identify")
+    @SecurityRequirement(name = "bearerAuth")
+    public ResponseEntity<StyleIdentificationResponseDTO> identifyStyle() {
+        UUID userId = authProvider.id();
+        return ResponseEntity.ok(styleIdentificationService.identify(userId));
     }
 }
 
