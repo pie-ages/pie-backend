@@ -13,14 +13,17 @@ public class OpenApiConfig {
 
     @Bean
     public OpenAPI customOpenAPI() {
+        final String securitySchemeName = "bearerAuth";
+
         return new OpenAPI()
             .components(
                 new Components().addSecuritySchemes(
-                    "bearerAuth",
+                    securitySchemeName,
                     new SecurityScheme()
                         .type(SecurityScheme.Type.HTTP)
                         .scheme("bearer")
                         .bearerFormat("JWT")
+                        .description("JWT do usuário autenticado")
                 )
             )
             .info(

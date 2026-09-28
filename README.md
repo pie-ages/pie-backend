@@ -35,6 +35,49 @@ Após a inicialização, a API fica disponível em `http://localhost:8080` e a d
 ./mvnw test
 ```
 
+## Object Storage
+
+O projeto usa **Supabase Storage** para armazenar imagens. Há dois buckets:
+
+| Bucket | Uso |
+| --- | --- |
+| `product-images` | Imagens dos produtos do catálogo |
+| `wardrobe-items` | Imagens das peças do guarda-roupa (PIE-74) |
+
+### Configuração local
+
+Copie `src/main/resources/application-local.properties.example` para `src/main/resources/application-local.properties` e preencha:
+
+```properties
+supabase.storage.url=https://<ref>.supabase.co
+supabase.storage.service-role-key=eyJ...
+supabase.storage.bucket=product-images
+supabase.storage.wardrobe-bucket=wardrobe-items
+```
+
+A `service-role-key` fica em: **Supabase Dashboard → Project Settings → API → service_role → Reveal**.
+
+### Criar o bucket `wardrobe-items`
+
+1. Acesse o Supabase Dashboard → **Storage → New bucket**
+2. Nome: `wardrobe-items`
+3. Marque **Public bucket** para que as URLs públicas funcionem
+4. Salve
+
+### Variáveis necessárias por ambiente
+
+| Propriedade | Env var equivalente | Obrigatória | Descrição |
+| --- | --- | --- | --- |
+| `supabase.storage.url` | `SUPABASE_STORAGE_URL` | Sim | URL base do projeto Supabase |
+| `supabase.storage.service-role-key` | `SUPABASE_STORAGE_SERVICE_ROLE_KEY` | Sim | Chave de acesso com permissão de escrita |
+| `supabase.storage.bucket` | `SUPABASE_STORAGE_BUCKET` | Não (padrão: `product-images`) | Bucket para imagens de produtos |
+| `supabase.storage.wardrobe-bucket` | `SUPABASE_STORAGE_WARDROBE_BUCKET` | Não (padrão: `wardrobe-items`) | Bucket para imagens do guarda-roupa |
+| `supabase.storage.max-file-size-mb` | `SUPABASE_STORAGE_MAX_FILE_SIZE_MB` | Não (padrão: `5`) | Limite de tamanho de upload em MB |
+
+Em ambientes Docker e CI/CD, use as env vars. Localmente via IDE ou `./mvnw`, use `application-local.properties`.
+
+> **Segurança:** O arquivo `application-local.properties` está no `.gitignore` e nunca deve ser commitado.
+
 ## Convenções de branch e commit
 
 ### Fluxo de branches

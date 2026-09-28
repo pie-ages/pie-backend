@@ -16,4 +16,3 @@ ALTER TABLE style_answer
         (answer_type = 'OPTION' AND option_id IS NOT NULL) OR
         (answer_type IN ('BOTH', 'NONE') AND option_id IS NULL)
     );
-    
