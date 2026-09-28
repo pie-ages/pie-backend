@@ -13,17 +13,14 @@ public class OpenApiConfig {
 
     @Bean
     public OpenAPI customOpenAPI() {
-        final String securitySchemeName = "X-User-Id";
-
         return new OpenAPI()
             .components(
                 new Components().addSecuritySchemes(
-                    securitySchemeName,
+                    "bearerAuth",
                     new SecurityScheme()
-                        .name("X-User-Id")
-                        .type(SecurityScheme.Type.APIKEY)
-                        .in(SecurityScheme.In.HEADER)
-                        .description("UUID do usuário autenticado (company ou customer)")
+                        .type(SecurityScheme.Type.HTTP)
+                        .scheme("bearer")
+                        .bearerFormat("JWT")
                 )
             )
             .info(
