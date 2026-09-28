@@ -8,13 +8,11 @@ import com.ages.pie.application.dto.user.UserStyleResponseDTO;
 import com.ages.pie.application.exception.ResourceNotFoundException;
 import com.ages.pie.domain.entity.BodyProfile;
 import com.ages.pie.domain.entity.User;
-import com.ages.pie.infrastructure.repository.BodyProfileRepository;
+import com.ages.pie.domain.enums.ProductStyle;
 import com.ages.pie.infrastructure.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.web.server.ResponseStatusException;
@@ -32,10 +30,6 @@ class UserStyleServiceTest {
     @Mock
     private UserRepository userRepository;
 
-    @Mock
-    private BodyProfileRepository bodyProfileRepository;
-
-    @InjectMocks
     private UserStyleService userStyleService;
 
     private UUID userId;
@@ -48,22 +42,22 @@ class UserStyleServiceTest {
         user = new User("Ana Silva", "ana@email.com", "hash(senha123)");
         profile = new BodyProfile(user);
         profile.updateStylePreference(new String[]{"casual"});
+        userStyleService = new UserStyleService(userRepository);
     }
 
     @Test
-    void getMyStyle_shouldReturnStyles_whenProfileExists() {
-        when(userRepository.existsById(userId)).thenReturn(true);
-        when(bodyProfileRepository.findByCustomerId(userId)).thenReturn(Optional.of(profile));
+    void getMyStyle_shouldReturnStyles_whenUserHasManualStyles() {
+        user.updateStyles(List.of(ProductStyle.CASUAL));
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
 
         UserStyleResponseDTO result = userStyleService.getMyStyle(userId);
 
-        assertThat(result.styles()).containsExactly("casual");
+        assertThat(result.styles()).containsExactly(ProductStyle.CASUAL);
     }
 
     @Test
-    void getMyStyle_shouldReturnEmpty_whenNoProfile() {
-        when(userRepository.existsById(userId)).thenReturn(true);
-        when(bodyProfileRepository.findByCustomerId(userId)).thenReturn(Optional.empty());
+    void getMyStyle_shouldReturnEmpty_whenUserHasNoManualStyles() {
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
 
         UserStyleResponseDTO result = userStyleService.getMyStyle(userId);
 
@@ -72,7 +66,7 @@ class UserStyleServiceTest {
 
     @Test
     void getMyStyle_shouldThrowNotFound_whenUserDoesNotExist() {
-        when(userRepository.existsById(userId)).thenReturn(false);
+        when(userRepository.findById(userId)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> userStyleService.getMyStyle(userId))
                 .isInstanceOf(ResourceNotFoundException.class)
@@ -80,32 +74,29 @@ class UserStyleServiceTest {
     }
 
     @Test
-    void updateMyStyle_shouldPersistNormalizedStyles_whenProfileExists() {
+    void updateMyStyle_shouldPersistEnumStyles_withoutChangingQuestionnaireProfile() {
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
-        when(bodyProfileRepository.findByCustomerId(userId)).thenReturn(Optional.of(profile));
-        when(bodyProfileRepository.save(any(BodyProfile.class))).thenAnswer(i -> i.getArgument(0));
+        when(userRepository.save(any(User.class))).thenAnswer(i -> i.getArgument(0));
 
         UserStyleResponseDTO result =
                 userStyleService.updateMyStyle(userId, List.of("CASUAL", "ROMANTICO"));
 
-        assertThat(result.styles()).containsExactly("casual", "romantico");
-        ArgumentCaptor<BodyProfile> captor = ArgumentCaptor.forClass(BodyProfile.class);
-        verify(bodyProfileRepository).save(captor.capture());
-        assertThat(captor.getValue().getStylePreference())
-                .containsExactly("casual", "romantico");
+        assertThat(result.styles()).containsExactly(ProductStyle.CASUAL, ProductStyle.ROMANTICO);
+        verify(userRepository).save(user);
+        assertThat(user.getStyles()).containsExactly(ProductStyle.CASUAL, ProductStyle.ROMANTICO);
+        assertThat(profile.getStylePreference()).containsExactly("casual");
     }
 
     @Test
-    void updateMyStyle_shouldCreateProfile_whenNoProfileExists() {
+    void updateMyStyle_shouldPersistStyles_whenUserHasNoManualStyles() {
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
-        when(bodyProfileRepository.findByCustomerId(userId)).thenReturn(Optional.empty());
-        when(bodyProfileRepository.save(any(BodyProfile.class))).thenAnswer(i -> i.getArgument(0));
+        when(userRepository.save(any(User.class))).thenAnswer(i -> i.getArgument(0));
 
         UserStyleResponseDTO result =
                 userStyleService.updateMyStyle(userId, List.of("casual"));
 
-        assertThat(result.styles()).containsExactly("casual");
-        verify(bodyProfileRepository).save(any(BodyProfile.class));
+        assertThat(result.styles()).containsExactly(ProductStyle.CASUAL);
+        verify(userRepository).save(user);
     }
 
     @Test
@@ -116,7 +107,7 @@ class UserStyleServiceTest {
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("inválido");
 
-        verify(bodyProfileRepository, never()).save(any());
+        verify(userRepository, never()).save(any());
     }
 
     @Test
@@ -127,6 +118,6 @@ class UserStyleServiceTest {
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessageContaining(userId.toString());
 
-        verify(bodyProfileRepository, never()).save(any());
+        verify(userRepository, never()).save(any());
     }
 }
