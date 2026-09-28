@@ -13,6 +13,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
+import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
 import org.hibernate.annotations.UuidGenerator;
 
@@ -31,6 +32,8 @@ public class Look extends AuditableEntity {
 
     private String title;
 
+    private String description;
+
     @Column(name = "is_ai_generated")
     private boolean aiGenerated = false;
 
@@ -39,21 +42,48 @@ public class Look extends AuditableEntity {
     @Column(name = "photo_url")
     private String photoUrl;
 
+    @Column(name = "photo_storage_key")
+    private String photoStorageKey;
+
     @OneToMany(mappedBy = "look", fetch = FetchType.LAZY)
+    @OrderBy("createdAt")
     private List<LookWardrobeItem> wardrobeItems = new ArrayList<>();
 
     @OneToMany(mappedBy = "look", fetch = FetchType.LAZY)
+    @OrderBy("createdAt")
     private List<LookProduct> products = new ArrayList<>();
 
     protected Look() {
     }
 
-    public Look(User customer, String title) {
+    public Look(User customer, String title, String description, String occasion) {
         this.customer = Objects.requireNonNull(customer, "Cliente é obrigatório");
+        this.title = requireTitle(title);
+        this.description = description;
+        this.occasion = occasion;
+    }
+
+    public void update(String title, String description, String occasion) {
+        this.title = requireTitle(title);
+        this.description = description;
+        this.occasion = occasion;
+    }
+
+    public void updatePhoto(String photoUrl, String photoStorageKey) {
+        this.photoUrl = photoUrl;
+        this.photoStorageKey = photoStorageKey;
+    }
+
+    public void clearPhoto() {
+        this.photoUrl = null;
+        this.photoStorageKey = null;
+    }
+
+    private String requireTitle(String title) {
         if (title == null || title.isBlank()) {
             throw new IllegalArgumentException("Título é obrigatório");
         }
-        this.title = title;
+        return title;
     }
 
     public UUID getId() {
@@ -68,6 +98,10 @@ public class Look extends AuditableEntity {
         return title;
     }
 
+    public String getDescription() {
+        return description;
+    }
+
     public boolean isAiGenerated() {
         return aiGenerated;
     }
@@ -78,6 +112,10 @@ public class Look extends AuditableEntity {
 
     public String getPhotoUrl() {
         return photoUrl;
+    }
+
+    public String getPhotoStorageKey() {
+        return photoStorageKey;
     }
 
     public List<LookWardrobeItem> getWardrobeItems() {

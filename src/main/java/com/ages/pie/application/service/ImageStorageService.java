@@ -16,6 +16,11 @@ public interface ImageStorageService {
      */
     String uploadForWardrobe(MultipartFile file, UUID wardrobeItemId);
 
+    /**
+     * Uploads a look image. Returns the storage key (path within the look bucket).
+     */
+    String uploadForLook(MultipartFile file, UUID lookId);
+
     void delete(String storageKey);
 
     String toPublicUrl(String storageKey);

@@ -26,6 +26,7 @@ public class SupabaseImageStorageService implements ImageStorageService {
 
     static final String PRODUCTS_FOLDER = "products";
     static final String WARDROBE_FOLDER = "wardrobe";
+    static final String LOOKS_FOLDER = "looks";
 
     static final Set<String> ALLOWED_CONTENT_TYPES = Set.of(
             "image/jpeg", "image/png", "image/webp"
@@ -63,6 +64,11 @@ public class SupabaseImageStorageService implements ImageStorageService {
     }
 
     @Override
+    public String uploadForLook(MultipartFile file, UUID lookId) {
+        return uploadToPath(file, props.getLookBucket(), LOOKS_FOLDER, lookId);
+    }
+
+    @Override
     public void delete(String storageKey) {
         String bucketForKey = getBucketForKey(storageKey);
         String deleteUrl = props.getUrl() + "/storage/v1/object/" + bucketForKey;
@@ -87,7 +93,13 @@ public class SupabaseImageStorageService implements ImageStorageService {
     }
 
     String getBucketForKey(String storageKey) {
-        return storageKey.startsWith(WARDROBE_FOLDER + "/") ? props.getWardrobeBucket() : props.getBucket();
+        if (storageKey.startsWith(WARDROBE_FOLDER + "/")) {
+            return props.getWardrobeBucket();
+        }
+        if (storageKey.startsWith(LOOKS_FOLDER + "/")) {
+            return props.getLookBucket();
+        }
+        return props.getBucket();
     }
 
     private String uploadToPath(MultipartFile file, String bucket, String folder, UUID entityId) {
