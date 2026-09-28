@@ -2,6 +2,8 @@ package com.ages.pie.application.service;
 
 import com.ages.pie.application.dto.wardrobe.WardrobeItemRequestDTO;
 import com.ages.pie.application.dto.wardrobe.WardrobeItemResponseDTO;
+import com.ages.pie.application.dto.wardrobe.WardrobeResponseDTO;
+import com.ages.pie.application.dto.wardrobe.WardrobeRowDTO;
 import com.ages.pie.domain.entity.Product;
 import com.ages.pie.domain.entity.User;
 import com.ages.pie.domain.entity.WardrobeItem;
@@ -10,6 +12,10 @@ import com.ages.pie.infrastructure.repository.UserRepository;
 import com.ages.pie.infrastructure.repository.WardrobeItemRepository;
 import com.ages.pie.infrastructure.security.AuthenticatedUserProvider;
 import org.springframework.http.HttpStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -64,6 +70,27 @@ public class WardrobeItemService {
                 .map(this::toResponse)
                 .toList();
     }
+
+        @Transactional(readOnly = true)
+        public WardrobeResponseDTO listWardrobe(String category, Pageable pageable) {
+        UUID customerId = authenticatedUserProvider.id();
+        Pageable stablePageable = PageRequest.of(
+            pageable.getPageNumber(),
+            pageable.getPageSize(),
+            Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id")));
+
+        List<String> categories = category == null || category.isBlank()
+            ? wardrobeItemRepository.findCategoriesByCustomerIdOrderByCategoryAsc(customerId)
+            : wardrobeItemRepository.findCategoriesByCustomerIdOrderByCategoryAsc(customerId)
+                .stream()
+                .filter(category::equals)
+                .toList();
+
+        List<WardrobeRowDTO> rows = categories.stream()
+            .map(rowCategory -> toRow(customerId, rowCategory, stablePageable))
+            .toList();
+        return new WardrobeResponseDTO(rows);
+        }
 
     @Transactional(readOnly = true)
     public WardrobeItemResponseDTO find(UUID itemId) {
@@ -136,5 +163,15 @@ public class WardrobeItemService {
                 item.getCategory(),
                 item.getColor(),
                 item.getPhotoUrl());
+    }
+
+    private WardrobeRowDTO toRow(UUID customerId, String category, Pageable pageable) {
+        Page<WardrobeItem> page = wardrobeItemRepository
+                .findAllByCustomerIdAndCategoryOrderByCreatedAtDescIdDesc(customerId, category, pageable);
+        return new WardrobeRowDTO(
+                category,
+                category,
+                page.getContent().stream().map(this::toResponse).toList(),
+                page.hasNext());
     }
 }
