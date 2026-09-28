@@ -30,3 +30,4 @@ FROM style_question AS question
 WHERE option.question_id = question.id
     AND question.display_order BETWEEN 1 AND 4
     AND option.display_order IN (1, 2);
+    
