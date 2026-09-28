@@ -21,13 +21,14 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -53,6 +54,8 @@ class StyleServiceTest {
     private StyleQuestion question2;
     private StyleOption option1;
     private StyleOption option2;
+        private StyleOption alternative1;
+        private StyleOption alternative2;
 
     @BeforeEach
     void setUp() {
@@ -70,8 +73,12 @@ class StyleServiceTest {
 
         option1 = new StyleOption(question1, "Opção 1", Style.CASUAL, 1);
         option2 = new StyleOption(question2, "Opção 2", Style.CASUAL, 1);
+        alternative1 = new StyleOption(question1, "Alternativa 1", Style.BOHO, 2);
+        alternative2 = new StyleOption(question2, "Alternativa 2", Style.ELEGANTE, 2);
         ReflectionTestUtils.setField(option1, "id", UUID.randomUUID());
         ReflectionTestUtils.setField(option2, "id", UUID.randomUUID());
+        ReflectionTestUtils.setField(alternative1, "id", UUID.randomUUID());
+        ReflectionTestUtils.setField(alternative2, "id", UUID.randomUUID());
     }
 
     @Test
@@ -79,8 +86,8 @@ class StyleServiceTest {
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
         when(questionRepository.findByActiveTrueOrderByDisplayOrderAsc())
                 .thenReturn(List.of(question1, question2));
-        when(optionRepository.findAllById(Set.of(option1.getId(), option2.getId())))
-                .thenReturn(List.of(option1, option2));
+        when(optionRepository.findByQuestionIdInOrderByDisplayOrderAsc(anyList()))
+                .thenReturn(List.of(option1, alternative1, option2, alternative2));
 
         List<StyleAnswerRequestDTO> answers = List.of(
                 new StyleAnswerRequestDTO(question1.getId(), option1.getId(), StyleAnswerType.OPTION),
@@ -96,12 +103,12 @@ class StyleServiceTest {
     }
 
     @Test
-    void submitAnswers_shouldIgnoreBothAndNone_whenCalculatingResult() {
+        void submitAnswers_shouldCountBothDisplayedStyles() {
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
         when(questionRepository.findByActiveTrueOrderByDisplayOrderAsc())
                 .thenReturn(List.of(question1, question2));
-        when(optionRepository.findAllById(Set.of(option1.getId())))
-                .thenReturn(List.of(option1));
+        when(optionRepository.findByQuestionIdInOrderByDisplayOrderAsc(anyList()))
+                .thenReturn(List.of(option1, alternative1, option2, alternative2));
 
         List<StyleAnswerRequestDTO> answers = List.of(
                 new StyleAnswerRequestDTO(question1.getId(), option1.getId(), StyleAnswerType.OPTION),
@@ -112,11 +119,67 @@ class StyleServiceTest {
         assertThat(result.styles()).containsExactly("CASUAL");
     }
 
+        @Test
+        void submitAnswers_shouldIncludeBothStylesWhenNoSingleOptionWins() {
+                when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+                when(questionRepository.findByActiveTrueOrderByDisplayOrderAsc()).thenReturn(List.of(question1, question2));
+                when(optionRepository.findByQuestionIdInOrderByDisplayOrderAsc(anyList()))
+                                .thenReturn(List.of(option1, alternative1, option2, alternative2));
+
+                StyleResultResponseDTO result = styleService.submitAnswers(userId, List.of(
+                                new StyleAnswerRequestDTO(question1.getId(), null, StyleAnswerType.BOTH),
+                                new StyleAnswerRequestDTO(question2.getId(), null, StyleAnswerType.NONE)));
+
+                assertThat(result.styles()).containsExactly("CASUAL", "BOHO");
+        }
+
+            @Test
+            void findQuestions_shouldExposeOnlyDisplayedPair() {
+                StyleOption hidden = new StyleOption(question1, "Oculta", Style.ROMANTICO, 3);
+                ReflectionTestUtils.setField(hidden, "id", UUID.randomUUID());
+                when(questionRepository.findByActiveTrueOrderByDisplayOrderAsc()).thenReturn(List.of(question1));
+                when(optionRepository.findByQuestionIdInOrderByDisplayOrderAsc(anyList()))
+                        .thenReturn(List.of(option1, alternative1, hidden));
+
+                assertThat(styleService.findQuestions().getFirst().options())
+                        .extracting(option -> option.id())
+                        .containsExactly(option1.getId(), alternative1.getId());
+            }
+
+            @Test
+            void submitAnswers_shouldRejectHiddenOption() {
+                StyleOption hidden = new StyleOption(question1, "Oculta", Style.ROMANTICO, 3);
+                ReflectionTestUtils.setField(hidden, "id", UUID.randomUUID());
+                when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+                when(questionRepository.findByActiveTrueOrderByDisplayOrderAsc()).thenReturn(List.of(question1));
+                when(optionRepository.findByQuestionIdInOrderByDisplayOrderAsc(anyList()))
+                        .thenReturn(List.of(option1, alternative1, hidden));
+
+                assertThatThrownBy(() -> styleService.submitAnswers(userId, List.of(
+                        new StyleAnswerRequestDTO(question1.getId(), hidden.getId(), StyleAnswerType.OPTION))))
+                        .isInstanceOf(IllegalArgumentException.class)
+                        .hasMessageContaining("Opção não apresentada");
+                org.mockito.Mockito.verifyNoInteractions(answerRepository);
+            }
+
+            @Test
+            void submitAnswers_shouldGiveNoVotesForNone() {
+                when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+                when(questionRepository.findByActiveTrueOrderByDisplayOrderAsc()).thenReturn(List.of(question1));
+                when(optionRepository.findByQuestionIdInOrderByDisplayOrderAsc(anyList()))
+                        .thenReturn(List.of(option1, alternative1));
+
+                assertThat(styleService.submitAnswers(userId, List.of(
+                        new StyleAnswerRequestDTO(question1.getId(), null, StyleAnswerType.NONE))).styles()).isEmpty();
+            }
+
     @Test
     void submitAnswers_shouldReturnEmptyResult_whenAllAnswersAreNone() {
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
         when(questionRepository.findByActiveTrueOrderByDisplayOrderAsc())
                 .thenReturn(List.of(question1, question2));
+        when(optionRepository.findByQuestionIdInOrderByDisplayOrderAsc(anyList()))
+                .thenReturn(List.of(option1, alternative1, option2, alternative2));
 
         List<StyleAnswerRequestDTO> answers = List.of(
                 new StyleAnswerRequestDTO(question1.getId(), null, StyleAnswerType.NONE),
@@ -124,8 +187,8 @@ class StyleServiceTest {
 
         StyleResultResponseDTO result = styleService.submitAnswers(userId, answers);
 
-        assertThat(result.styles()).isEmpty();
-        assertThat(user.getStyleResult()).isEmpty();
+        assertThat(result.styles()).containsExactly("CASUAL", "ELEGANTE");
+        assertThat(user.getStyleResult()).containsExactly("CASUAL", "ELEGANTE");
     }
 
     @Test
@@ -186,21 +249,58 @@ class StyleServiceTest {
     }
 
     @Test
-    void getStyleResult_shouldReturnUserStyles() {
-        user.updateStyleResult(List.of("CASUAL", "BOHO"));
+        void getStyles_shouldReturnCurrentPreferenceWithoutRecalculating() {
+                user.updateStyleResult(List.of("CASUAL"));
+                user.updateStylePreference(List.of(Style.BOHO));
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
 
-        StyleResultResponseDTO result = styleService.getStyleResult(userId);
+                StyleResultResponseDTO result = styleService.getStyles(userId);
 
-        assertThat(result.styles()).containsExactly("CASUAL", "BOHO");
+                assertThat(result.styles()).containsExactly("BOHO");
+                verifyNoInteractions(answerRepository, questionRepository);
     }
 
     @Test
-    void getStyleResult_shouldThrowResourceNotFoundException_whenUserDoesNotExist() {
+        void getStyles_shouldReturnEmptyListWhenNotSet() {
+                when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+                assertThat(styleService.getStyles(userId).styles()).isEmpty();
+        }
+
+        @Test
+        void getStyles_shouldThrowResourceNotFoundException_whenUserDoesNotExist() {
         when(userRepository.findById(userId)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> styleService.getStyleResult(userId))
+                assertThatThrownBy(() -> styleService.getStyles(userId))
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessageContaining(userId.toString());
     }
+
+        @Test
+        void updateStyles_shouldPreserveQuestionnaireAnswersAndResult() {
+                user.updateStyleResult(List.of("CASUAL"));
+                when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+
+                assertThat(styleService.updateStyles(userId, List.of(Style.BOHO, Style.ROMANTICO)).styles())
+                                .containsExactly("BOHO", "ROMANTICO");
+                assertThat(user.getStyleResult()).containsExactly("CASUAL");
+                verify(userRepository).save(user);
+                verifyNoInteractions(answerRepository, questionRepository);
+        }
+
+        @Test
+        void submitAnswers_shouldNotOverrideManuallyChosenPreference() {
+                user.updateStylePreference(List.of(Style.BOHO));
+                when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+                when(questionRepository.findByActiveTrueOrderByDisplayOrderAsc())
+                                .thenReturn(List.of(question1, question2));
+                when(optionRepository.findByQuestionIdInOrderByDisplayOrderAsc(anyList()))
+                        .thenReturn(List.of(option1, alternative1, option2, alternative2));
+
+                styleService.submitAnswers(userId, List.of(
+                                new StyleAnswerRequestDTO(question1.getId(), option1.getId(), StyleAnswerType.OPTION),
+                                new StyleAnswerRequestDTO(question2.getId(), option2.getId(), StyleAnswerType.OPTION)));
+
+                assertThat(user.getStylePreference()).containsExactly(Style.BOHO);
+                assertThat(user.getStyleResult()).containsExactly("CASUAL");
+        }
 }

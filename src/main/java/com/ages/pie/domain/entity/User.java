@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
+import com.ages.pie.domain.enums.Style;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -41,6 +42,10 @@ public class User extends AuditableEntity {
     @Column(name = "style_result", columnDefinition = "varchar[]")
     private List<String> styleResult = new ArrayList<>();
 
+    @JdbcTypeCode(SqlTypes.ARRAY)
+    @Column(name = "style_preference", columnDefinition = "varchar[]", nullable = false)
+    private List<String> stylePreference = new ArrayList<>();
+
     @OneToOne(mappedBy = "customer", fetch = FetchType.LAZY)
     private BodyProfile bodyProfile;
 
@@ -71,6 +76,12 @@ public class User extends AuditableEntity {
 
     public void updateStyleResult(List<String> styleResult) {
         this.styleResult = styleResult == null ? new ArrayList<>() : new ArrayList<>(styleResult);
+    }
+
+    public void updateStylePreference(List<Style> styles) {
+        this.stylePreference = new ArrayList<>(Objects.requireNonNull(styles, "Estilos são obrigatórios").stream()
+            .map(style -> Objects.requireNonNull(style, "Estilo não pode ser nulo").name())
+            .toList());
     }
 
     private String validateName(String name) {
@@ -105,6 +116,10 @@ public class User extends AuditableEntity {
 
     public List<String> getStyleResult() {
         return styleResult;
+    }
+
+    public List<Style> getStylePreference() {
+        return stylePreference == null ? List.of() : stylePreference.stream().map(Style::valueOf).toList();
     }
 
     public BodyProfile getBodyProfile() {

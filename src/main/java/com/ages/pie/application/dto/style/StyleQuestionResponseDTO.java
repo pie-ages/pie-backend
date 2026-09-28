@@ -5,8 +5,8 @@ import java.util.UUID;
 
 public record StyleQuestionResponseDTO(
     UUID id,
-    String text,
-    int displayOrder,
+    String question,
+    int order,
     List<StyleOptionResponseDTO> options
 ) {
 }
