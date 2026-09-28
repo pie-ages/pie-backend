@@ -48,7 +48,7 @@ public class StyleService {
     public List<StyleQuestionResponseDTO> findQuestions() {
         List<StyleQuestion> questions = loadActiveQuestions();
         Map<UUID, List<StyleOption>> optionsByQuestion = loadPairs(questions);
-                
+
         return questions.stream()
             .map(q -> new StyleMapper().toQuestionDTO(q, optionsByQuestion.get(q.getId())))
                 .toList();
