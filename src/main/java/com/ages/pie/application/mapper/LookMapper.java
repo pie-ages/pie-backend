@@ -60,7 +60,9 @@ public class LookMapper {
         return new LookItemDTO(
             wardrobeItem.getId(),
             null,
-            product != null ? product.getName() : wardrobeItem.getCategory(),
+            wardrobeItem.getName() != null
+                ? wardrobeItem.getName()
+                : product != null ? product.getName() : wardrobeItem.getCategory(),
             wardrobeItem.getCategory(),
             wardrobeItem.getColor(),
             wardrobeItem.getPhotoUrl() != null || product == null

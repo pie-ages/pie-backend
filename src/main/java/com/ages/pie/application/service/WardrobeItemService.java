@@ -44,7 +44,7 @@ public class WardrobeItemService {
         User customer = currentUser();
         Product product = findProduct(request.productId());
         WardrobeItem item = wardrobeItemRepository.saveAndFlush(
-                new WardrobeItem(customer, product, request.category(), request.color()));
+            new WardrobeItem(customer, product, request.name(), request.category(), request.style(), request.color()));
 
         String storageKey = imageStorageService.uploadForWardrobe(file, item.getId());
         try {
@@ -76,7 +76,7 @@ public class WardrobeItemService {
         Product product = findProduct(request.productId());
         String previousStorageKey = item.getStorageKey();
 
-        item.update(product, request.category(), request.color());
+        item.update(product, request.name(), request.category(), request.style(), request.color());
         String newStorageKey = null;
         if (file != null && !file.isEmpty()) {
             try {
@@ -133,7 +133,9 @@ public class WardrobeItemService {
         return new WardrobeItemResponseDTO(
                 item.getId(),
                 item.getProduct() == null ? null : item.getProduct().getId(),
+            item.getName(),
                 item.getCategory(),
+            item.getStyle(),
                 item.getColor(),
                 item.getPhotoUrl());
     }

@@ -106,7 +106,7 @@ class LookServiceTest {
         product = new Product(company, "Blazer Social Feminino");
         ReflectionTestUtils.setField(product, "id", productId);
 
-        wardrobeItem = new WardrobeItem(user, null, "Camisetas", "Branco");
+        wardrobeItem = new WardrobeItem(user, null, "Camiseta branca", "Camisetas", "casual", "Branco");
         ReflectionTestUtils.setField(wardrobeItem, "id", wardrobeItemId);
 
         look = new Look(user, "Look de trabalho", "Formal", "Trabalho");
