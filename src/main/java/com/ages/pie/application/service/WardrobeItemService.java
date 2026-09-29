@@ -133,9 +133,9 @@ public class WardrobeItemService {
         return new WardrobeItemResponseDTO(
                 item.getId(),
                 item.getProduct() == null ? null : item.getProduct().getId(),
-            item.getName(),
+                item.getName(),
                 item.getCategory(),
-            item.getStyle(),
+                item.getStyle(),
                 item.getColor(),
                 item.getPhotoUrl());
     }

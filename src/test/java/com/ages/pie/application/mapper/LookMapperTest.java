@@ -71,7 +71,7 @@ class LookMapperTest {
 
     @Test
     void toItemDTO_shouldUseProductNameAndImage_whenWardrobeItemHasProductAndNoPhoto() {
-        WardrobeItem comProduto = new WardrobeItem(user, product, "Blazer", "Casacos", "classic", "Bege");
+        WardrobeItem comProduto = new WardrobeItem(user, product, "Blazer", "Casacos", "classico", "Bege");
         ReflectionTestUtils.setField(comProduto, "id", wardrobeItemId);
 
         LookItemDTO dto = lookMapper.toItemDTO(comProduto);
@@ -83,7 +83,7 @@ class LookMapperTest {
 
     @Test
     void toItemDTO_shouldPreferOwnPhoto_whenWardrobeItemHasProductAndPhoto() {
-        WardrobeItem comProduto = new WardrobeItem(user, product, "Blazer", "Casacos", "classic", "Bege");
+        WardrobeItem comProduto = new WardrobeItem(user, product, "Blazer", "Casacos", "classico", "Bege");
         ReflectionTestUtils.setField(comProduto, "id", wardrobeItemId);
         comProduto.setImageReference("https://storage/minha-foto.jpg", "wardrobe/y.jpg");
 

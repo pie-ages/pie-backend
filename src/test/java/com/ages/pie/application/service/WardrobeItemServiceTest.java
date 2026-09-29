@@ -114,10 +114,10 @@ class WardrobeItemServiceTest {
         when(wardrobeItemRepository.save(item)).thenReturn(item);
 
         WardrobeItemResponseDTO result = service.update(itemId,
-                new WardrobeItemRequestDTO(null, "Calça", "calca", "sport", "preta"), file);
+                new WardrobeItemRequestDTO(null, "Calça", "calca", "dramatico", "preta"), file);
 
         assertThat(result.name()).isEqualTo("Calça");
-        assertThat(result.style()).isEqualTo("sport");
+        assertThat(result.style()).isEqualTo("dramatico");
         assertThat(result.photoUrl()).isEqualTo("https://new");
         verify(imageStorageService).delete("wardrobe/" + itemId + "/old.jpg");
     }
@@ -160,7 +160,7 @@ class WardrobeItemServiceTest {
         when(wardrobeItemRepository.save(item)).thenReturn(item);
 
         WardrobeItemResponseDTO result = service.update(itemId,
-                new WardrobeItemRequestDTO(null, "Calça", "calca", "sport", "preta"), null);
+                new WardrobeItemRequestDTO(null, "Calça", "calca", "dramatico", "preta"), null);
 
         assertThat(result.photoUrl()).isEqualTo("https://old");
         verifyNoInteractions(imageStorageService);
