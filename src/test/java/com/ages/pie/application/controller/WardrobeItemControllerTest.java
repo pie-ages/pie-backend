@@ -79,4 +79,23 @@ class WardrobeItemControllerTest {
 
         verifyNoInteractions(wardrobeItemService);
     }
+
+        @Test
+        void createRetorna400QuandoEstiloNaoPertencerATaxonomia() throws Exception {
+                MockMultipartFile item = new MockMultipartFile(
+                                "item",
+                                "",
+                                MediaType.APPLICATION_JSON_VALUE,
+                                "{\"name\":\"Camisa\",\"category\":\"camisa\",\"style\":\"classic\"}"
+                                                .getBytes(StandardCharsets.UTF_8));
+                MockMultipartFile file = new MockMultipartFile(
+                                "file", "camisa.jpg", "image/jpeg", new byte[] {1, 2, 3});
+
+                mockMvc.perform(multipart("/users/me/wardrobe/items")
+                                                .file(item)
+                                                .file(file))
+                                .andExpect(status().isBadRequest());
+
+                verifyNoInteractions(wardrobeItemService);
+        }
 }
