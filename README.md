@@ -82,6 +82,16 @@ Em ambientes Docker e CI/CD, use as env vars. Localmente via IDE ou `./mvnw`, us
 
 > **Segurança:** O arquivo `application-local.properties` está no `.gitignore` e nunca deve ser commitado.
 
+## Wardrobe image analysis
+
+`POST /api/users/me/wardrobe/items/analyze` accepts an authenticated multipart request with a `file` part. It returns `{"category":"vestido","style":"romantico","color":"verde"}` using the existing taxonomy IDs. Analysis does not create a wardrobe item or upload the image to storage; the user reviews the fields before saving.
+
+The backend sends one image and a fixed classification prompt to Amazon Bedrock Converse, without conversation history or automatic retries. The default model is `google.gemma-3-27b-it` in `us-east-2`, with temperature `0` and a maximum of `96` output tokens. Input image tokens are billed separately. Only input/output token counts are logged.
+
+Copy `.env-example` to `.env` in the backend root and set `AWS_BEARER_TOKEN_BEDROCK` (`.env` is ignored by Git). Spring imports this file for local runs; Docker Compose forwards the variable to the app container. Never put the key in the frontend environment. Optional settings are `AWS_REGION` and `BEDROCK_MODEL_ID`.
+
+Images must be JPEG, PNG, or WebP, up to 3.75 MB. Missing credentials return `503`; provider errors or invalid model output return `502`; images without a recognizable garment return `422`. The app keeps the selected image and permits manual entry, or asks the user to send another photo.
+
 ## Identificação de estilo
 
 `POST /users/me/style/identify` consolida o estilo do usuário autenticado a partir dos dados já cadastrados e grava o resultado em `body_profile.identified_style`. A regra é determinística e não usa IA.
