@@ -18,3 +18,6 @@ supabase.storage.bucket=product-images
 # Bucket para imagens do guarda-roupa (padrão: wardrobe-items)
 # Criar o bucket em: Supabase Dashboard > Storage > New bucket > Name: wardrobe-items
 supabase.storage.wardrobe-bucket=wardrobe-items
+
+# Bucket para imagens dos looks (padrão: look-images)
+supabase.storage.look-bucket=look-images

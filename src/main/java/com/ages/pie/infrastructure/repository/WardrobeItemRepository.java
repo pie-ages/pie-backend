@@ -7,8 +7,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import java.util.Optional;
+import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface WardrobeItemRepository extends JpaRepository<WardrobeItem, UUID> {
@@ -17,9 +18,11 @@ public interface WardrobeItemRepository extends JpaRepository<WardrobeItem, UUID
 
     List<WardrobeItem> findAllByCustomerIdOrderByCreatedAtDesc(UUID customerId);
 
-        @Query("select distinct item.category from WardrobeItem item "
+    List<WardrobeItem> findByIdInAndCustomerId(Collection<UUID> ids, UUID customerId);
+
+    @Query("select distinct item.category from WardrobeItem item "
             + "where item.customer.id = :customerId order by item.category asc")
-        List<String> findCategoriesByCustomerIdOrderByCategoryAsc(@Param("customerId") UUID customerId);
+    List<String> findCategoriesByCustomerIdOrderByCategoryAsc(@Param("customerId") UUID customerId);
 
     Page<WardrobeItem> findAllByCustomerIdAndCategoryOrderByCreatedAtDescIdDesc(
             UUID customerId, String category, Pageable pageable);
