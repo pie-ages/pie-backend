@@ -2,6 +2,7 @@ package com.ages.pie.application.service;
 
 import com.ages.pie.application.dto.wardrobe.WardrobeItemRequestDTO;
 import com.ages.pie.application.dto.wardrobe.WardrobeItemResponseDTO;
+import com.ages.pie.application.dto.wardrobe.WardrobeResponseDTO;
 import com.ages.pie.domain.entity.User;
 import com.ages.pie.domain.entity.WardrobeItem;
 import com.ages.pie.infrastructure.repository.ProductRepository;
@@ -11,10 +12,13 @@ import com.ages.pie.infrastructure.security.AuthenticatedUserProvider;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.http.HttpStatus;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
@@ -24,6 +28,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -143,6 +148,57 @@ class WardrobeItemServiceTest {
         assertThat(result).hasSize(1);
         assertThat(result.get(0).category()).isEqualTo("camisa");
     }
+
+        @Test
+        void listWardrobe_shouldReturnEmptyRows_whenUserHasNoItems() {
+        when(wardrobeItemRepository.findCategoriesByCustomerIdOrderByCategoryAsc(userId))
+            .thenReturn(List.of());
+
+        WardrobeResponseDTO result = service.listWardrobe(null, Pageable.ofSize(2));
+
+        assertThat(result.rows()).isEmpty();
+        }
+
+        @Test
+        void listWardrobe_shouldCreateIndependentRowsAndExposeHasNext() {
+        WardrobeItem shirt = new WardrobeItem(user, null, "Camisetas", "Branco");
+        WardrobeItem pants = new WardrobeItem(user, null, "Calças", "Preto");
+        when(wardrobeItemRepository.findCategoriesByCustomerIdOrderByCategoryAsc(userId))
+            .thenReturn(List.of("Camisetas", "Calças"));
+        when(wardrobeItemRepository.findAllByCustomerIdAndCategoryOrderByCreatedAtDescIdDesc(
+            eq(userId), eq("Camisetas"), any(Pageable.class)))
+            .thenReturn(new PageImpl<>(List.of(shirt), Pageable.ofSize(1), 2));
+        when(wardrobeItemRepository.findAllByCustomerIdAndCategoryOrderByCreatedAtDescIdDesc(
+            eq(userId), eq("Calças"), any(Pageable.class)))
+            .thenReturn(new PageImpl<>(List.of(pants), Pageable.ofSize(1), 1));
+
+        WardrobeResponseDTO result = service.listWardrobe(null, Pageable.ofSize(1));
+
+        assertThat(result.rows()).extracting("id")
+            .containsExactly("Camisetas", "Calças");
+        assertThat(result.rows().get(0).items()).hasSize(1);
+        assertThat(result.rows().get(0).hasNext()).isTrue();
+        assertThat(result.rows().get(1).hasNext()).isFalse();
+        }
+
+        @Test
+        void listWardrobe_shouldFilterToRequestedCategoryAndUseStableOrdering() {
+        WardrobeItem shirt = new WardrobeItem(user, null, "Camisetas", "Branco");
+        when(wardrobeItemRepository.findCategoriesByCustomerIdOrderByCategoryAsc(userId))
+            .thenReturn(List.of("Camisetas", "Calças"));
+        when(wardrobeItemRepository.findAllByCustomerIdAndCategoryOrderByCreatedAtDescIdDesc(
+            eq(userId), eq("Camisetas"), any(Pageable.class)))
+            .thenReturn(new PageImpl<>(List.of(shirt)));
+
+        WardrobeResponseDTO result = service.listWardrobe("Camisetas", Pageable.ofSize(10));
+
+        assertThat(result.rows()).extracting("id").containsExactly("Camisetas");
+        ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
+        verify(wardrobeItemRepository).findAllByCustomerIdAndCategoryOrderByCreatedAtDescIdDesc(
+            eq(userId), eq("Camisetas"), pageableCaptor.capture());
+        assertThat(pageableCaptor.getValue().getSort().toString())
+            .contains("createdAt: DESC", "id: DESC");
+        }
 
     @Test
     void update_withoutNewImage_shouldKeepPreviousImage() {
