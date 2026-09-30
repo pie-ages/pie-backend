@@ -48,7 +48,7 @@ class LookMapperTest {
         ReflectionTestUtils.setField(product, "color", "Bege");
         ReflectionTestUtils.setField(product, "imageUrl", "https://loja.com/blazer.jpg");
 
-        wardrobeItem = new WardrobeItem(user, null, "Camisetas", "Branco");
+        wardrobeItem = new WardrobeItem(user, null, "Camiseta branca", "Camisetas", "casual", "Branco");
         ReflectionTestUtils.setField(wardrobeItem, "id", wardrobeItemId);
 
         look = new Look(user, "Look de trabalho", "Formal", "Trabalho");
@@ -56,14 +56,14 @@ class LookMapperTest {
     }
 
     @Test
-    void toItemDTO_shouldUseCategoryAsName_whenWardrobeItemHasNoProduct() {
+    void toItemDTO_shouldUseWardrobeItemName_whenWardrobeItemHasNoProduct() {
         wardrobeItem.setImageReference("https://storage/peca.jpg", "wardrobe/x.jpg");
 
         LookItemDTO dto = lookMapper.toItemDTO(wardrobeItem);
 
         assertThat(dto.wardrobeItemId()).isEqualTo(wardrobeItemId);
         assertThat(dto.productId()).isNull();
-        assertThat(dto.name()).isEqualTo("Camisetas");
+        assertThat(dto.name()).isEqualTo("Camiseta branca");
         assertThat(dto.category()).isEqualTo("Camisetas");
         assertThat(dto.color()).isEqualTo("Branco");
         assertThat(dto.imageUrl()).isEqualTo("https://storage/peca.jpg");
@@ -71,19 +71,19 @@ class LookMapperTest {
 
     @Test
     void toItemDTO_shouldUseProductNameAndImage_whenWardrobeItemHasProductAndNoPhoto() {
-        WardrobeItem comProduto = new WardrobeItem(user, product, "Casacos", "Bege");
+        WardrobeItem comProduto = new WardrobeItem(user, product, "Blazer", "Casacos", "classico", "Bege");
         ReflectionTestUtils.setField(comProduto, "id", wardrobeItemId);
 
         LookItemDTO dto = lookMapper.toItemDTO(comProduto);
 
-        assertThat(dto.name()).isEqualTo("Blazer Social Feminino");
+        assertThat(dto.name()).isEqualTo("Blazer");
         assertThat(dto.imageUrl()).isEqualTo("https://loja.com/blazer.jpg");
         assertThat(dto.productId()).isNull();
     }
 
     @Test
     void toItemDTO_shouldPreferOwnPhoto_whenWardrobeItemHasProductAndPhoto() {
-        WardrobeItem comProduto = new WardrobeItem(user, product, "Casacos", "Bege");
+        WardrobeItem comProduto = new WardrobeItem(user, product, "Blazer", "Casacos", "classico", "Bege");
         ReflectionTestUtils.setField(comProduto, "id", wardrobeItemId);
         comProduto.setImageReference("https://storage/minha-foto.jpg", "wardrobe/y.jpg");
 

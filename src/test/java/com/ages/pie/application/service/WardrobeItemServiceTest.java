@@ -68,7 +68,7 @@ class WardrobeItemServiceTest {
     @Test
     void create_shouldUploadAndPersistOnlyImageReference() {
         MockMultipartFile file = imageFile();
-        WardrobeItem item = new WardrobeItem(user, null, "camisa", "azul");
+        WardrobeItem item = new WardrobeItem(user, null, "Camisa", "camisa", "casual", "azul");
         UUID itemId = UUID.randomUUID();
         setId(item, itemId);
         String storageKey = "wardrobe/" + itemId + "/image.jpg";
@@ -81,8 +81,10 @@ class WardrobeItemServiceTest {
         when(wardrobeItemRepository.save(item)).thenReturn(item);
 
         WardrobeItemResponseDTO result = service.create(
-                new WardrobeItemRequestDTO(null, "camisa", "azul"), file);
+                new WardrobeItemRequestDTO(null, "Camisa", "camisa", "casual", "azul"), file);
 
+        assertThat(result.name()).isEqualTo("Camisa");
+        assertThat(result.style()).isEqualTo("casual");
         assertThat(result.photoUrl()).isEqualTo(photoUrl);
         assertThat(item.getStorageKey()).isEqualTo(storageKey);
         verify(imageStorageService).uploadForWardrobe(file, itemId);
@@ -105,7 +107,7 @@ class WardrobeItemServiceTest {
     @Test
     void update_withNewImage_shouldDeletePreviousObject() {
         UUID itemId = UUID.randomUUID();
-        WardrobeItem item = new WardrobeItem(user, null, "camisa", "azul");
+        WardrobeItem item = new WardrobeItem(user, null, "Camisa", "camisa", "casual", "azul");
         setId(item, itemId);
         item.setImageReference("https://old", "wardrobe/" + itemId + "/old.jpg");
         MockMultipartFile file = imageFile();
@@ -117,8 +119,10 @@ class WardrobeItemServiceTest {
         when(wardrobeItemRepository.save(item)).thenReturn(item);
 
         WardrobeItemResponseDTO result = service.update(itemId,
-                new WardrobeItemRequestDTO(null, "calca", "preta"), file);
+                new WardrobeItemRequestDTO(null, "Calça", "calca", "dramatico", "preta"), file);
 
+        assertThat(result.name()).isEqualTo("Calça");
+        assertThat(result.style()).isEqualTo("dramatico");
         assertThat(result.photoUrl()).isEqualTo("https://new");
         verify(imageStorageService).delete("wardrobe/" + itemId + "/old.jpg");
     }
@@ -126,7 +130,7 @@ class WardrobeItemServiceTest {
     @Test
     void delete_shouldRemoveObjectAndDatabaseRecord() {
         UUID itemId = UUID.randomUUID();
-        WardrobeItem item = new WardrobeItem(user, null, "camisa", "azul");
+        WardrobeItem item = new WardrobeItem(user, null, "Camisa", "camisa", "casual", "azul");
         setId(item, itemId);
         item.setImageReference("https://image", "wardrobe/" + itemId + "/image.jpg");
         when(wardrobeItemRepository.findByIdAndCustomerId(itemId, userId)).thenReturn(Optional.of(item));
@@ -139,7 +143,7 @@ class WardrobeItemServiceTest {
 
     @Test
     void list_shouldReturnOnlyCurrentUsersItems() {
-        WardrobeItem item = new WardrobeItem(user, null, "camisa", "azul");
+        WardrobeItem item = new WardrobeItem(user, null, "Camisa", "camisa", "casual", "azul");
         when(wardrobeItemRepository.findAllByCustomerIdOrderByCreatedAtDesc(userId))
                 .thenReturn(List.of(item));
 
@@ -203,7 +207,7 @@ class WardrobeItemServiceTest {
     @Test
     void update_withoutNewImage_shouldKeepPreviousImage() {
         UUID itemId = UUID.randomUUID();
-        WardrobeItem item = new WardrobeItem(user, null, "camisa", "azul");
+        WardrobeItem item = new WardrobeItem(user, null, "Camisa", "camisa", "casual", "azul");
         setId(item, itemId);
         item.setImageReference("https://old", "wardrobe/" + itemId + "/old.jpg");
 
@@ -212,7 +216,7 @@ class WardrobeItemServiceTest {
         when(wardrobeItemRepository.save(item)).thenReturn(item);
 
         WardrobeItemResponseDTO result = service.update(itemId,
-                new WardrobeItemRequestDTO(null, "calca", "preta"), null);
+                new WardrobeItemRequestDTO(null, "Calça", "calca", "dramatico", "preta"), null);
 
         assertThat(result.photoUrl()).isEqualTo("https://old");
         verifyNoInteractions(imageStorageService);
@@ -221,7 +225,7 @@ class WardrobeItemServiceTest {
     @Test
     void create_shouldDeleteUploadedImageIfSaveFails() {
         MockMultipartFile file = imageFile();
-        WardrobeItem item = new WardrobeItem(user, null, "camisa", "azul");
+        WardrobeItem item = new WardrobeItem(user, null, "Camisa", "camisa", "casual", "azul");
         UUID itemId = UUID.randomUUID();
         setId(item, itemId);
         String storageKey = "wardrobe/" + itemId + "/image.jpg";
@@ -233,7 +237,7 @@ class WardrobeItemServiceTest {
         when(wardrobeItemRepository.save(item)).thenThrow(new RuntimeException("db error"));
 
         assertThatThrownBy(() -> service.create(
-                new WardrobeItemRequestDTO(null, "camisa", "azul"), file))
+                new WardrobeItemRequestDTO(null, "Camisa", "camisa", "casual", "azul"), file))
                 .isInstanceOf(RuntimeException.class);
 
         verify(imageStorageService).delete(storageKey);

@@ -30,7 +30,12 @@ public class WardrobeItem extends AuditableEntity {
     @JoinColumn(name = "product_id")
     private Product product;
 
+    @Column(nullable = false)
+    private String name;
+
     private String category;
+
+    private String style;
 
     private String color;
 
@@ -43,10 +48,12 @@ public class WardrobeItem extends AuditableEntity {
     protected WardrobeItem() {
     }
 
-    public WardrobeItem(User customer, Product product, String category, String color) {
+    public WardrobeItem(User customer, Product product, String name, String category, String style, String color) {
         this.customer = Objects.requireNonNull(customer, "Cliente é obrigatório");
+        this.name = Objects.requireNonNull(name, "Nome é obrigatório");
         this.product = product;
         this.category = category;
+        this.style = style;
         this.color = color;
     }
 
@@ -62,8 +69,16 @@ public class WardrobeItem extends AuditableEntity {
         return product;
     }
 
+    public String getName() {
+        return name;
+    }
+
     public String getCategory() {
         return category;
+    }
+
+    public String getStyle() {
+        return style;
     }
 
     public String getColor() {
@@ -78,9 +93,11 @@ public class WardrobeItem extends AuditableEntity {
         return storageKey;
     }
 
-    public void update(Product product, String category, String color) {
+    public void update(Product product, String name, String category, String style, String color) {
         this.product = product;
+        this.name = Objects.requireNonNull(name, "Nome é obrigatório");
         this.category = category;
+        this.style = style;
         this.color = color;
     }
 

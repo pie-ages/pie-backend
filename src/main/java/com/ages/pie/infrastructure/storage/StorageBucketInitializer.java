@@ -57,6 +57,7 @@ public class StorageBucketInitializer implements ApplicationRunner {
             restClient.post()
                     .uri(url)
                     .header("Authorization", "Bearer " + props.getServiceRoleKey())
+                    .header("apikey", props.getServiceRoleKey())
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(Map.of("id", bucket.id(), "name", bucket.id(), "public", bucket.isPublic()))
                     .retrieve()
