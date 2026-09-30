@@ -1,5 +1,7 @@
 package com.ages.pie.domain.enums;
 
+import java.util.Optional;
+
 public enum ProductStyle implements TaxonomyItem {
     ROMANTICO("romantico", "Romântico"),
     CLASSICO("classico", "Clássico"),
@@ -18,6 +20,14 @@ public enum ProductStyle implements TaxonomyItem {
 
     @Override public String getId() { return id; }
     @Override public String getName() { return name; }
+
+    public static Optional<ProductStyle> fromId(String value) {
+        if (value == null || value.isBlank()) return Optional.empty();
+        for (ProductStyle s : values()) {
+            if (s.id.equalsIgnoreCase(value)) return Optional.of(s);
+        }
+        return Optional.empty();
+    }
 
     public static boolean isValid(String value) {
         if (value == null || value.isBlank()) return false;
