@@ -1,0 +1,17 @@
+DO $$
+DECLARE
+    v_renner uuid;
+BEGIN
+    SELECT id INTO v_renner FROM company WHERE cnpj = '92693249000195';
+
+    INSERT INTO product (company_id, name, description, category, color, style, sizes, price, image_url, purchase_url, status, active, created_at, updated_at)
+    VALUES
+    (v_renner, 'Calça Legging Básica Preta',  'Legging de cintura alta em tecido compressão, confortável para o dia a dia.',       'calca',    'preto',     ARRAY['casual'],    ARRAY['pp','p','m','g','gg'],         79.90, 'https://images.unsplash.com/photo-1506629082955-511b1aa562c8?w=600&q=80',  'https://www.renner.com.br/calca-legging-basica-preta',       'PUBLISHED', true, NOW(), NOW()),
+    (v_renner, 'Camiseta Oversized Feminina', 'Camiseta oversized 100% algodão, caimento relaxado e estilo despojado.',            'camiseta', 'branco',    ARRAY['casual'],    ARRAY['pp','p','m','g','gg'],         89.90, 'https://images.unsplash.com/photo-1554568218-0f1715e72254?w=600&q=80',  'https://www.renner.com.br/camiseta-oversized-feminina',      'PUBLISHED', true, NOW(), NOW()),
+    (v_renner, 'Vestido Curto Floral',        'Vestido curto com estampa floral, tecido leve e fluido, ideal para o verão.',      'vestido',  'rosa',      ARRAY['casual'],    ARRAY['pp','p','m','g','gg'],        149.90, 'https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?w=600&q=80', 'https://www.renner.com.br/vestido-curto-floral',             'PUBLISHED', true, NOW(), NOW()),
+    (v_renner, 'Blusa Tricô Cropped',         'Blusa cropped em tricô com textura canelada, perfeita para looks sobrepostos.',    'blusa',    'caramelo',  ARRAY['casual'],    ARRAY['pp','p','m','g','gg'],        119.90, 'https://images.unsplash.com/photo-1434389677669-e08b4cac3105?w=600&q=80', 'https://www.renner.com.br/blusa-trico-cropped',              'PUBLISHED', true, NOW(), NOW()),
+    (v_renner, 'Jaqueta Bomber Feminina',     'Jaqueta bomber com ribana nos punhos e barra, estilo urban casual.',               'jaqueta',  'verde',     ARRAY['casual'],    ARRAY['pp','p','m','g','gg'],        249.90, 'https://images.unsplash.com/photo-1551537482-f2075a1d41f2?w=600&q=80',  'https://www.renner.com.br/jaqueta-bomber-feminina',          'PUBLISHED', true, NOW(), NOW()),
+    (v_renner, 'Cardigan Longo Feminino',     'Cardigan longo em malha grossa, corte amplo e confortável para o outono.',         'casaco',   'off-white', ARRAY['casual'],    ARRAY['pp','p','m','g','gg'],        189.90, 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=600&q=80', 'https://www.renner.com.br/cardigan-longo-feminino',          'PUBLISHED', true, NOW(), NOW()),
+    (v_renner, 'Regata Básica Algodão',       'Regata básica 100% algodão com alças largas, essencial para o guarda-roupa.',     'regata',   'branco',    ARRAY['casual'],    ARRAY['pp','p','m','g','gg'],         59.90, 'https://images.unsplash.com/photo-1503342394128-c104d54dba01?w=600&q=80', 'https://www.renner.com.br/regata-basica-algodao',            'PUBLISHED', true, NOW(), NOW()),
+    (v_renner, 'Calça Skinny Jeans Feminina', 'Calça skinny jeans de cintura alta com elastano para maior conforto e modelagem.', 'calca',   'azul',      ARRAY['casual'],    ARRAY['34','36','38','40','42','44'], 139.90, 'https://images.unsplash.com/photo-1618354691438-25bc04584c23?w=600&q=80', 'https://www.renner.com.br/calca-skinny-jeans-feminina',      'PUBLISHED', true, NOW(), NOW());
+END $$;

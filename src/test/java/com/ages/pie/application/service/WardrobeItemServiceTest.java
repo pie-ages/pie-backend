@@ -165,8 +165,8 @@ class WardrobeItemServiceTest {
 
         @Test
         void listWardrobe_shouldCreateIndependentRowsAndExposeHasNext() {
-        WardrobeItem shirt = new WardrobeItem(user, null, "Camisetas", "Branco");
-        WardrobeItem pants = new WardrobeItem(user, null, "Calças", "Preto");
+        WardrobeItem shirt = new WardrobeItem(user, null, "Camisetas", "Camisetas", null, "Branco");
+        WardrobeItem pants = new WardrobeItem(user, null, "Calças", "Calças", null, "Preto");
         when(wardrobeItemRepository.findCategoriesByCustomerIdOrderByCategoryAsc(userId))
             .thenReturn(List.of("Camisetas", "Calças"));
         when(wardrobeItemRepository.findAllByCustomerIdAndCategoryOrderByCreatedAtDescIdDesc(
@@ -187,7 +187,7 @@ class WardrobeItemServiceTest {
 
         @Test
         void listWardrobe_shouldFilterToRequestedCategoryAndUseStableOrdering() {
-        WardrobeItem shirt = new WardrobeItem(user, null, "Camisetas", "Branco");
+        WardrobeItem shirt = new WardrobeItem(user, null, "Camisetas", "Camisetas", null, "Branco");
         when(wardrobeItemRepository.findCategoriesByCustomerIdOrderByCategoryAsc(userId))
             .thenReturn(List.of("Camisetas", "Calças"));
         when(wardrobeItemRepository.findAllByCustomerIdAndCategoryOrderByCreatedAtDescIdDesc(
