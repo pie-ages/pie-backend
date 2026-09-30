@@ -1,6 +1,9 @@
 package com.ages.pie.application.controller;
 
 import com.ages.pie.application.dto.wardrobe.WardrobeItemRequestDTO;
+import com.ages.pie.application.dto.wardrobe.WardrobeImageAnalysisDTO;
+import com.ages.pie.application.service.WardrobeImageAnalysisService;
+import com.ages.pie.infrastructure.security.AuthenticatedUserProvider;
 import com.ages.pie.application.dto.wardrobe.WardrobeItemResponseDTO;
 import com.ages.pie.application.service.WardrobeItemService;
 import jakarta.validation.Valid;
@@ -26,8 +29,21 @@ public class WardrobeItemController {
 
     private final WardrobeItemService wardrobeItemService;
 
-    public WardrobeItemController(WardrobeItemService wardrobeItemService) {
+    private final WardrobeImageAnalysisService analysisService;
+    private final AuthenticatedUserProvider authenticatedUserProvider;
+
+    public WardrobeItemController(WardrobeItemService wardrobeItemService,
+                                 WardrobeImageAnalysisService analysisService,
+                                 AuthenticatedUserProvider authenticatedUserProvider) {
         this.wardrobeItemService = wardrobeItemService;
+        this.analysisService = analysisService;
+        this.authenticatedUserProvider = authenticatedUserProvider;
+    }
+
+    @PostMapping(value = "/analyze", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<WardrobeImageAnalysisDTO> analyze(@RequestPart("file") MultipartFile file) {
+        authenticatedUserProvider.id();
+        return ResponseEntity.ok(analysisService.analyze(file));
     }
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
