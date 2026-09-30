@@ -1,6 +1,6 @@
 ALTER TABLE wardrobe_item
-    ADD COLUMN name varchar,
-    ADD COLUMN style varchar;
+    ADD COLUMN IF NOT EXISTS name varchar,
+    ADD COLUMN IF NOT EXISTS style varchar;
 
 UPDATE wardrobe_item wi
 SET name = COALESCE(p.name, wi.category, 'Peça')
