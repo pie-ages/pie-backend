@@ -228,9 +228,9 @@ BEGIN
     -- 7. WARDROBE ITEMS
     -- -------------------------------------------------------------
 
-    INSERT INTO wardrobe_item (customer_id, product_id, category, color, photo_url, created_at, updated_at) VALUES (v_ana,     v_prod_blazer,  'Casacos',   'Bege',   'https://example.com/w/blazer.jpg',  NOW(), NOW()) RETURNING id INTO v_wi_blazer;
-    INSERT INTO wardrobe_item (customer_id, product_id, category, color, photo_url, created_at, updated_at) VALUES (v_ana,     NULL,           'Camisetas', 'Branco', 'https://example.com/w/tshirt.jpg',  NOW(), NOW()) RETURNING id INTO v_wi_tshirt;
-    INSERT INTO wardrobe_item (customer_id, product_id, category, color, photo_url, created_at, updated_at) VALUES (v_carlos,  v_prod_jaqueta, 'Casacos',   'Preto',  'https://example.com/w/jacket.jpg',  NOW(), NOW()) RETURNING id INTO v_wi_jacket;
+    INSERT INTO wardrobe_item (customer_id, product_id, category, color, photo_url, created_at, updated_at) VALUES (v_ana,     v_prod_blazer,  'Casaco',   'Bege',   'https://shop2gether.fbitsstatic.net/img/p/blazer-feminino-alongado-blended-bege-245737/708165.jpg',  NOW(), NOW()) RETURNING id INTO v_wi_blazer;
+    INSERT INTO wardrobe_item (customer_id, product_id, category, color, photo_url, created_at, updated_at) VALUES (v_ana,     NULL,           'Camisetas', 'Branco', 'https://cdn.awsli.com.br/1000x1000/1359/1359258/produto/102085808/c287a97875.jpg',  NOW(), NOW()) RETURNING id INTO v_wi_tshirt;
+    INSERT INTO wardrobe_item (customer_id, product_id, category, color, photo_url, created_at, updated_at) VALUES (v_carlos,  v_prod_jaqueta, 'Casacos',   'Preto',  'https://thumb.braavo.me/saint/0/3448359956.webp',  NOW(), NOW()) RETURNING id INTO v_wi_jacket;
     INSERT INTO wardrobe_item (customer_id, product_id, category, color, photo_url, created_at, updated_at) VALUES (v_mariana, v_prod_vestido, 'Vestidos',  'Vermelho','https://example.com/w/dress.jpg',   NOW(), NOW()) RETURNING id INTO v_wi_dress;
     INSERT INTO wardrobe_item (customer_id, product_id, category, color, photo_url, created_at, updated_at) VALUES (v_lucas,   v_prod_cargo,   'Camisas',   'Verde',  'https://example.com/w/shirt.jpg',   NOW(), NOW()) RETURNING id INTO v_wi_shirt;
     INSERT INTO wardrobe_item (customer_id, product_id, category, color, photo_url, created_at, updated_at) VALUES (v_beatriz, v_prod_basic,   'Camisetas', 'Branco', 'https://example.com/w/basic.jpg',   NOW(), NOW()) RETURNING id INTO v_wi_basic;
@@ -243,7 +243,7 @@ BEGIN
     -- 8. LOOKS
     -- -------------------------------------------------------------
 
-    INSERT INTO look (customer_id, title, is_ai_generated, occasion, photo_url, created_at, updated_at) VALUES (v_ana,     'Look Trabalho Elegante',      true,  'Trabalho', 'https://example.com/l/1.jpg',  NOW(), NOW()) RETURNING id INTO v_look_trabalho;
+    INSERT INTO look (customer_id, title, is_ai_generated, occasion, photo_url, created_at, updated_at) VALUES (v_ana,     'Look Trabalho Elegante',      true,  'Trabalho', 'https://i.pinimg.com/736x/bb/c2/be/bbc2bef4fa3bfba449f64fe72612fd2d.jpg',  NOW(), NOW()) RETURNING id INTO v_look_trabalho;
     INSERT INTO look (customer_id, title, is_ai_generated, occasion, photo_url, created_at, updated_at) VALUES (v_carlos,  'Outing Casual Fim de Semana', false, 'Lazer',    'https://example.com/l/2.jpg',  NOW(), NOW()) RETURNING id INTO v_look_outing;
     INSERT INTO look (customer_id, title, is_ai_generated, occasion, photo_url, created_at, updated_at) VALUES (v_mariana, 'Jantar Romantico',            true,  'Jantar',   'https://example.com/l/3.jpg',  NOW(), NOW()) RETURNING id INTO v_look_jantar;
     INSERT INTO look (customer_id, title, is_ai_generated, occasion, photo_url, created_at, updated_at) VALUES (v_lucas,   'Streetwear Casual',           false, 'Passeio',  'https://example.com/l/4.jpg',  NOW(), NOW()) RETURNING id INTO v_look_street;
