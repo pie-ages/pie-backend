@@ -39,7 +39,7 @@ class UserStyleServiceTest {
     @BeforeEach
     void setUp() {
         userId = UUID.randomUUID();
-        user = new User("Ana Silva", "ana@email.com", "hash(senha123)");
+        user = new User("Ana Silva", "ana@email.com", UUID.randomUUID());
         profile = new BodyProfile(user);
         profile.updateStylePreference(new String[]{"casual"});
         userStyleService = new UserStyleService(userRepository);

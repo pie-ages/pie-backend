@@ -40,7 +40,7 @@ class AuthLoginIntegrationTest {
     @BeforeEach
     void seedUsuario() {
         userRepository.save(new User(
-            "Usuário Teste", "login-" + UUID.randomUUID() + "@teste.com", "hash(x)"));
+            "Usuário Teste", "login-" + UUID.randomUUID() + "@teste.com", UUID.randomUUID()));
     }
 
     @Test

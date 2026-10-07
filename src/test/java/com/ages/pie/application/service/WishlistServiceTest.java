@@ -68,7 +68,7 @@ class WishlistServiceTest {
         productId = UUID.randomUUID();
         wishlistId = UUID.randomUUID();
 
-        user = new User("Ana Silva", "ana@email.com", "hash(senha123)");
+        user = new User("Ana Silva", "ana@email.com", UUID.randomUUID());
         ReflectionTestUtils.setField(user, "id", userId);
 
         Company company = new Company(UUID.randomUUID(), "Loja X", "12345678000199", "Loja X LTDA",

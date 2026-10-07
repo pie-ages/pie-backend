@@ -38,7 +38,7 @@ class WishlistMapperTest {
         ReflectionTestUtils.setField(product, "imageUrl", "https://loja.com/blazer.jpg");
         ReflectionTestUtils.setField(product, "purchaseUrl", "https://loja.com/comprar/blazer");
 
-        User user = new User("Ana Silva", "ana@email.com", "hash(senha123)");
+        User user = new User("Ana Silva", "ana@email.com", UUID.randomUUID());
         wishlist = new Wishlist(user, "Minha wishlist");
         ReflectionTestUtils.setField(wishlist, "id", UUID.randomUUID());
     }
