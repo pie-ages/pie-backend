@@ -12,6 +12,9 @@ spring.flyway.validate-on-migrate=false
 supabase.storage.url=https://<ref>.supabase.co
 supabase.storage.service-role-key=eyJ...
 
+# As rotas de cadastro usam o Supabase Auth com estas mesmas credenciais
+# (supabase.auth.url e supabase.auth.service-role-key herdam os valores acima).
+
 # Bucket para imagens de produtos (padrão: product-images)
 supabase.storage.bucket=product-images
 
