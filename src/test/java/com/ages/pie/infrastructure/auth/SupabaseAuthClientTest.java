@@ -75,6 +75,19 @@ class SupabaseAuthClientTest {
     }
 
     @Test
+    void createUser_shouldThrowBusinessException_whenSupabaseReportsDuplicateWithoutErrorCode() {
+        server.expect(requestTo(ADMIN_USERS_URL))
+                .andRespond(withStatus(HttpStatus.BAD_REQUEST)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body("{\"code\":400,\"msg\":\"User already registered\"}"));
+
+        assertThatThrownBy(() -> client.createUser("ana@email.com", "senha123"))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("ana@email.com");
+        server.verify();
+    }
+
+    @Test
     void createUser_shouldThrowIllegalArgument_whenSupabaseRejectsThePassword() {
         server.expect(requestTo(ADMIN_USERS_URL))
                 .andRespond(withStatus(HttpStatus.UNPROCESSABLE_ENTITY)

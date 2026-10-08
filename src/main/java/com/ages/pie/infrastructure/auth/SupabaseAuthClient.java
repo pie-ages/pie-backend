@@ -28,6 +28,7 @@ public class SupabaseAuthClient {
     private static final Logger logger = LoggerFactory.getLogger(SupabaseAuthClient.class);
     private static final String EMAIL_EXISTS = "email_exists";
     private static final String WEAK_PASSWORD = "weak_password";
+    private static final String ALREADY_REGISTERED = "already registered";
 
     private final RestClient restClient;
     private final SupabaseAuthProperties props;
@@ -94,7 +95,7 @@ public class SupabaseAuthClient {
 
         if (status == HttpStatus.BAD_REQUEST.value() || status == HttpStatus.UNPROCESSABLE_ENTITY.value()) {
             String errorCode = readField(body, "error_code");
-            if (EMAIL_EXISTS.equals(errorCode)) {
+            if (isEmailAlreadyRegistered(errorCode, body)) {
                 return new BusinessException("Email já cadastrado: " + email);
             }
             logger.warn("Supabase Auth recusou o cadastro ({}): {}", e.getStatusCode(), body);
@@ -106,6 +107,10 @@ public class SupabaseAuthClient {
 
         logger.error("Supabase Auth respondeu {} ao criar usuário: {}", e.getStatusCode(), body);
         return badGateway();
+    }
+
+    private boolean isEmailAlreadyRegistered(String errorCode, String body) {
+        return EMAIL_EXISTS.equals(errorCode) || body.toLowerCase().contains(ALREADY_REGISTERED);
     }
 
     private UUID extractId(String response) {
