@@ -10,19 +10,27 @@ import com.ages.pie.application.exception.BusinessException;
 import com.ages.pie.application.exception.ResourceNotFoundException;
 import com.ages.pie.application.mapper.CompanyMapper;
 import com.ages.pie.domain.entity.Company;
+import com.ages.pie.infrastructure.auth.SupabaseAuthClient;
 import com.ages.pie.infrastructure.repository.CompanyRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class CompanyService {
 
+    private static final Logger logger = LoggerFactory.getLogger(CompanyService.class);
+
     private final CompanyRepository companyRepository;
     private final CompanyMapper companyMapper;
+    private final SupabaseAuthClient supabaseAuthClient;
 
-    public CompanyService(CompanyRepository companyRepository, CompanyMapper companyMapper) {
+    public CompanyService(CompanyRepository companyRepository, CompanyMapper companyMapper,
+                          SupabaseAuthClient supabaseAuthClient) {
         this.companyRepository = companyRepository;
         this.companyMapper = companyMapper;
+        this.supabaseAuthClient = supabaseAuthClient;
     }
 
     @Transactional
@@ -34,8 +42,24 @@ public class CompanyService {
             throw new BusinessException("Email já cadastrado: " + dto.email());
         }
 
-        Company company = companyMapper.toEntity(dto, hashPassword(dto.password()));
-        return companyMapper.toResponseDTO(companyRepository.save(company));
+        UUID supabaseUserId = supabaseAuthClient.createUser(dto.email(), dto.password());
+
+        try {
+            Company company = companyMapper.toEntity(dto, supabaseUserId);
+            return companyMapper.toResponseDTO(companyRepository.saveAndFlush(company));
+        } catch (RuntimeException e) {
+            rollbackSupabaseUser(supabaseUserId, dto.email());
+            throw e;
+        }
+    }
+
+    private void rollbackSupabaseUser(UUID supabaseUserId, String email) {
+        try {
+            supabaseAuthClient.deleteUser(supabaseUserId);
+        } catch (RuntimeException e) {
+            logger.error("Usuário {} ficou órfão no Supabase Auth após falha ao cadastrar {}",
+                    supabaseUserId, email, e);
+        }
     }
 
     @Transactional(readOnly = true)
@@ -74,12 +98,5 @@ public class CompanyService {
     private Company findEntity(UUID id) {
         return companyRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Empresa não encontrada: " + id));
-    }
-
-    private String hashPassword(String password) {
-        if (password == null || password.isBlank()) {
-            throw new IllegalArgumentException("Senha é obrigatória");
-        }
-        return "hash(" + password + ")";
     }
 }

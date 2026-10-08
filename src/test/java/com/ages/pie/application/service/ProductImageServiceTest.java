@@ -50,7 +50,7 @@ class ProductImageServiceTest {
         productId = UUID.randomUUID();
         companyId = UUID.randomUUID();
         company = new Company(companyId, "Loja Teste", "12345678000100", "Loja Teste LTDA",
-                "Ana", "loja@teste.com", "hash", null, null);
+                "Ana", "loja@teste.com", UUID.randomUUID(), null, null);
         setId(company, companyId);
         product = new Product(company, "Produto Teste");
         setId(product, productId);

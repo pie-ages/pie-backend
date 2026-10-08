@@ -72,7 +72,7 @@ class WishlistServiceTest {
         ReflectionTestUtils.setField(user, "id", userId);
 
         Company company = new Company(UUID.randomUUID(), "Loja X", "12345678000199", "Loja X LTDA",
-                "Maria", "contato@lojax.com", "hash(senha123)", null, null);
+                "Maria", "contato@lojax.com", UUID.randomUUID(), null, null);
         product = new Product(company, "Blazer Social Feminino");
         ReflectionTestUtils.setField(product, "id", productId);
 
