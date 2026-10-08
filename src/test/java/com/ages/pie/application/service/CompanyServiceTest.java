@@ -17,6 +17,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -212,14 +213,56 @@ class CompanyServiceTest {
         CompanyUpdateDTO dto = updateDTO();
         when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
         when(companyRepository.existsByEmailAndIdNot(dto.email(), companyId)).thenReturn(false);
-        when(companyRepository.save(company)).thenReturn(company);
+        when(companyRepository.saveAndFlush(company)).thenReturn(company);
         when(companyMapper.toResponseDTO(company)).thenReturn(responseDTO);
 
         companyService.update(companyId, dto);
 
         assertThat(company.getName()).isEqualTo("Loja Y");
         assertThat(company.getEmail()).isEqualTo("novo@lojay.com");
-        verify(companyRepository).save(company);
+        verify(companyRepository).saveAndFlush(company);
+    }
+
+    @Test
+    void update_shouldPropagateNewEmailToSupabase_whenEmailChanges() {
+        CompanyUpdateDTO dto = updateDTO();
+        UUID supabaseUserId = company.getSupabaseUserId();
+        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
+        when(companyRepository.existsByEmailAndIdNot(dto.email(), companyId)).thenReturn(false);
+        when(companyRepository.saveAndFlush(company)).thenReturn(company);
+        when(companyMapper.toResponseDTO(company)).thenReturn(responseDTO);
+
+        companyService.update(companyId, dto);
+
+        verify(supabaseAuthClient).updateEmail(supabaseUserId, "novo@lojay.com");
+    }
+
+    @Test
+    void update_shouldNotTouchSupabase_whenEmailIsUnchanged() {
+        CompanyUpdateDTO dto = new CompanyUpdateDTO("Loja Y", "Loja Y LTDA", "Joao",
+                "contato@lojax.com", null, null);
+        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
+        when(companyRepository.existsByEmailAndIdNot(dto.email(), companyId)).thenReturn(false);
+        when(companyRepository.saveAndFlush(company)).thenReturn(company);
+        when(companyMapper.toResponseDTO(company)).thenReturn(responseDTO);
+
+        companyService.update(companyId, dto);
+
+        verify(supabaseAuthClient, never()).updateEmail(any(), any());
+    }
+
+    @Test
+    void update_shouldNotTouchSupabase_whenCompanyHasNoIdentity() {
+        ReflectionTestUtils.setField(company, "supabaseUserId", null);
+        CompanyUpdateDTO dto = updateDTO();
+        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
+        when(companyRepository.existsByEmailAndIdNot(dto.email(), companyId)).thenReturn(false);
+        when(companyRepository.saveAndFlush(company)).thenReturn(company);
+        when(companyMapper.toResponseDTO(company)).thenReturn(responseDTO);
+
+        companyService.update(companyId, dto);
+
+        verify(supabaseAuthClient, never()).updateEmail(any(), any());
     }
 
     @Test
@@ -230,7 +273,7 @@ class CompanyServiceTest {
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessageContaining(companyId.toString());
 
-        verify(companyRepository, never()).save(any());
+        verify(companyRepository, never()).saveAndFlush(any());
     }
 
     @Test
@@ -243,7 +286,7 @@ class CompanyServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining(dto.email());
 
-        verify(companyRepository, never()).save(any());
+        verify(companyRepository, never()).saveAndFlush(any());
     }
 
     @Test
@@ -256,7 +299,7 @@ class CompanyServiceTest {
         assertThatThrownBy(() -> companyService.update(companyId, dto))
                 .isInstanceOf(IllegalArgumentException.class);
 
-        verify(companyRepository, never()).save(any());
+        verify(companyRepository, never()).saveAndFlush(any());
     }
 
     @Test

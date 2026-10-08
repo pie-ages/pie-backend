@@ -57,13 +57,33 @@ public class SupabaseAuthClient {
                     .retrieve()
                     .body(String.class);
         } catch (RestClientResponseException e) {
-            throw translateCreateError(e, email);
+            throw translateAdminError(e, email);
         } catch (RestClientException e) {
             logger.error("Falha de comunicação com o Supabase Auth ao criar usuário", e);
             throw badGateway();
         }
 
         return extractId(response);
+    }
+
+    public void updateEmail(UUID supabaseUserId, String email) {
+        requireConfigured();
+
+        try {
+            restClient.put()
+                    .uri(adminUsersUrl() + "/" + supabaseUserId)
+                    .headers(this::authHeaders)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(Map.of("email", email, "email_confirm", true))
+                    .retrieve()
+                    .toBodilessEntity();
+        } catch (RestClientResponseException e) {
+            throw translateAdminError(e, email);
+        } catch (RestClientException e) {
+            logger.error("Falha de comunicação com o Supabase Auth ao atualizar o e-mail do usuário {}",
+                    supabaseUserId, e);
+            throw badGateway();
+        }
     }
 
     public void deleteUser(UUID supabaseUserId) {
@@ -89,7 +109,7 @@ public class SupabaseAuthClient {
         }
     }
 
-    private RuntimeException translateCreateError(RestClientResponseException e, String email) {
+    private RuntimeException translateAdminError(RestClientResponseException e, String email) {
         int status = e.getStatusCode().value();
         String body = e.getResponseBodyAsString();
 
@@ -105,7 +125,7 @@ public class SupabaseAuthClient {
             return new IllegalArgumentException("Dados inválidos para o cadastro");
         }
 
-        logger.error("Supabase Auth respondeu {} ao criar usuário: {}", e.getStatusCode(), body);
+        logger.error("Supabase Auth respondeu {} na operação de usuário: {}", e.getStatusCode(), body);
         return badGateway();
     }
 

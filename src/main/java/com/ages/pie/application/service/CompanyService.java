@@ -1,6 +1,7 @@
 package com.ages.pie.application.service;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 import com.ages.pie.application.dto.company.CompanyRequestDTO;
@@ -83,9 +84,16 @@ public class CompanyService {
             throw new BusinessException("Email já cadastrado: " + dto.email());
         }
 
+        boolean emailChanged = !Objects.equals(company.getEmail(), dto.email());
         company.update(dto.name(), dto.socialReason(), dto.responsiblePerson(),
                 dto.email(), dto.website(), dto.photoUrl());
-        return companyMapper.toResponseDTO(companyRepository.save(company));
+        CompanyResponseDTO response = companyMapper.toResponseDTO(companyRepository.saveAndFlush(company));
+
+        if (emailChanged && company.getSupabaseUserId() != null) {
+            supabaseAuthClient.updateEmail(company.getSupabaseUserId(), dto.email());
+        }
+
+        return response;
     }
 
     @Transactional

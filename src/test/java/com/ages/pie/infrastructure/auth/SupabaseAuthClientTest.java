@@ -139,6 +139,35 @@ class SupabaseAuthClientTest {
     }
 
     @Test
+    void updateEmail_shouldCallAdminEndpoint() {
+        UUID id = UUID.randomUUID();
+        server.expect(requestTo(ADMIN_USERS_URL + "/" + id))
+                .andExpect(method(HttpMethod.PUT))
+                .andExpect(header("apikey", "test-key"))
+                .andExpect(jsonPath("$.email").value("novo@lojay.com"))
+                .andExpect(jsonPath("$.email_confirm").value(true))
+                .andRespond(withSuccess());
+
+        client.updateEmail(id, "novo@lojay.com");
+
+        server.verify();
+    }
+
+    @Test
+    void updateEmail_shouldThrowBusinessException_whenNewEmailIsTaken() {
+        UUID id = UUID.randomUUID();
+        server.expect(requestTo(ADMIN_USERS_URL + "/" + id))
+                .andRespond(withStatus(HttpStatus.UNPROCESSABLE_ENTITY)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body("{\"code\":422,\"error_code\":\"email_exists\",\"msg\":\"already registered\"}"));
+
+        assertThatThrownBy(() -> client.updateEmail(id, "novo@lojay.com"))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("novo@lojay.com");
+        server.verify();
+    }
+
+    @Test
     void deleteUser_shouldCallAdminEndpoint() {
         UUID id = UUID.randomUUID();
         server.expect(requestTo(ADMIN_USERS_URL + "/" + id))

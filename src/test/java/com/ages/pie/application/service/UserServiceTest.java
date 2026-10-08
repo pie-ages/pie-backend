@@ -18,6 +18,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.OffsetDateTime;
@@ -219,21 +220,34 @@ class UserServiceTest {
 
     @Test
     void delete_shouldDeleteUser_whenUserExists() {
-        when(userRepository.existsById(userId)).thenReturn(true);
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
 
         userService.delete(userId);
 
-        verify(userRepository).deleteById(userId);
+        verify(userRepository).delete(user);
+        verify(supabaseAuthClient).deleteUser(user.getSupabaseUserId());
+    }
+
+    @Test
+    void delete_shouldNotCallSupabase_whenUserHasNoIdentity() {
+        ReflectionTestUtils.setField(user, "supabaseUserId", null);
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+
+        userService.delete(userId);
+
+        verify(userRepository).delete(user);
+        verify(supabaseAuthClient, never()).deleteUser(any());
     }
 
     @Test
     void delete_shouldThrowResourceNotFoundException_whenUserDoesNotExist() {
-        when(userRepository.existsById(userId)).thenReturn(false);
+        when(userRepository.findById(userId)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> userService.delete(userId))
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessageContaining(userId.toString());
 
-        verify(userRepository, never()).deleteById(any());
+        verify(userRepository, never()).delete(any());
+        verify(supabaseAuthClient, never()).deleteUser(any());
     }
 }

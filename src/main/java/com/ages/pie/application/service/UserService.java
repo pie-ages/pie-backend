@@ -85,9 +85,14 @@ public class UserService {
 
     @Transactional
     public void delete(UUID id) {
-        if (!userRepository.existsById(id)) {
-            throw new ResourceNotFoundException("Usuário não encontrado: " + id);
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado: " + id));
+
+        userRepository.delete(user);
+        userRepository.flush();
+
+        if (user.getSupabaseUserId() != null) {
+            supabaseAuthClient.deleteUser(user.getSupabaseUserId());
         }
-        userRepository.deleteById(id);
     }
 }
