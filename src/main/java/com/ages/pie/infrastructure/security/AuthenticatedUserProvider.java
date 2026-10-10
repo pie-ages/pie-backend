@@ -3,63 +3,34 @@ package com.ages.pie.infrastructure.security;
 import java.util.Optional;
 import java.util.UUID;
 
-import io.jsonwebtoken.JwtException;
-import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * Identifica o usuário autenticado a partir do JWT do Supabase já validado
+ * pelo Spring Security. O {@code sub} do token é o id do customer.
+ */
 @Component
 public class AuthenticatedUserProvider {
 
-    private static final String AUTHORIZATION_HEADER = "Authorization";
-    private static final String BEARER_PREFIX = "Bearer ";
-
-    private final HttpServletRequest request;
-    private final JwtTokenProvider jwtTokenProvider;
-
-    public AuthenticatedUserProvider(HttpServletRequest request, JwtTokenProvider jwtTokenProvider) {
-        this.request = request;
-        this.jwtTokenProvider = jwtTokenProvider;
-    }
-
     public UUID id() {
-        String authorization = request.getHeader(AUTHORIZATION_HEADER);
-        if (authorization == null
-                || !authorization.regionMatches(true, 0, BEARER_PREFIX, 0, BEARER_PREFIX.length())) {
-            throw unauthenticated(null);
-        }
-
-        String token = authorization.substring(BEARER_PREFIX.length()).trim();
-        if (token.isEmpty()) {
-            throw unauthenticated(null);
-        }
-
-        try {
-            return jwtTokenProvider.extractUserId(token);
-        } catch (JwtException | IllegalArgumentException e) {
-            throw unauthenticated(e);
-        }
+        return optionalId().orElseThrow(
+            () -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Usuário não autenticado"));
     }
 
     public Optional<UUID> optionalId() {
-        String authorization = request.getHeader(AUTHORIZATION_HEADER);
-        if (authorization == null
-                || !authorization.regionMatches(true, 0, BEARER_PREFIX, 0, BEARER_PREFIX.length())) {
-            return Optional.empty();
-        }
-        String token = authorization.substring(BEARER_PREFIX.length()).trim();
-        if (token.isEmpty()) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (!(authentication instanceof JwtAuthenticationToken jwtAuthentication)) {
             return Optional.empty();
         }
         try {
-            return Optional.of(jwtTokenProvider.extractUserId(token));
-        } catch (JwtException | IllegalArgumentException e) {
+            return Optional.of(UUID.fromString(jwtAuthentication.getToken().getSubject()));
+        } catch (IllegalArgumentException | NullPointerException e) {
             return Optional.empty();
         }
-    }
-
-    private ResponseStatusException unauthenticated(Throwable cause) {
-        return new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Usuário não autenticado", cause);
     }
 }
