@@ -16,8 +16,10 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.UUID;
+import java.util.zip.CRC32;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -62,6 +64,22 @@ class ColorimetryServiceTest {
         BufferedImage image = ImageIO.read(new ByteArrayInputStream(sent.getValue()));
         assertThat(image.getWidth()).isEqualTo(ColorimetryService.MAX_IMAGE_SIDE);
         assertThat(image.getHeight()).isEqualTo(384);
+    }
+
+    @Test
+    void rejectsPhotosDeclaringMorePixelsThanTheCapWithoutDecodingThem() throws IOException {
+        byte[] png = photo("image/png", 1, 1).getBytes();
+        // Rewrite the IHDR size to 10000x10000 (100 MP); the pixel data stays a single pixel.
+        ByteBuffer.wrap(png, 16, 8).putInt(10_000).putInt(10_000);
+        CRC32 crc = new CRC32();
+        crc.update(png, 12, 17);
+        ByteBuffer.wrap(png, 29, 4).putInt((int) crc.getValue());
+
+        assertThatThrownBy(() -> service.analyze(userId, new MockMultipartFile("file", "bomb.png", "image/png", png)))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("10000x10000")
+                .hasMessageContaining("50 megapixels");
+        verifyNoInteractions(client);
     }
 
     @Test

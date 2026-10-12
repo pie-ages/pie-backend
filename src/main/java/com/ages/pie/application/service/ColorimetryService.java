@@ -11,12 +11,15 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 import javax.imageio.ImageIO;
+import javax.imageio.ImageReadParam;
+import javax.imageio.ImageReader;
+import javax.imageio.stream.ImageInputStream;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
+import java.util.Iterator;
 import java.util.Set;
 import java.util.UUID;
 
@@ -29,6 +32,8 @@ public class ColorimetryService {
 
     // Skin undertone survives downscaling; at 512px the image costs a fraction of the tokens of a full photo.
     static final int MAX_IMAGE_SIDE = 512;
+    // Phone cameras top out around 48 MP; anything larger is not a selfie and only costs decode time.
+    static final long MAX_SOURCE_PIXELS = 50_000_000L;
     private static final Set<String> FORMATS = Set.of("image/jpeg", "image/png");
 
     private final BedrockImageAnalysisClient client;
@@ -68,14 +73,33 @@ public class ColorimetryService {
 
     private byte[] downscale(MultipartFile file) {
         BufferedImage source;
-        try (InputStream in = file.getInputStream()) {
-            source = ImageIO.read(in);
-        } catch (IOException e) {
-            source = null;
-        }
-        if (source == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "Não foi possível ler a foto. Tire outra foto.");
+        try (ImageInputStream in = ImageIO.createImageInputStream(file.getInputStream())) {
+            Iterator<ImageReader> readers = in == null ? null : ImageIO.getImageReaders(in);
+            if (readers == null || !readers.hasNext()) {
+                throw unreadablePhoto();
+            }
+            ImageReader reader = readers.next();
+            try {
+                reader.setInput(in, true, true);
+                int width = reader.getWidth(0);
+                int height = reader.getHeight(0);
+                if ((long) width * height > MAX_SOURCE_PIXELS) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A foto tem " + width + "x" + height
+                            + " pixels; o máximo é " + MAX_SOURCE_PIXELS / 1_000_000 + " megapixels. Tire outra foto.");
+                }
+                // Subsampling decodes straight to a small raster, so the full-size image is never allocated.
+                int step = Math.max(1, Math.max(width, height) / MAX_IMAGE_SIDE);
+                ImageReadParam param = reader.getDefaultReadParam();
+                param.setSourceSubsampling(step, step, 0, 0);
+                source = reader.read(0, param);
+            } finally {
+                reader.dispose();
+            }
+        } catch (IOException | RuntimeException e) {
+            if (e instanceof ResponseStatusException status) {
+                throw status;
+            }
+            throw unreadablePhoto();
         }
         double scale = Math.min(1.0, (double) MAX_IMAGE_SIDE / Math.max(source.getWidth(), source.getHeight()));
         int width = Math.max(1, (int) Math.round(source.getWidth() * scale));
@@ -90,9 +114,13 @@ public class ColorimetryService {
         try {
             ImageIO.write(target, "jpeg", out);
         } catch (IOException e) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Não foi possível ler a foto. Tire outra foto.");
+            throw unreadablePhoto();
         }
         return out.toByteArray();
+    }
+
+    private ResponseStatusException unreadablePhoto() {
+        return new ResponseStatusException(HttpStatus.BAD_REQUEST, "Não foi possível ler a foto. Tire outra foto.");
     }
 
     private ResponseStatusException invalidResponse() {
