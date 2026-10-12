@@ -82,6 +82,31 @@ Em ambientes Docker e CI/CD, use as env vars. Localmente via IDE ou `./mvnw`, us
 
 > **Segurança:** O arquivo `application-local.properties` está no `.gitignore` e nunca deve ser commitado.
 
+## Autenticação no Supabase
+
+O cadastro de cliente (`POST /users`) e de empresa (`POST /companies`) cria a identidade da pessoa no Supabase Auth e guarda o identificador em `customer.supabase_user_id` e `company.supabase_user_id`. A senha não é mais armazenada no banco da aplicação: a coluna `password_hash` foi removida das duas tabelas.
+
+A criação usa o admin API (`POST /auth/v1/admin/users`) com `email_confirm`, então não depende de SMTP, template de e-mail ou URL de retorno configurados no projeto.
+
+### Configuração
+
+Reaproveita as credenciais do Object Storage, sem variável nova:
+
+| Propriedade | Origem | Descrição |
+| --- | --- | --- |
+| `supabase.auth.url` | `${supabase.storage.url}` | URL base do projeto Supabase |
+| `supabase.auth.service-role-key` | `${supabase.storage.service-role-key}` | Chave `service_role`, exigida pelo admin API |
+
+Sem essas credenciais, os dois endpoints de cadastro respondem `503` e nenhum registro local é criado.
+
+### Comportamento
+
+- **Um e-mail pertence a um único cadastro.** O `auth.users` é global ao projeto Supabase, então o mesmo e-mail não pode ser cliente e empresa ao mesmo tempo. Antes desta integração isso era permitido.
+- Cadastro duplicado responde `409`; senha recusada pela política do Supabase responde `400`; indisponibilidade do Supabase responde `502`.
+- Se a gravação local falhar depois da identidade criada, ela é removida do Supabase. Caso a remoção também falhe, o identificador órfão fica registrado em log no nível `ERROR`.
+- Trocar o e-mail de uma empresa propaga a alteração para o Supabase; remover um cliente remove também a identidade.
+- Os registros criados pelo seed (`V2`) não possuem identidade no Supabase e ficam com `supabase_user_id` nulo.
+
 ## Wardrobe image analysis
 
 `POST /api/users/me/wardrobe/items/analyze` accepts an authenticated multipart request with a `file` part. It returns `{"category":"vestido","style":"romantico","color":"verde"}` using the existing taxonomy IDs. Analysis does not create a wardrobe item or upload the image to storage; the user reviews the fields before saving.

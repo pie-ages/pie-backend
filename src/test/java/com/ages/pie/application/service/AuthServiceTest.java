@@ -43,7 +43,7 @@ class AuthServiceTest {
     @BeforeEach
     void setUp() {
         userId = UUID.randomUUID();
-        user = new User("Ana Silva", "ana@email.com", "hash(x)");
+        user = new User("Ana Silva", "ana@email.com", UUID.randomUUID());
         ReflectionTestUtils.setField(user, "id", userId);
     }
 

@@ -7,6 +7,7 @@ import com.ages.pie.application.dto.company.CompanyRequestDTO;
 import com.ages.pie.application.dto.company.CompanyResponseDTO;
 import com.ages.pie.application.dto.company.CompanyUpdateDTO;
 import com.ages.pie.application.service.CompanyService;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -29,7 +30,7 @@ public class CompanyController {
     }
 
     @PostMapping
-    public ResponseEntity<CompanyResponseDTO> create(@RequestBody CompanyRequestDTO dto) {
+    public ResponseEntity<CompanyResponseDTO> create(@Valid @RequestBody CompanyRequestDTO dto) {
         return ResponseEntity.status(HttpStatus.CREATED).body(companyService.create(dto));
     }
 
