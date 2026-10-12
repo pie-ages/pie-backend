@@ -139,6 +139,32 @@ class SupabaseAuthClientTest {
     }
 
     @Test
+    void verifyPassword_shouldAcceptCorrectPassword() {
+        server.expect(requestTo("https://test.supabase.co/auth/v1/token?grant_type=password"))
+                .andExpect(method(HttpMethod.POST))
+                .andExpect(jsonPath("$.email").value("contato@lojax.com"))
+                .andRespond(withSuccess("{\"access_token\":\"abc\"}", MediaType.APPLICATION_JSON));
+
+        client.verifyPassword("contato@lojax.com", "senha123");
+
+        server.verify();
+    }
+
+    @Test
+    void verifyPassword_shouldThrowForbidden_whenPasswordIsWrong() {
+        server.expect(requestTo("https://test.supabase.co/auth/v1/token?grant_type=password"))
+                .andRespond(withStatus(HttpStatus.BAD_REQUEST)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body("{\"error\":\"invalid_grant\",\"error_description\":\"Invalid login credentials\"}"));
+
+        assertThatThrownBy(() -> client.verifyPassword("contato@lojax.com", "errada"))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode())
+                        .isEqualTo(HttpStatus.FORBIDDEN));
+        server.verify();
+    }
+
+    @Test
     void updateEmail_shouldCallAdminEndpoint() {
         UUID id = UUID.randomUUID();
         server.expect(requestTo(ADMIN_USERS_URL + "/" + id))

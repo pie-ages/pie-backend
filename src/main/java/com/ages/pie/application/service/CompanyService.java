@@ -84,12 +84,22 @@ public class CompanyService {
             throw new BusinessException("Email já cadastrado: " + dto.email());
         }
 
-        boolean emailChanged = !Objects.equals(company.getEmail(), dto.email());
+        String currentEmail = company.getEmail();
+        boolean propagateEmail = !Objects.equals(currentEmail, dto.email())
+                && company.getSupabaseUserId() != null;
+
+        if (propagateEmail) {
+            if (dto.currentPassword() == null || dto.currentPassword().isBlank()) {
+                throw new IllegalArgumentException("Informe a senha atual para alterar o e-mail");
+            }
+            supabaseAuthClient.verifyPassword(currentEmail, dto.currentPassword());
+        }
+
         company.update(dto.name(), dto.socialReason(), dto.responsiblePerson(),
                 dto.email(), dto.website(), dto.photoUrl());
         CompanyResponseDTO response = companyMapper.toResponseDTO(companyRepository.saveAndFlush(company));
 
-        if (emailChanged && company.getSupabaseUserId() != null) {
+        if (propagateEmail) {
             supabaseAuthClient.updateEmail(company.getSupabaseUserId(), dto.email());
         }
 

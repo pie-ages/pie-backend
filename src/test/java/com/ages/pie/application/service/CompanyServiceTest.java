@@ -17,7 +17,9 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatus;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -63,7 +65,7 @@ class CompanyServiceTest {
     }
 
     private CompanyUpdateDTO updateDTO() {
-        return new CompanyUpdateDTO("Loja Y", "Loja Y LTDA", "Joao", "novo@lojay.com", null, null);
+        return new CompanyUpdateDTO("Loja Y", "Loja Y LTDA", "Joao", "novo@lojay.com", null, null, "senha123");
     }
 
     @Test
@@ -238,9 +240,8 @@ class CompanyServiceTest {
     }
 
     @Test
-    void update_shouldNotTouchSupabase_whenEmailIsUnchanged() {
-        CompanyUpdateDTO dto = new CompanyUpdateDTO("Loja Y", "Loja Y LTDA", "Joao",
-                "contato@lojax.com", null, null);
+    void update_shouldVerifyCurrentPassword_whenEmailChanges() {
+        CompanyUpdateDTO dto = updateDTO();
         when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
         when(companyRepository.existsByEmailAndIdNot(dto.email(), companyId)).thenReturn(false);
         when(companyRepository.saveAndFlush(company)).thenReturn(company);
@@ -248,6 +249,51 @@ class CompanyServiceTest {
 
         companyService.update(companyId, dto);
 
+        verify(supabaseAuthClient).verifyPassword("contato@lojax.com", "senha123");
+    }
+
+    @Test
+    void update_shouldRequireCurrentPassword_whenEmailChanges() {
+        CompanyUpdateDTO dto = new CompanyUpdateDTO("Loja Y", "Loja Y LTDA", "Joao",
+                "novo@lojay.com", null, null, null);
+        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
+        when(companyRepository.existsByEmailAndIdNot(dto.email(), companyId)).thenReturn(false);
+
+        assertThatThrownBy(() -> companyService.update(companyId, dto))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("senha atual");
+
+        verify(supabaseAuthClient, never()).verifyPassword(any(), any());
+        verify(companyRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void update_shouldNotChangeEmail_whenCurrentPasswordIsWrong() {
+        CompanyUpdateDTO dto = updateDTO();
+        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
+        when(companyRepository.existsByEmailAndIdNot(dto.email(), companyId)).thenReturn(false);
+        doThrow(new ResponseStatusException(HttpStatus.FORBIDDEN, "Senha atual incorreta"))
+                .when(supabaseAuthClient).verifyPassword(any(), any());
+
+        assertThatThrownBy(() -> companyService.update(companyId, dto))
+                .isInstanceOf(ResponseStatusException.class);
+
+        verify(companyRepository, never()).saveAndFlush(any());
+        verify(supabaseAuthClient, never()).updateEmail(any(), any());
+    }
+
+    @Test
+    void update_shouldNotTouchSupabase_whenEmailIsUnchanged() {
+        CompanyUpdateDTO dto = new CompanyUpdateDTO("Loja Y", "Loja Y LTDA", "Joao",
+                "contato@lojax.com", null, null, null);
+        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
+        when(companyRepository.existsByEmailAndIdNot(dto.email(), companyId)).thenReturn(false);
+        when(companyRepository.saveAndFlush(company)).thenReturn(company);
+        when(companyMapper.toResponseDTO(company)).thenReturn(responseDTO);
+
+        companyService.update(companyId, dto);
+
+        verify(supabaseAuthClient, never()).verifyPassword(any(), any());
         verify(supabaseAuthClient, never()).updateEmail(any(), any());
     }
 
@@ -292,7 +338,7 @@ class CompanyServiceTest {
     @Test
     void update_shouldThrowIllegalArgumentException_whenEntityRejectsData() {
         CompanyUpdateDTO dto = new CompanyUpdateDTO("  ", "Loja Y LTDA", "Joao",
-                "novo@lojay.com", null, null);
+                "novo@lojay.com", null, null, "senha123");
         when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
         when(companyRepository.existsByEmailAndIdNot(dto.email(), companyId)).thenReturn(false);
 

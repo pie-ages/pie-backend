@@ -66,6 +66,30 @@ public class SupabaseAuthClient {
         return extractId(response);
     }
 
+    public void verifyPassword(String email, String password) {
+        requireConfigured();
+
+        try {
+            restClient.post()
+                    .uri(props.getUrl() + "/auth/v1/token?grant_type=password")
+                    .headers(this::authHeaders)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(Map.of("email", email, "password", password))
+                    .retrieve()
+                    .toBodilessEntity();
+        } catch (RestClientResponseException e) {
+            if (e.getStatusCode().value() == HttpStatus.BAD_REQUEST.value()) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Senha atual incorreta");
+            }
+            logger.error("Supabase Auth respondeu {} ao verificar a senha: {}",
+                    e.getStatusCode(), e.getResponseBodyAsString());
+            throw badGateway();
+        } catch (RestClientException e) {
+            logger.error("Falha de comunicação com o Supabase Auth ao verificar a senha", e);
+            throw badGateway();
+        }
+    }
+
     public void updateEmail(UUID supabaseUserId, String email) {
         requireConfigured();
 
