@@ -1,5 +1,6 @@
 package com.ages.pie.application.service;
 
+import com.ages.pie.application.dto.user.ColorimetrySeasonDTO;
 import com.ages.pie.application.dto.user.PreferencesRequestDTO;
 import com.ages.pie.application.dto.user.PreferencesResponseDTO;
 import com.ages.pie.application.exception.ResourceNotFoundException;
@@ -72,8 +73,29 @@ public class PreferenceService {
         return new PreferencesResponseDTO(
                 season.map(Season::highlightColors).orElse(List.of()),
                 season.map(s -> seasonCatalog.opposite(s).highlightColors()).orElse(List.of()),
-                favoriteColors
+                favoriteColors,
+                season.map(this::toSeasonDTO).orElse(null)
         );
+    }
+
+    private ColorimetrySeasonDTO toSeasonDTO(Season season) {
+        Season opposite = seasonCatalog.opposite(season);
+        return new ColorimetrySeasonDTO(
+                season.id(),
+                season.label(),
+                "Tons " + describe(season.axes()) + " valorizam sua pele.",
+                "Tons " + describe(opposite.axes()) + " competem com a sua coloração natural."
+        );
+    }
+
+    private static String describe(SeasonCatalog.Axes axes) {
+        String temperature = axes.temperature().equals("warm") ? "quentes" : "frios";
+        String chroma = axes.chroma().equals("soft") ? "suaves" : "vivos";
+        return switch (axes.depth()) {
+            case "light" -> temperature + ", claros e " + chroma;
+            case "deep" -> temperature + ", profundos e " + chroma;
+            default -> temperature + " e " + chroma;
+        };
     }
 
     private BodyProfile findOrCreateProfile(UUID userId) {

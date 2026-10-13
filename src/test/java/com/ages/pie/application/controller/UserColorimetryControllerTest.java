@@ -1,5 +1,6 @@
 package com.ages.pie.application.controller;
 
+import com.ages.pie.application.dto.user.ColorimetrySeasonDTO;
 import com.ages.pie.application.dto.user.PreferencesResponseDTO;
 import com.ages.pie.application.service.ColorimetryService;
 import com.ages.pie.application.service.PreferenceService;
@@ -49,13 +50,17 @@ class UserColorimetryControllerTest {
         UUID userId = UUID.randomUUID();
         when(authProvider.id()).thenReturn(userId);
         when(colorimetryService.analyze(eq(userId), any())).thenReturn(
-                new PreferencesResponseDTO(List.of("#FFB58C"), List.of("#00C48C"), List.of("#AABBCC")));
+                new PreferencesResponseDTO(List.of("#FFB58C"), List.of("#00C48C"), List.of("#AABBCC"),
+                        new ColorimetrySeasonDTO("soft_autumn", "Outono Suave", "Tons quentes e suaves valorizam sua pele.",
+                                "Tons frios e vivos competem com a sua coloração natural.")));
 
         mockMvc.perform(multipart("/users/me/colorimetry")
                         .file(new MockMultipartFile("file", "face.jpg", "image/jpeg", new byte[] {1})))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.highlightColors[0]").value("#FFB58C"))
                 .andExpect(jsonPath("$.avoidColors[0]").value("#00C48C"))
-                .andExpect(jsonPath("$.favoriteColors[0]").value("#AABBCC"));
+                .andExpect(jsonPath("$.favoriteColors[0]").value("#AABBCC"))
+                .andExpect(jsonPath("$.season.label").value("Outono Suave"))
+                .andExpect(jsonPath("$.season.avoidCaption").value("Tons frios e vivos competem com a sua coloração natural."));
     }
 }

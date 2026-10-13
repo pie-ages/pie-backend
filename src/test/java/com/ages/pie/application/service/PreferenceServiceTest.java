@@ -75,6 +75,7 @@ class PreferenceServiceTest {
         assertThat(result.favoriteColors()).isEmpty();
         assertThat(result.highlightColors()).isEmpty();
         assertThat(result.avoidColors()).isEmpty();
+        assertThat(result.season()).isNull();
     }
 
     @Test
@@ -113,6 +114,24 @@ class PreferenceServiceTest {
                 .isEqualTo(seasonCatalog.findById("soft_autumn").orElseThrow().highlightColors());
         assertThat(result.avoidColors())
                 .isEqualTo(seasonCatalog.findById("true_winter").orElseThrow().highlightColors());
+        assertThat(result.season().label()).isEqualTo("Outono Suave");
+        assertThat(result.season().highlightCaption()).isEqualTo("Tons quentes e suaves valorizam sua pele.");
+        assertThat(result.season().avoidCaption()).isEqualTo("Tons frios e vivos competem com a sua coloração natural.");
+    }
+
+    @Test
+    void getPreferences_shouldDescribeLightAndDeepSeasonsInCaptions() {
+        BodyProfile profile = new BodyProfile(user);
+        profile.setColorPalette("light_summer");
+
+        when(userRepository.existsById(userId)).thenReturn(true);
+        when(bodyProfileRepository.findByCustomerId(userId)).thenReturn(Optional.of(profile));
+
+        PreferencesResponseDTO result = preferenceService.getPreferences(userId);
+
+        assertThat(result.season().highlightCaption()).isEqualTo("Tons frios, claros e suaves valorizam sua pele.");
+        assertThat(result.season().avoidCaption())
+                .isEqualTo("Tons quentes, profundos e vivos competem com a sua coloração natural.");
     }
 
     @Test

@@ -46,7 +46,7 @@ class ColorimetryServiceTest {
 
     @Test
     void savesTheSeasonMatchingTheClassifiedAxes() throws IOException {
-        var expected = new PreferencesResponseDTO(List.of("#FFB58C"), List.of("#00C4A1"), List.of());
+        var expected = new PreferencesResponseDTO(List.of("#FFB58C"), List.of("#00C4A1"), List.of(), null);
         when(client.analyzeColorimetry(any(), eq("jpeg"))).thenReturn(new ColorimetryAnalysisDTO(true, "warm", "medium", "soft"));
         when(preferenceService.saveSeason(userId, catalog.findById("soft_autumn").orElseThrow())).thenReturn(expected);
 
