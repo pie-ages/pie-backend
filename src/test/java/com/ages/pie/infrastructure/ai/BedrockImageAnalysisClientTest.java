@@ -97,6 +97,23 @@ class BedrockImageAnalysisClientTest {
     }
 
     @Test
+    void expiredOrRejectedCredentialReportsUnavailableInsteadOfAskingForAnotherPhoto() {
+        for (HttpStatus status : new HttpStatus[] {HttpStatus.FORBIDDEN, HttpStatus.UNAUTHORIZED}) {
+            server.reset();
+            server.expect(requestTo(org.hamcrest.Matchers.any(String.class))).andRespond(
+                    withStatus(status).body("{\"message\":\"Bearer Token has expired\"}"));
+            assertThatThrownBy(() -> client.analyzeColorimetry(new byte[] {1}, "jpeg"))
+                    .isInstanceOf(ResponseStatusException.class)
+                    .hasMessageContaining("indisponível")
+                    .hasMessageNotContaining("outra foto")
+                    .hasMessageNotContaining("Bearer Token")
+                    .satisfies(error -> assertThat(((ResponseStatusException) error).getStatusCode())
+                            .isEqualTo(HttpStatus.SERVICE_UNAVAILABLE));
+            server.verify();
+        }
+    }
+
+    @Test
     void rejectsMalformedOrTruncatedOutput() {
         server.expect(requestTo(org.hamcrest.Matchers.any(String.class))).andRespond(
                 withSuccess(response("not json", "end_turn"), MediaType.APPLICATION_JSON));

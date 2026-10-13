@@ -16,6 +16,7 @@ import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.server.ResponseStatusException;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.JsonNode;
@@ -129,7 +130,16 @@ public class BedrockImageAnalysisClient {
                 json = json.replaceFirst("^```(?:json)?\\s*", "").replaceFirst("\\s*```$", "");
             }
             return mapper.readValue(json, type);
+        } catch (RestClientResponseException e) {
+            // The provider body can carry internal details, so only the status is logged.
+            logger.warn("{} analysis failed: Bedrock returned HTTP {} for model {}", errors.label(),
+                    e.getStatusCode().value(), modelId);
+            if (e.getStatusCode().value() == 401 || e.getStatusCode().value() == 403) {
+                throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, errors.unavailable());
+            }
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, errors.providerFailure());
         } catch (RestClientException e) {
+            logger.warn("{} analysis failed: Bedrock request error {}", errors.label(), e.getClass().getSimpleName());
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, errors.providerFailure());
         } catch (JacksonException | IllegalArgumentException e) {
             throw invalidResponse(errors);
