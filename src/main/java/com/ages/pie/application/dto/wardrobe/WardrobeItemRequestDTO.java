@@ -14,7 +14,7 @@ public record WardrobeItemRequestDTO(
         @NotBlank(message = "Categoria é obrigatória")
         String category,
 
-        @Pattern(regexp = "romantico|classico|casual|criativo|dramatico|refinado", message = "Estilo inválido")
+        @Pattern(regexp = "romantico|classico|casual|criativo|dramatico|refinado|sensual", message = "Estilo inválido")
         String style,
 
         String color
