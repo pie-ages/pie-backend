@@ -49,6 +49,12 @@ public class UserController {
         return ResponseEntity.ok(userService.findAll());
     }
 
+    @GetMapping("/me")
+    @SecurityRequirement(name = "bearerAuth")
+    public ResponseEntity<UserResponseDTO> findMe() {
+        return ResponseEntity.ok(userService.findById(authProvider.id()));
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<UserResponseDTO> findById(@PathVariable UUID id) {
         return ResponseEntity.ok(userService.findById(id));
