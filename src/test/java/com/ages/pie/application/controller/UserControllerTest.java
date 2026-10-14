@@ -26,10 +26,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/**
- * Usa o AuthenticatedUserProvider real (com JwtTokenProvider mockado) para que
- * os cenários de token ausente/inválido passem pela leitura do header de verdade.
- */
 @WebMvcTest(UserController.class)
 @Import(AuthenticatedUserProvider.class)
 class UserControllerTest {
