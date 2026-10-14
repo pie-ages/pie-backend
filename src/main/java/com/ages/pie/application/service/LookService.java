@@ -2,8 +2,13 @@ package com.ages.pie.application.service;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Stream;
@@ -14,9 +19,11 @@ import com.ages.pie.application.dto.look.LookRequestDTO;
 import com.ages.pie.application.dto.look.LookResponseDTO;
 import com.ages.pie.application.dto.look.LookSuggestionDTO;
 import com.ages.pie.application.dto.look.LookUpdateDTO;
+import com.ages.pie.application.dto.user.PreferencesResponseDTO;
 import com.ages.pie.application.exception.BusinessException;
 import com.ages.pie.application.exception.ResourceNotFoundException;
 import com.ages.pie.application.mapper.LookMapper;
+import com.ages.pie.domain.entity.BodyProfile;
 import com.ages.pie.domain.entity.Look;
 import com.ages.pie.domain.entity.LookProduct;
 import com.ages.pie.domain.entity.LookWardrobeItem;
@@ -24,6 +31,8 @@ import com.ages.pie.domain.entity.Product;
 import com.ages.pie.domain.entity.User;
 import com.ages.pie.domain.entity.WardrobeItem;
 import com.ages.pie.domain.enums.ProductStatus;
+import com.ages.pie.domain.enums.ProductStyle;
+import com.ages.pie.infrastructure.repository.BodyProfileRepository;
 import com.ages.pie.infrastructure.repository.LookProductRepository;
 import com.ages.pie.infrastructure.repository.LookRepository;
 import com.ages.pie.infrastructure.repository.LookWardrobeItemRepository;
@@ -39,7 +48,7 @@ import org.springframework.web.multipart.MultipartFile;
 @Service
 public class LookService {
 
-    private static final int SUGGESTION_SIZE = 4;
+    private static final int MAX_LOOK_PIECES = 3;
 
     private final LookRepository lookRepository;
     private final LookWardrobeItemRepository lookWardrobeItemRepository;
@@ -47,6 +56,8 @@ public class LookService {
     private final WardrobeItemRepository wardrobeItemRepository;
     private final ProductRepository productRepository;
     private final UserRepository userRepository;
+    private final BodyProfileRepository bodyProfileRepository;
+    private final PreferenceService preferenceService;
     private final ImageStorageService imageStorageService;
     private final LookMapper lookMapper;
 
@@ -56,6 +67,8 @@ public class LookService {
             WardrobeItemRepository wardrobeItemRepository,
             ProductRepository productRepository,
             UserRepository userRepository,
+            BodyProfileRepository bodyProfileRepository,
+            PreferenceService preferenceService,
             ImageStorageService imageStorageService,
             LookMapper lookMapper) {
         this.lookRepository = lookRepository;
@@ -64,6 +77,8 @@ public class LookService {
         this.wardrobeItemRepository = wardrobeItemRepository;
         this.productRepository = productRepository;
         this.userRepository = userRepository;
+        this.bodyProfileRepository = bodyProfileRepository;
+        this.preferenceService = preferenceService;
         this.imageStorageService = imageStorageService;
         this.lookMapper = lookMapper;
     }
@@ -219,13 +234,129 @@ public class LookService {
 
     @Transactional(readOnly = true)
     public LookSuggestionDTO suggestion(UUID userId) {
-        List<WardrobeItem> wardrobeItems = pickRandom(
-                wardrobeItemRepository.findAllByCustomerIdOrderByCreatedAtDesc(userId), SUGGESTION_SIZE / 2);
-        List<Product> products = pickRandom(
-                productRepository.findByActiveTrueAndStatus(ProductStatus.PUBLISHED),
-                SUGGESTION_SIZE - wardrobeItems.size());
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado: " + userId));
+        PreferencesResponseDTO preferences = preferenceService.getPreferences(userId);
 
-        return lookMapper.toSuggestionDTO(wardrobeItems, products);
+        List<WardrobeItem> wardrobe = wardrobeItemRepository.findAllByCustomerIdOrderByCreatedAtDesc(userId);
+        List<Product> products = productRepository.findByActiveTrueAndStatus(ProductStatus.PUBLISHED);
+
+        Set<String> avoidedColors = normalized(preferences.avoidColors());
+        List<SuggestionPiece> pieces = new ArrayList<>(wardrobe.size() + products.size());
+        wardrobe.stream()
+                .filter(item -> !avoidedColors.contains(normalize(item.getColor())))
+                .forEach(item -> pieces.add(new SuggestionPiece(item, null)));
+        products.stream()
+                .filter(product -> !avoidedColors.contains(normalize(product.getColor())))
+                .forEach(product -> pieces.add(new SuggestionPiece(null, product)));
+
+        if (pieces.isEmpty()) {
+            throw new ResourceNotFoundException(
+                    "Não há peças disponíveis para sugerir um look para o usuário: " + userId);
+        }
+
+        Set<String> preferredStyles = preferredStyles(user, wardrobe);
+        Set<String> preferredColors = normalized(preferences.favoriteColors());
+        preferredColors.addAll(normalized(preferences.highlightColors()));
+
+        // Embaralha antes de ordenar para variar o look entre chamadas com a mesma pontuação.
+        List<SuggestionPiece> ranked = new ArrayList<>(pieces);
+        Collections.shuffle(ranked);
+        ranked.sort(Comparator.comparingInt(
+                (SuggestionPiece piece) -> score(piece, preferredStyles, preferredColors)).reversed());
+
+        List<SuggestionPiece> picked = new ArrayList<>(MAX_LOOK_PIECES);
+        Set<String> usedCategories = new HashSet<>();
+        for (SuggestionPiece piece : ranked) {
+            String category = normalize(piece.category());
+            if (!category.isEmpty() && !usedCategories.add(category)) {
+                continue;
+            }
+            picked.add(piece);
+            if (picked.size() == MAX_LOOK_PIECES) {
+                break;
+            }
+        }
+
+        return new LookSuggestionDTO(picked.stream()
+                .map(piece -> piece.wardrobeItem() != null? lookMapper.toItemDTO(piece.wardrobeItem()) : lookMapper.toItemDTO(piece.product()))
+                .toList());
+    }
+
+    private Set<String> preferredStyles(User user, List<WardrobeItem> wardrobe) {
+        Set<String> styles = new HashSet<>();
+        if (user.getStyles() != null) {
+            user.getStyles().stream().map(ProductStyle::getId).forEach(styles::add);
+        }
+        bodyProfileRepository.findByCustomerId(user.getId())
+                .map(BodyProfile::getIdentifiedStyle)
+                .filter(ProductStyle::isValid)
+                .map(LookService::normalize)
+                .ifPresent(styles::add);
+        if (!styles.isEmpty()) {
+            return styles;
+        }
+
+        // fallback: estilo mais frequente do guarda-roupa
+        Map<String, Integer> frequency = new HashMap<>();
+        for (WardrobeItem item : wardrobe) {
+            String style = normalize(item.getStyle());
+            if (!style.isEmpty()) {
+                frequency.merge(style, 1, Integer::sum);
+            }
+        }
+        frequency.entrySet().stream()
+                .max(Map.Entry.comparingByValue())
+                .map(Map.Entry::getKey)
+                .ifPresent(styles::add);
+        return styles;
+    }
+
+    private int score(SuggestionPiece piece, Set<String> preferredStyles, Set<String> preferredColors) {
+        int score = 0;
+        if (!preferredStyles.isEmpty() && piece.styles().stream().anyMatch(preferredStyles::contains)) {
+            score += 2;
+        }
+        if (preferredColors.contains(normalize(piece.color()))) {
+            score += 1;
+        }
+        return score;
+    }
+
+    private static Set<String> normalized(List<String> values) {
+        Set<String> result = new HashSet<>();
+        if (values != null) {
+            for (String value : values) {
+                String normalized = normalize(value);
+                if (!normalized.isEmpty()) {
+                    result.add(normalized);
+                }
+            }
+        }
+        return result;
+    }
+
+    private static String normalize(String value) {
+        return value == null ? "" : value.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private record SuggestionPiece(WardrobeItem wardrobeItem, Product product) {
+
+        String category() {
+            return wardrobeItem != null ? wardrobeItem.getCategory() : product.getCategory();
+        }
+
+        String color() {
+            return wardrobeItem != null ? wardrobeItem.getColor() : product.getColor();
+        }
+
+        List<String> styles() {
+            if (wardrobeItem != null) {
+                String style = normalize(wardrobeItem.getStyle());
+                return style.isEmpty() ? List.of() : List.of(style);
+            }
+            return product.getStyles() == null ? List.of() : product.getStyles().stream().map(LookService::normalize).toList();
+        }
     }
 
     private Look findOwnedLook(UUID userId, UUID lookId) {
