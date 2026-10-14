@@ -6,9 +6,11 @@ import com.ages.pie.application.dto.look.LookRequestDTO;
 import com.ages.pie.application.dto.look.LookResponseDTO;
 import com.ages.pie.application.dto.look.LookSuggestionDTO;
 import com.ages.pie.application.dto.look.LookUpdateDTO;
+import com.ages.pie.application.dto.user.PreferencesResponseDTO;
 import com.ages.pie.application.exception.BusinessException;
 import com.ages.pie.application.exception.ResourceNotFoundException;
 import com.ages.pie.application.mapper.LookMapper;
+import com.ages.pie.domain.entity.BodyProfile;
 import com.ages.pie.domain.entity.Company;
 import com.ages.pie.domain.entity.Look;
 import com.ages.pie.domain.entity.LookProduct;
@@ -17,6 +19,8 @@ import com.ages.pie.domain.entity.Product;
 import com.ages.pie.domain.entity.User;
 import com.ages.pie.domain.entity.WardrobeItem;
 import com.ages.pie.domain.enums.ProductStatus;
+import com.ages.pie.domain.enums.ProductStyle;
+import com.ages.pie.infrastructure.repository.BodyProfileRepository;
 import com.ages.pie.infrastructure.repository.LookProductRepository;
 import com.ages.pie.infrastructure.repository.LookRepository;
 import com.ages.pie.infrastructure.repository.LookWardrobeItemRepository;
@@ -71,6 +75,12 @@ class LookServiceTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private BodyProfileRepository bodyProfileRepository;
+
+    @Mock
+    private PreferenceService preferenceService;
 
     @Mock
     private ImageStorageService imageStorageService;
@@ -481,44 +491,166 @@ class LookServiceTest {
         verify(lookProductRepository, never()).delete(any());
     }
 
-    @Test
-    void suggestion_shouldMixWardrobeItemsAndProducts_whenBothAreAvailable() {
-        LookSuggestionDTO dto = new LookSuggestionDTO(List.of());
-        when(wardrobeItemRepository.findAllByCustomerIdOrderByCreatedAtDesc(userId))
-                .thenReturn(List.of(wardrobeItem, wardrobeItem, wardrobeItem));
-        when(productRepository.findByActiveTrueAndStatus(ProductStatus.PUBLISHED))
-                .thenReturn(List.of(product, product, product));
-        when(lookMapper.toSuggestionDTO(anyList(), anyList())).thenReturn(dto);
+    private WardrobeItem wardrobeItemAt(String name, String category, String style, String color) {
+        WardrobeItem item = new WardrobeItem(user, null, name, category, style, color);
+        ReflectionTestUtils.setField(item, "id", UUID.randomUUID());
+        return item;
+    }
 
-        assertThat(lookService.suggestion(userId)).isEqualTo(dto);
+    private Product productAt(String name, String category, List<String> styles, String color) {
+        Company company = new Company(UUID.randomUUID(), "Loja", "12345678000199", "Loja LTDA",
+                "Maria", "contato@loja.com", "hash(senha123)", null, null);
+        Product newProduct = new Product(company, name);
+        ReflectionTestUtils.setField(newProduct, "id", UUID.randomUUID());
+        newProduct.setCategory(category);
+        newProduct.setStyles(styles);
+        newProduct.setColor(color);
+        return newProduct;
+    }
 
-        ArgumentCaptor<List<WardrobeItem>> wardrobeCaptor = ArgumentCaptor.captor();
-        ArgumentCaptor<List<Product>> productCaptor = ArgumentCaptor.captor();
-        verify(lookMapper).toSuggestionDTO(wardrobeCaptor.capture(), productCaptor.capture());
-        assertThat(wardrobeCaptor.getValue()).hasSize(2);
-        assertThat(productCaptor.getValue()).hasSize(2);
+    private void givenPreferenceData(List<ProductStyle> styles, String identifiedStyle,
+            List<String> favorites, List<String> highlight, List<String> avoid) {
+        user.updateStyles(styles);
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        if (identifiedStyle == null) {
+            when(bodyProfileRepository.findByCustomerId(userId)).thenReturn(Optional.empty());
+        } else {
+            BodyProfile profile = new BodyProfile(user);
+            profile.setIdentifiedStyle(identifiedStyle);
+            when(bodyProfileRepository.findByCustomerId(userId)).thenReturn(Optional.of(profile));
+        }
+        when(preferenceService.getPreferences(userId))
+                .thenReturn(new PreferencesResponseDTO(highlight, avoid, favorites));
+    }
+
+    private void givenEchoWardrobeMapper() {
+        when(lookMapper.toItemDTO(any(WardrobeItem.class))).thenAnswer(invocation -> {
+            WardrobeItem item = invocation.getArgument(0);
+            return new LookItemDTO(item.getId(), null, item.getName(), item.getCategory(), item.getColor(),
+                    item.getPhotoUrl());
+        });
+    }
+
+    private void givenEchoProductMapper() {
+        when(lookMapper.toItemDTO(any(Product.class))).thenAnswer(invocation -> {
+            Product item = invocation.getArgument(0);
+            return new LookItemDTO(null, item.getId(), item.getName(), item.getCategory(), item.getColor(),
+                    item.getImageUrl());
+        });
     }
 
     @Test
-    void suggestion_shouldCompleteWithProducts_whenWardrobeIsEmpty() {
+    void suggestion_shouldThrowResourceNotFoundException_whenUserDoesNotExist() {
+        when(userRepository.findById(userId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> lookService.suggestion(userId))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessageContaining(userId.toString());
+        verifyNoInteractions(preferenceService, wardrobeItemRepository, productRepository);
+    }
+
+    @Test
+    void suggestion_shouldReturnUpTo3PiecesWithDistinctCategories() {
+        givenPreferenceData(List.of(ProductStyle.CASUAL), null, List.of(), List.of(), List.of());
+        givenEchoWardrobeMapper();
+        givenEchoProductMapper();
+        when(wardrobeItemRepository.findAllByCustomerIdOrderByCreatedAtDesc(userId))
+                .thenReturn(List.of(
+                        wardrobeItemAt("Camiseta", "Camisetas", "elegante", "Preto"),
+                        wardrobeItemAt("Calça", "Calças", "casual", "Azul"),
+                        wardrobeItemAt("Outra camiseta", "Camisetas", "casual", "Verde")));
+        when(productRepository.findByActiveTrueAndStatus(ProductStatus.PUBLISHED))
+                .thenReturn(List.of(productAt("Sapato", "Sapatos", List.of("casual"), "Marrom")));
+
+        LookSuggestionDTO result = lookService.suggestion(userId);
+
+        assertThat(result.items()).hasSizeBetween(1, 3);
+        assertThat(result.items()).allSatisfy(item ->
+                assertThat(item.wardrobeItemId() != null || item.productId() != null).isTrue());
+        assertThat(result.items()).extracting(LookItemDTO::category).doesNotHaveDuplicates();
+    }
+
+    @Test
+    void suggestion_shouldRankPiecesMatchingStyleAndFavoriteColorFirst() {
+        givenPreferenceData(List.of(ProductStyle.CASUAL), null, List.of("azul"), List.of(), List.of());
+        givenEchoWardrobeMapper();
+        WardrobeItem best = wardrobeItemAt("Perfeita", "Camisetas", "casual", "Azul");
+        when(wardrobeItemRepository.findAllByCustomerIdOrderByCreatedAtDesc(userId))
+                .thenReturn(List.of(best, wardrobeItemAt("Ok", "Calças", "elegante", "Preto")));
+        when(productRepository.findByActiveTrueAndStatus(ProductStatus.PUBLISHED)).thenReturn(List.of());
+
+        LookSuggestionDTO result = lookService.suggestion(userId);
+
+        assertThat(result.items().get(0).wardrobeItemId()).isEqualTo(best.getId());
+    }
+
+    @Test
+    void suggestion_shouldUseIdentifiedStyleAsPreference() {
+        givenPreferenceData(List.of(), "romantico", List.of(), List.of(), List.of());
+        givenEchoProductMapper();
+        Product romantico = productAt("Vestido", "Vestidos", List.of("romantico"), "Rosa");
+        Product dramatico = productAt("Casaco", "Casacos", List.of("dramatico"), "Preto");
         when(wardrobeItemRepository.findAllByCustomerIdOrderByCreatedAtDesc(userId)).thenReturn(List.of());
         when(productRepository.findByActiveTrueAndStatus(ProductStatus.PUBLISHED))
-                .thenReturn(List.of(product, product, product, product, product));
-        when(lookMapper.toSuggestionDTO(anyList(), anyList())).thenReturn(new LookSuggestionDTO(List.of()));
+                .thenReturn(List.of(romantico, dramatico));
 
-        lookService.suggestion(userId);
+        LookSuggestionDTO result = lookService.suggestion(userId);
 
-        ArgumentCaptor<List<Product>> productCaptor = ArgumentCaptor.captor();
-        verify(lookMapper).toSuggestionDTO(anyList(), productCaptor.capture());
-        assertThat(productCaptor.getValue()).hasSize(4);
+        assertThat(result.items().get(0).productId()).isEqualTo(romantico.getId());
+    }
+
+    @Test
+    void suggestion_shouldFallBackToMajorityWardrobeStyle_whenUserHasNoStyles() {
+        givenPreferenceData(List.of(), null, List.of(), List.of(), List.of());
+        givenEchoWardrobeMapper();
+        WardrobeItem casualOne = wardrobeItemAt("A", "Camisetas", "casual", "Branco");
+        WardrobeItem casualTwo = wardrobeItemAt("B", "Calças", "casual", "Azul");
+        WardrobeItem elegante = wardrobeItemAt("C", "Blazers", "elegante", "Preto");
+        when(wardrobeItemRepository.findAllByCustomerIdOrderByCreatedAtDesc(userId))
+                .thenReturn(List.of(casualOne, casualTwo, elegante));
+        when(productRepository.findByActiveTrueAndStatus(ProductStatus.PUBLISHED)).thenReturn(List.of());
+
+        LookSuggestionDTO result = lookService.suggestion(userId);
+
+        assertThat(result.items()).hasSize(3);
+        assertThat(result.items().get(2).wardrobeItemId()).isEqualTo(elegante.getId());
+    }
+
+    @Test
+    void suggestion_shouldNeverSuggestAvoidedColors() {
+        givenPreferenceData(List.of(), null, List.of(), List.of(), List.of("vermelho"));
+        givenEchoProductMapper();
+        when(wardrobeItemRepository.findAllByCustomerIdOrderByCreatedAtDesc(userId))
+                .thenReturn(List.of(wardrobeItemAt("Vermelha", "Camisetas", "casual", " Vermelho ")));
+        when(productRepository.findByActiveTrueAndStatus(ProductStatus.PUBLISHED))
+                .thenReturn(List.of(productAt("Azul", "Calças", List.of("casual"), "azul")));
+
+        LookSuggestionDTO result = lookService.suggestion(userId);
+
+        assertThat(result.items()).hasSize(1);
+        assertThat(result.items().get(0).color()).isEqualToIgnoringCase("azul");
+    }
+
+    @Test
+    void suggestion_shouldThrowResourceNotFoundException_whenAllPiecesHaveAvoidedColors() {
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        when(preferenceService.getPreferences(userId))
+                .thenReturn(new PreferencesResponseDTO(List.of(), List.of("vermelho"), List.of()));
+        when(wardrobeItemRepository.findAllByCustomerIdOrderByCreatedAtDesc(userId))
+                .thenReturn(List.of(wardrobeItemAt("Vermelha", "Camisetas", "casual", "vermelho")));
+        when(productRepository.findByActiveTrueAndStatus(ProductStatus.PUBLISHED)).thenReturn(List.of());
+
+        assertThatThrownBy(() -> lookService.suggestion(userId))
+                .isInstanceOf(ResourceNotFoundException.class);
     }
 
     @Test
     void suggestion_shouldNotPersistAnything() {
+        givenPreferenceData(List.of(), null, List.of(), List.of(), List.of());
         when(wardrobeItemRepository.findAllByCustomerIdOrderByCreatedAtDesc(userId)).thenReturn(List.of(wardrobeItem));
         when(productRepository.findByActiveTrueAndStatus(ProductStatus.PUBLISHED))
                 .thenReturn(List.of(product));
-        when(lookMapper.toSuggestionDTO(anyList(), anyList())).thenReturn(new LookSuggestionDTO(List.of()));
+        when(lookMapper.toItemDTO(any(WardrobeItem.class))).thenReturn(itemDTO());
 
         lookService.suggestion(userId);
 
@@ -638,27 +770,4 @@ class LookServiceTest {
         verifyNoInteractions(imageStorageService);
     }
 
-    @Test
-    void suggestion_shouldReturnOnlyWardrobeItems_whenCatalogIsEmpty() {
-        when(wardrobeItemRepository.findAllByCustomerIdOrderByCreatedAtDesc(userId))
-                .thenReturn(List.of(wardrobeItem, wardrobeItem, wardrobeItem));
-        when(productRepository.findByActiveTrueAndStatus(ProductStatus.PUBLISHED)).thenReturn(List.of());
-        when(lookMapper.toSuggestionDTO(anyList(), anyList())).thenReturn(new LookSuggestionDTO(List.of()));
-
-        lookService.suggestion(userId);
-
-        ArgumentCaptor<List<WardrobeItem>> wardrobeCaptor = ArgumentCaptor.captor();
-        verify(lookMapper).toSuggestionDTO(wardrobeCaptor.capture(), anyList());
-        assertThat(wardrobeCaptor.getValue()).hasSize(2);
-    }
-
-    @Test
-    void suggestion_shouldReturnEmptyComposition_whenNothingIsAvailable() {
-        LookSuggestionDTO empty = new LookSuggestionDTO(List.of());
-        when(wardrobeItemRepository.findAllByCustomerIdOrderByCreatedAtDesc(userId)).thenReturn(List.of());
-        when(productRepository.findByActiveTrueAndStatus(ProductStatus.PUBLISHED)).thenReturn(List.of());
-        when(lookMapper.toSuggestionDTO(List.of(), List.of())).thenReturn(empty);
-
-        assertThat(lookService.suggestion(userId)).isEqualTo(empty);
-    }
 }
