@@ -24,13 +24,16 @@ public class ProductImageService {
     private final ProductRepository productRepository;
     private final ProductImageRepository productImageRepository;
     private final ImageStorageService imageStorageService;
+    private final ProductImageAnalysisService productImageAnalysisService;
 
     public ProductImageService(ProductRepository productRepository,
             ProductImageRepository productImageRepository,
-            ImageStorageService imageStorageService) {
+            ImageStorageService imageStorageService,
+            ProductImageAnalysisService productImageAnalysisService) {
         this.productRepository = productRepository;
         this.productImageRepository = productImageRepository;
         this.imageStorageService = imageStorageService;
+        this.productImageAnalysisService = productImageAnalysisService;
     }
 
     @Transactional
@@ -47,6 +50,8 @@ public class ProductImageService {
         ProductImage saved = productImageRepository.save(image);
 
         if (isFirst) {
+            productImageAnalysisService.analyze(file).ifPresent(analysis ->
+                    product.applyAnalysis(analysis.category(), analysis.style(), analysis.color()));
             syncProductImageUrl(product, List.of(saved));
         }
 

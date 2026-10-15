@@ -92,6 +92,14 @@ Copy `.env-example` to `.env` in the backend root and set `AWS_BEARER_TOKEN_BEDR
 
 Images must be JPEG, PNG, or WebP, up to 3.75 MB. Missing credentials return `503`; provider errors or invalid model output return `502`; images without a recognizable garment return `422`. The app keeps the selected image and permits manual entry, or asks the user to send another photo.
 
+## Product image analysis
+
+`POST /api/products/{productId}/images` runs the same Bedrock analysis when the uploaded image is the product's first (primary) image. Later uploads are not analyzed.
+
+The result fills only empty product fields: `category → category`, `style → styles` (as a single-item list, only when `styles` is empty), `color → color`. Values already set by the company are never overwritten. Materials and sizes are not changed.
+
+Analysis failures (missing credentials, provider errors, invalid output, no garment found, or images over 3.75 MB) are logged as warnings and ignored: the image is stored and the endpoint still returns `201`. The configuration is the same as the wardrobe analysis (`AWS_BEARER_TOKEN_BEDROCK`, `AWS_REGION`, `BEDROCK_MODEL_ID`).
+
 ## Identificação de estilo
 
 `POST /users/me/style/identify` consolida o estilo do usuário autenticado a partir dos dados já cadastrados e grava o resultado em `body_profile.identified_style`. A regra é determinística e não usa IA.

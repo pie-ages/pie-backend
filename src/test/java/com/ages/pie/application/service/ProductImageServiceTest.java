@@ -1,6 +1,7 @@
 package com.ages.pie.application.service;
 
 import com.ages.pie.application.dto.product.ProductImageResponseDTO;
+import com.ages.pie.application.dto.wardrobe.WardrobeImageAnalysisDTO;
 import com.ages.pie.domain.entity.Company;
 import com.ages.pie.domain.entity.Product;
 import com.ages.pie.domain.entity.ProductImage;
@@ -36,6 +37,9 @@ class ProductImageServiceTest {
 
     @Mock
     private ImageStorageService imageStorageService;
+
+    @Mock
+    private ProductImageAnalysisService productImageAnalysisService;
 
     @InjectMocks
     private ProductImageService productImageService;
@@ -192,6 +196,78 @@ class ProductImageServiceTest {
         assertThat(result.isPrimary()).isTrue();
         assertThat(oldPrimary.isPrimary()).isFalse();
         assertThat(newPrimary.isPrimary()).isTrue();
+    }
+
+    @Test
+    void uploadImage_firstImage_shouldFillEmptyFieldsFromAnalysis() {
+        MockMultipartFile file = stubFirstUpload();
+        when(productImageAnalysisService.analyze(file))
+                .thenReturn(Optional.of(new WardrobeImageAnalysisDTO("vestido", "romantico", "verde")));
+
+        productImageService.uploadImage(productId, companyId, file);
+
+        assertThat(product.getCategory()).isEqualTo("vestido");
+        assertThat(product.getStyles()).containsExactly("romantico");
+        assertThat(product.getColor()).isEqualTo("verde");
+        verify(productRepository).save(product);
+    }
+
+    @Test
+    void uploadImage_firstImage_shouldKeepFieldsFilledByCompany() {
+        product.setCategory("blazer");
+        product.setStyles(List.of("classico"));
+        product.setColor("preto");
+        MockMultipartFile file = stubFirstUpload();
+        when(productImageAnalysisService.analyze(file))
+                .thenReturn(Optional.of(new WardrobeImageAnalysisDTO("vestido", "romantico", "verde")));
+
+        productImageService.uploadImage(productId, companyId, file);
+
+        assertThat(product.getCategory()).isEqualTo("blazer");
+        assertThat(product.getStyles()).containsExactly("classico");
+        assertThat(product.getColor()).isEqualTo("preto");
+    }
+
+    @Test
+    void uploadImage_firstImage_whenAnalysisFails_shouldStillSaveImage() {
+        MockMultipartFile file = stubFirstUpload();
+        when(productImageAnalysisService.analyze(file)).thenReturn(Optional.empty());
+
+        ProductImageResponseDTO result = productImageService.uploadImage(productId, companyId, file);
+
+        assertThat(result.isPrimary()).isTrue();
+        assertThat(product.getCategory()).isNull();
+        assertThat(product.getStyles()).isEmpty();
+        assertThat(product.getColor()).isNull();
+        verify(productImageRepository).save(any(ProductImage.class));
+        verify(productRepository, times(1)).save(product);
+    }
+
+    @Test
+    void uploadImage_notFirstImage_shouldNotAnalyze() {
+        MockMultipartFile file = new MockMultipartFile("file", "img.jpg", "image/jpeg", new byte[100]);
+        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+        when(productImageRepository.existsByProductId(productId)).thenReturn(true);
+        when(productImageRepository.countByProductId(productId)).thenReturn(1L);
+        when(imageStorageService.upload(file, productId)).thenReturn("key");
+        when(imageStorageService.toPublicUrl("key")).thenReturn("https://example.com/key");
+        when(productImageRepository.save(any(ProductImage.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        productImageService.uploadImage(productId, companyId, file);
+
+        verify(productImageAnalysisService, never()).analyze(any());
+    }
+
+    private MockMultipartFile stubFirstUpload() {
+        MockMultipartFile file = new MockMultipartFile("file", "img.jpg", "image/jpeg", new byte[100]);
+        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+        when(productImageRepository.existsByProductId(productId)).thenReturn(false);
+        when(productImageRepository.countByProductId(productId)).thenReturn(0L);
+        when(imageStorageService.upload(file, productId)).thenReturn("key");
+        when(imageStorageService.toPublicUrl("key")).thenReturn("https://example.com/key");
+        when(productImageRepository.save(any(ProductImage.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(productRepository.save(any(Product.class))).thenReturn(product);
+        return file;
     }
 
     private ProductImage buildImage(UUID id, boolean isPrimary, int order) {
