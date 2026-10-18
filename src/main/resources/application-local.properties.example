@@ -21,3 +21,8 @@ supabase.storage.wardrobe-bucket=wardrobe-items
 
 # Bucket para imagens dos looks (padrão: look-images)
 supabase.storage.look-bucket=look-images
+
+# Supabase Auth (URL do projeto e publishable/anon key do ambiente)
+# Obter em: Project Settings > API Keys. Ver docs/auth/supabase.md
+supabase.auth.url=https://<ref>.supabase.co
+supabase.auth.publishable-key=sb_publishable_...

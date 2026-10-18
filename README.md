@@ -77,6 +77,10 @@ A `service-role-key` fica em: **Supabase Dashboard → Project Settings → API 
 | `supabase.storage.bucket` | `SUPABASE_STORAGE_BUCKET` | Não (padrão: `product-images`) | Bucket para imagens de produtos |
 | `supabase.storage.wardrobe-bucket` | `SUPABASE_STORAGE_WARDROBE_BUCKET` | Não (padrão: `wardrobe-items`) | Bucket para imagens do guarda-roupa |
 | `supabase.storage.max-file-size-mb` | `SUPABASE_STORAGE_MAX_FILE_SIZE_MB` | Não (padrão: `5`) | Limite de tamanho de upload em MB |
+| `supabase.auth.url` | `SUPABASE_URL` | Sim | URL do projeto Supabase usado no Auth (valida JWTs via JWKS) |
+| `supabase.auth.publishable-key` | `SUPABASE_PUBLISHABLE_KEY` | Sim | Publishable (anon) key do projeto, enviada ao Supabase Auth |
+
+Configuração do Supabase Auth por ambiente: [`docs/auth/supabase.md`](docs/auth/supabase.md).
 
 Em ambientes Docker e CI/CD, use as env vars. Localmente via IDE ou `./mvnw`, use `application-local.properties`.
 
