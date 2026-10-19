@@ -5,6 +5,7 @@ import com.ages.pie.application.dto.user.PreferencesResponseDTO;
 import com.ages.pie.application.exception.ResourceNotFoundException;
 import com.ages.pie.domain.entity.BodyProfile;
 import com.ages.pie.domain.entity.User;
+import com.ages.pie.domain.service.SeasonCatalog;
 import com.ages.pie.infrastructure.repository.BodyProfileRepository;
 import com.ages.pie.infrastructure.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -16,7 +17,6 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.Random;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -34,6 +34,8 @@ class PreferenceServiceTest {
     @Mock
     private UserRepository userRepository;
 
+    private final SeasonCatalog seasonCatalog = new SeasonCatalog();
+
     private PreferenceService preferenceService;
 
     private UUID userId;
@@ -41,8 +43,7 @@ class PreferenceServiceTest {
 
     @BeforeEach
     void setUp() {
-        // Random com seed fixa para testes determinísticos
-        preferenceService = new PreferenceService(bodyProfileRepository, userRepository, new Random(42));
+        preferenceService = new PreferenceService(bodyProfileRepository, userRepository, seasonCatalog);
 
         userId = UUID.randomUUID();
         user = new User("Ana Silva", "ana@email.com", "hash(senha123)");
@@ -60,8 +61,8 @@ class PreferenceServiceTest {
         PreferencesResponseDTO result = preferenceService.getPreferences(userId);
 
         assertThat(result.favoriteColors()).containsExactly("#FF0000", "#00FF00");
-        assertThat(result.highlightColors()).hasSize(4);
-        assertThat(result.avoidColors()).hasSize(4);
+        assertThat(result.highlightColors()).isEmpty();
+        assertThat(result.avoidColors()).isEmpty();
     }
 
     @Test
@@ -72,8 +73,9 @@ class PreferenceServiceTest {
         PreferencesResponseDTO result = preferenceService.getPreferences(userId);
 
         assertThat(result.favoriteColors()).isEmpty();
-        assertThat(result.highlightColors()).hasSize(4);
-        assertThat(result.avoidColors()).hasSize(4);
+        assertThat(result.highlightColors()).isEmpty();
+        assertThat(result.avoidColors()).isEmpty();
+        assertThat(result.season()).isNull();
     }
 
     @Test
@@ -99,19 +101,91 @@ class PreferenceServiceTest {
     }
 
     @Test
-    void getPreferences_shouldReturnRandomHighlightAndAvoidColors() {
+    void getPreferences_shouldReturnSeasonColorsAndOppositeSeasonAsAvoid() {
+        BodyProfile profile = new BodyProfile(user);
+        profile.setColorPalette("soft_autumn");
+
         when(userRepository.existsById(userId)).thenReturn(true);
-        when(bodyProfileRepository.findByCustomerId(userId)).thenReturn(Optional.empty());
+        when(bodyProfileRepository.findByCustomerId(userId)).thenReturn(Optional.of(profile));
 
         PreferencesResponseDTO result = preferenceService.getPreferences(userId);
 
-        // Cores devem estar no formato hexadecimal #RRGGBB
-        for (String color : result.highlightColors()) {
-            assertThat(color).matches("^#[0-9A-F]{6}$");
-        }
-        for (String color : result.avoidColors()) {
-            assertThat(color).matches("^#[0-9A-F]{6}$");
-        }
+        assertThat(result.highlightColors())
+                .isEqualTo(seasonCatalog.findById("soft_autumn").orElseThrow().highlightColors());
+        assertThat(result.avoidColors())
+                .isEqualTo(seasonCatalog.findById("true_winter").orElseThrow().highlightColors());
+        assertThat(result.season().label()).isEqualTo("Outono Suave");
+        assertThat(result.season().highlightCaption()).isEqualTo("Tons quentes e suaves valorizam sua pele.");
+        assertThat(result.season().avoidCaption()).isEqualTo("Tons frios e vivos competem com a sua coloração natural.");
+    }
+
+    @Test
+    void getPreferences_shouldDescribeLightAndDeepSeasonsInCaptions() {
+        BodyProfile profile = new BodyProfile(user);
+        profile.setColorPalette("light_summer");
+
+        when(userRepository.existsById(userId)).thenReturn(true);
+        when(bodyProfileRepository.findByCustomerId(userId)).thenReturn(Optional.of(profile));
+
+        PreferencesResponseDTO result = preferenceService.getPreferences(userId);
+
+        assertThat(result.season().highlightCaption()).isEqualTo("Tons frios, claros e suaves valorizam sua pele.");
+        assertThat(result.season().avoidCaption())
+                .isEqualTo("Tons quentes, profundos e vivos competem com a sua coloração natural.");
+    }
+
+    @Test
+    void getPreferences_shouldReturnStableColorsAcrossCalls() {
+        BodyProfile profile = new BodyProfile(user);
+        profile.setColorPalette("deep_winter");
+
+        when(userRepository.existsById(userId)).thenReturn(true);
+        when(bodyProfileRepository.findByCustomerId(userId)).thenReturn(Optional.of(profile));
+
+        assertThat(preferenceService.getPreferences(userId)).isEqualTo(preferenceService.getPreferences(userId));
+    }
+
+    @Test
+    void getPreferences_shouldIgnoreUnknownStoredPalette() {
+        BodyProfile profile = new BodyProfile(user);
+        profile.setColorPalette("not_a_season");
+
+        when(userRepository.existsById(userId)).thenReturn(true);
+        when(bodyProfileRepository.findByCustomerId(userId)).thenReturn(Optional.of(profile));
+
+        PreferencesResponseDTO result = preferenceService.getPreferences(userId);
+
+        assertThat(result.highlightColors()).isEmpty();
+        assertThat(result.avoidColors()).isEmpty();
+    }
+
+    @Test
+    void saveSeason_shouldPersistSeasonIdAndReturnItsColors() {
+        BodyProfile profile = new BodyProfile(user);
+        SeasonCatalog.Season season = seasonCatalog.findById("light_spring").orElseThrow();
+
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        when(bodyProfileRepository.findByCustomerId(userId)).thenReturn(Optional.of(profile));
+
+        PreferencesResponseDTO result = preferenceService.saveSeason(userId, season);
+
+        assertThat(profile.getColorPalette()).isEqualTo("light_spring");
+        assertThat(result.highlightColors()).isEqualTo(season.highlightColors());
+        assertThat(result.avoidColors()).isEqualTo(seasonCatalog.opposite(season).highlightColors());
+        verify(bodyProfileRepository).save(profile);
+    }
+
+    @Test
+    void saveSeason_shouldCreateBodyProfile_whenUserHasNoProfile() {
+        SeasonCatalog.Season season = seasonCatalog.findById("light_spring").orElseThrow();
+
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        when(bodyProfileRepository.findByCustomerId(userId)).thenReturn(Optional.empty());
+
+        preferenceService.saveSeason(userId, season);
+
+        verify(bodyProfileRepository).save(org.mockito.ArgumentMatchers.argThat(
+                saved -> "light_spring".equals(saved.getColorPalette())));
     }
 
     @Test
@@ -169,8 +243,9 @@ class PreferenceServiceTest {
     }
 
     @Test
-    void updateFavoriteColors_shouldNotAlterHighlightOrAvoidColors() {
+    void updateFavoriteColors_shouldKeepSeasonColorsUntouched() {
         BodyProfile profile = new BodyProfile(user);
+        profile.setColorPalette("soft_autumn");
         PreferencesRequestDTO dto = new PreferencesRequestDTO(List.of("#AABBCC"));
 
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
@@ -179,24 +254,10 @@ class PreferenceServiceTest {
 
         PreferencesResponseDTO result = preferenceService.updateFavoriteColors(userId, dto);
 
-        // highlight e avoid continuam sendo geradas aleatoriamente (não salvas)
-        assertThat(result.highlightColors()).hasSize(4);
-        assertThat(result.avoidColors()).hasSize(4);
+        assertThat(profile.getColorPalette()).isEqualTo("soft_autumn");
+        assertThat(result.highlightColors())
+                .isEqualTo(seasonCatalog.findById("soft_autumn").orElseThrow().highlightColors());
         // favoritas são só as que o usuário mandou
         assertThat(result.favoriteColors()).containsExactly("#AABBCC");
-    }
-
-    @Test
-    void generateRandomColors_shouldReturnCorrectCount() {
-        List<String> colors = preferenceService.generateRandomColors(4);
-        assertThat(colors).hasSize(4);
-    }
-
-    @Test
-    void generateRandomColors_shouldReturnValidHexColors() {
-        List<String> colors = preferenceService.generateRandomColors(10);
-        for (String color : colors) {
-            assertThat(color).matches("^#[0-9A-F]{6}$");
-        }
     }
 }
