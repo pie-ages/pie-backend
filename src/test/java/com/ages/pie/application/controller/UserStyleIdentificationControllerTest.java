@@ -6,6 +6,12 @@ import com.ages.pie.application.service.PreferenceService;
 import com.ages.pie.application.service.StyleIdentificationService;
 import com.ages.pie.application.service.UserService;
 import com.ages.pie.infrastructure.security.AuthenticatedUserProvider;
+import com.ages.pie.application.config.SecurityConfig;
+import com.ages.pie.application.config.SupabaseAuthProperties;
+import org.springframework.context.annotation.Import;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.test.context.support.WithAnonymousUser;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -25,7 +31,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(UserController.class)
+@Import({SecurityConfig.class, SupabaseAuthProperties.class})
+@WithMockUser
 class UserStyleIdentificationControllerTest {
+    @MockitoBean JwtDecoder jwtDecoder;
 
     @Autowired
     private MockMvc mockMvc;
@@ -71,6 +80,7 @@ class UserStyleIdentificationControllerTest {
                 .andExpect(jsonPath("$.styles").isEmpty());
     }
 
+    @WithAnonymousUser
     @Test
         void rejectsUnauthenticatedUser() throws Exception {
         when(authProvider.id()).thenThrow(new ResponseStatusException(UNAUTHORIZED, "Usuário não autenticado"));
