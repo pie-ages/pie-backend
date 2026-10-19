@@ -1,5 +1,7 @@
 package com.ages.pie.application.controller;
 
+import com.ages.pie.application.config.SecurityConfig;
+import com.ages.pie.application.config.SupabaseAuthProperties;
 import com.ages.pie.application.service.PreferenceService;
 import com.ages.pie.application.service.StyleIdentificationService;
 import com.ages.pie.application.service.UserService;
@@ -7,6 +9,10 @@ import com.ages.pie.infrastructure.security.AuthenticatedUserProvider;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.Import;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.test.context.support.WithAnonymousUser;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.server.ResponseStatusException;
@@ -22,7 +28,12 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(UserController.class)
+@Import({SecurityConfig.class, SupabaseAuthProperties.class})
+@WithMockUser
 class UserDeleteControllerTest {
+
+    @MockitoBean
+    private JwtDecoder jwtDecoder;
 
     @Autowired
     private MockMvc mockMvc;
@@ -60,6 +71,7 @@ class UserDeleteControllerTest {
         verify(userService, never()).delete(any());
     }
 
+    @WithAnonymousUser
     @Test
     void rejectsRequestWithoutToken() throws Exception {
         when(authProvider.id()).thenThrow(new ResponseStatusException(UNAUTHORIZED, "Usuário não autenticado"));

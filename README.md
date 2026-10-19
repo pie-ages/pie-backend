@@ -77,6 +77,10 @@ A `service-role-key` fica em: **Supabase Dashboard → Project Settings → API 
 | `supabase.storage.bucket` | `SUPABASE_STORAGE_BUCKET` | Não (padrão: `product-images`) | Bucket para imagens de produtos |
 | `supabase.storage.wardrobe-bucket` | `SUPABASE_STORAGE_WARDROBE_BUCKET` | Não (padrão: `wardrobe-items`) | Bucket para imagens do guarda-roupa |
 | `supabase.storage.max-file-size-mb` | `SUPABASE_STORAGE_MAX_FILE_SIZE_MB` | Não (padrão: `5`) | Limite de tamanho de upload em MB |
+| `supabase.auth.url` | `SUPABASE_URL` | Sim | URL do projeto Supabase usado no Auth (valida JWTs via JWKS) |
+| `supabase.auth.publishable-key` | `SUPABASE_PUBLISHABLE_KEY` | Sim | Publishable (anon) key do projeto, enviada ao Supabase Auth |
+
+Configuração do Supabase Auth por ambiente: [`docs/auth/supabase.md`](docs/auth/supabase.md).
 
 Em ambientes Docker e CI/CD, use as env vars. Localmente via IDE ou `./mvnw`, use `application-local.properties`.
 
@@ -84,20 +88,19 @@ Em ambientes Docker e CI/CD, use as env vars. Localmente via IDE ou `./mvnw`, us
 
 ## Autenticação no Supabase
 
-O cadastro de cliente (`POST /users`) e de empresa (`POST /companies`) cria a identidade da pessoa no Supabase Auth e guarda o identificador em `customer.supabase_user_id` e `company.supabase_user_id`. A senha não é mais armazenada no banco da aplicação: a coluna `password_hash` foi removida das duas tabelas.
+O cadastro de cliente (`POST /users`) e de empresa (`POST /companies`) é público e cria a identidade da pessoa no Supabase Auth, guardando o identificador em `customer.supabase_user_id` e `company.supabase_user_id`. É por essa coluna que o `sub` do token é traduzido para o id local em toda rota autenticada. A senha não é mais armazenada no banco da aplicação: a coluna `password_hash` foi removida das duas tabelas.
 
 A criação usa o admin API (`POST /auth/v1/admin/users`) com `email_confirm`, então não depende de SMTP, template de e-mail ou URL de retorno configurados no projeto.
 
 ### Configuração
 
-Reaproveita as credenciais do Object Storage, sem variável nova:
+O admin API exige a `service_role`, que é reaproveitada do Object Storage, sem variável nova:
 
 | Propriedade | Origem | Descrição |
 | --- | --- | --- |
-| `supabase.auth.url` | `${supabase.storage.url}` | URL base do projeto Supabase |
 | `supabase.auth.service-role-key` | `${supabase.storage.service-role-key}` | Chave `service_role`, exigida pelo admin API |
 
-Sem essas credenciais, os dois endpoints de cadastro respondem `503` e nenhum registro local é criado.
+A URL do projeto vem de `supabase.auth.url` (`SUPABASE_URL`), a mesma usada na validação dos tokens. Sem essas credenciais, os dois endpoints de cadastro respondem `503` e nenhum registro local é criado.
 
 ### Comportamento
 

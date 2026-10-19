@@ -21,6 +21,12 @@ import com.ages.pie.application.dto.user.UserStyleResponseDTO;
 import com.ages.pie.application.service.UserStyleService;
 import com.ages.pie.domain.enums.ProductStyle;
 import com.ages.pie.infrastructure.security.AuthenticatedUserProvider;
+import com.ages.pie.application.config.SecurityConfig;
+import com.ages.pie.application.config.SupabaseAuthProperties;
+import org.springframework.context.annotation.Import;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.test.context.support.WithAnonymousUser;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -31,7 +37,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
 @WebMvcTest(StyleController.class)
+@Import({SecurityConfig.class, SupabaseAuthProperties.class})
+@WithMockUser
 class StyleControllerTest {
+    @MockitoBean JwtDecoder jwtDecoder;
     @Autowired MockMvc mockMvc;
     @MockitoBean StyleService styleService;
         @MockitoBean UserStyleService userStyleService;
@@ -78,6 +87,7 @@ class StyleControllerTest {
         verify(styleService).submitAnswers(org.mockito.ArgumentMatchers.eq(userId), anyList());
     }
 
+    @WithAnonymousUser
     @Test
     void rejectsProfileReadWithoutToken() throws Exception {
         when(authenticatedUserProvider.id()).thenThrow(new ResponseStatusException(HttpStatus.UNAUTHORIZED));
@@ -85,6 +95,7 @@ class StyleControllerTest {
                 .andExpect(status().isUnauthorized());
     }
 
+        @WithAnonymousUser
         @Test
         void rejectsProfileUpdateWithoutToken() throws Exception {
                 when(authenticatedUserProvider.id()).thenThrow(new ResponseStatusException(HttpStatus.UNAUTHORIZED));

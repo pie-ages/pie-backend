@@ -7,7 +7,7 @@ import com.ages.pie.application.exception.BusinessException;
 import com.ages.pie.application.exception.ResourceNotFoundException;
 import com.ages.pie.application.mapper.UserMapper;
 import com.ages.pie.domain.entity.User;
-import com.ages.pie.infrastructure.auth.SupabaseAuthClient;
+import com.ages.pie.infrastructure.auth.SupabaseAdminClient;
 import com.ages.pie.infrastructure.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,13 +24,13 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final UserMapper userMapper;
-    private final SupabaseAuthClient supabaseAuthClient;
+    private final SupabaseAdminClient supabaseAdminClient;
 
     public UserService(UserRepository userRepository, UserMapper userMapper,
-                       SupabaseAuthClient supabaseAuthClient) {
+                       SupabaseAdminClient supabaseAdminClient) {
         this.userRepository = userRepository;
         this.userMapper = userMapper;
-        this.supabaseAuthClient = supabaseAuthClient;
+        this.supabaseAdminClient = supabaseAdminClient;
     }
 
     @Transactional
@@ -39,7 +39,7 @@ public class UserService {
             throw new BusinessException("Email já cadastrado: " + dto.email());
         }
 
-        UUID supabaseUserId = supabaseAuthClient.createUser(dto.email(), dto.password());
+        UUID supabaseUserId = supabaseAdminClient.createUser(dto.email(), dto.password());
 
         try {
             User user = new User(dto.name(), dto.email(), supabaseUserId);
@@ -52,7 +52,7 @@ public class UserService {
 
     private void rollbackSupabaseUser(UUID supabaseUserId, String email) {
         try {
-            supabaseAuthClient.deleteUser(supabaseUserId);
+            supabaseAdminClient.deleteUser(supabaseUserId);
         } catch (RuntimeException e) {
             logger.error("Usuário {} ficou órfão no Supabase Auth após falha ao cadastrar {}",
                     supabaseUserId, email, e);
@@ -92,7 +92,7 @@ public class UserService {
         userRepository.flush();
 
         if (user.getSupabaseUserId() != null) {
-            supabaseAuthClient.deleteUser(user.getSupabaseUserId());
+            supabaseAdminClient.deleteUser(user.getSupabaseUserId());
         }
     }
 }

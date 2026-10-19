@@ -7,7 +7,7 @@ import com.ages.pie.application.exception.BusinessException;
 import com.ages.pie.application.exception.ResourceNotFoundException;
 import com.ages.pie.application.mapper.UserMapper;
 import com.ages.pie.domain.entity.User;
-import com.ages.pie.infrastructure.auth.SupabaseAuthClient;
+import com.ages.pie.infrastructure.auth.SupabaseAdminClient;
 import com.ages.pie.infrastructure.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -41,7 +41,7 @@ class UserServiceTest {
     private UserMapper userMapper;
 
     @Mock
-    private SupabaseAuthClient supabaseAuthClient;
+    private SupabaseAdminClient supabaseAdminClient;
 
     @InjectMocks
     private UserService userService;
@@ -65,7 +65,7 @@ class UserServiceTest {
         UserRequestDTO dto = new UserRequestDTO("Ana Silva", "ana@email.com", "senha123");
 
         when(userRepository.existsByEmail(dto.email())).thenReturn(false);
-        when(supabaseAuthClient.createUser(dto.email(), dto.password())).thenReturn(UUID.randomUUID());
+        when(supabaseAdminClient.createUser(dto.email(), dto.password())).thenReturn(UUID.randomUUID());
         when(userRepository.saveAndFlush(any(User.class))).thenReturn(user);
         when(userMapper.toResponseDTO(user)).thenReturn(responseDTO);
 
@@ -81,7 +81,7 @@ class UserServiceTest {
         UUID supabaseUserId = UUID.randomUUID();
 
         when(userRepository.existsByEmail(dto.email())).thenReturn(false);
-        when(supabaseAuthClient.createUser(dto.email(), dto.password())).thenReturn(supabaseUserId);
+        when(supabaseAdminClient.createUser(dto.email(), dto.password())).thenReturn(supabaseUserId);
         when(userRepository.saveAndFlush(any(User.class))).thenReturn(user);
         when(userMapper.toResponseDTO(user)).thenReturn(responseDTO);
 
@@ -98,14 +98,14 @@ class UserServiceTest {
         UUID supabaseUserId = UUID.randomUUID();
 
         when(userRepository.existsByEmail(dto.email())).thenReturn(false);
-        when(supabaseAuthClient.createUser(dto.email(), dto.password())).thenReturn(supabaseUserId);
+        when(supabaseAdminClient.createUser(dto.email(), dto.password())).thenReturn(supabaseUserId);
         when(userRepository.saveAndFlush(any(User.class)))
                 .thenThrow(new DataIntegrityViolationException("email duplicado"));
 
         assertThatThrownBy(() -> userService.create(dto))
                 .isInstanceOf(DataIntegrityViolationException.class);
 
-        verify(supabaseAuthClient).deleteUser(supabaseUserId);
+        verify(supabaseAdminClient).deleteUser(supabaseUserId);
     }
 
     @Test
@@ -114,11 +114,11 @@ class UserServiceTest {
         UUID supabaseUserId = UUID.randomUUID();
 
         when(userRepository.existsByEmail(dto.email())).thenReturn(false);
-        when(supabaseAuthClient.createUser(dto.email(), dto.password())).thenReturn(supabaseUserId);
+        when(supabaseAdminClient.createUser(dto.email(), dto.password())).thenReturn(supabaseUserId);
         when(userRepository.saveAndFlush(any(User.class)))
                 .thenThrow(new DataIntegrityViolationException("email duplicado"));
         doThrow(new ResponseStatusException(HttpStatus.BAD_GATEWAY))
-                .when(supabaseAuthClient).deleteUser(supabaseUserId);
+                .when(supabaseAdminClient).deleteUser(supabaseUserId);
 
         assertThatThrownBy(() -> userService.create(dto))
                 .isInstanceOf(DataIntegrityViolationException.class);
@@ -129,14 +129,14 @@ class UserServiceTest {
         UserRequestDTO dto = new UserRequestDTO("Ana Silva", "ana@email.com", "senha123");
 
         when(userRepository.existsByEmail(dto.email())).thenReturn(false);
-        when(supabaseAuthClient.createUser(dto.email(), dto.password()))
+        when(supabaseAdminClient.createUser(dto.email(), dto.password()))
                 .thenThrow(new BusinessException("Email já cadastrado: " + dto.email()));
 
         assertThatThrownBy(() -> userService.create(dto))
                 .isInstanceOf(BusinessException.class);
 
         verify(userRepository, never()).saveAndFlush(any());
-        verify(supabaseAuthClient, never()).deleteUser(any());
+        verify(supabaseAdminClient, never()).deleteUser(any());
     }
 
     @Test
@@ -149,7 +149,7 @@ class UserServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("ana@email.com");
 
-        verify(supabaseAuthClient, never()).createUser(any(), any());
+        verify(supabaseAdminClient, never()).createUser(any(), any());
         verify(userRepository, never()).saveAndFlush(any());
     }
 
@@ -225,7 +225,7 @@ class UserServiceTest {
         userService.delete(userId);
 
         verify(userRepository).delete(user);
-        verify(supabaseAuthClient).deleteUser(user.getSupabaseUserId());
+        verify(supabaseAdminClient).deleteUser(user.getSupabaseUserId());
     }
 
     @Test
@@ -236,7 +236,7 @@ class UserServiceTest {
         userService.delete(userId);
 
         verify(userRepository).delete(user);
-        verify(supabaseAuthClient, never()).deleteUser(any());
+        verify(supabaseAdminClient, never()).deleteUser(any());
     }
 
     @Test
@@ -248,6 +248,6 @@ class UserServiceTest {
                 .hasMessageContaining(userId.toString());
 
         verify(userRepository, never()).delete(any());
-        verify(supabaseAuthClient, never()).deleteUser(any());
+        verify(supabaseAdminClient, never()).deleteUser(any());
     }
 }

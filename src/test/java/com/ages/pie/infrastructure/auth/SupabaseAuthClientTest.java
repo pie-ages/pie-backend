@@ -1,7 +1,22 @@
 package com.ages.pie.infrastructure.auth;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.content;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.header;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withNoContent;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withServerError;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
+
+import java.util.UUID;
+
 import com.ages.pie.application.config.SupabaseAuthProperties;
-import com.ages.pie.application.exception.BusinessException;
+import com.ages.pie.application.exception.AuthProviderUnavailableException;
+import com.ages.pie.application.exception.EmailNotConfirmedException;
+import com.ages.pie.application.exception.InvalidCredentialsException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpMethod;
@@ -9,226 +24,111 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
-import org.springframework.web.server.ResponseStatusException;
-
-import java.util.UUID;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.springframework.test.web.client.match.MockRestRequestMatchers.header;
-import static org.springframework.test.web.client.match.MockRestRequestMatchers.jsonPath;
-import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
-import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
-import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
-import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
 class SupabaseAuthClientTest {
 
-    private static final String ADMIN_USERS_URL = "https://test.supabase.co/auth/v1/admin/users";
+    private static final String BASE = "https://proj.supabase.co/auth/v1";
 
-    private SupabaseAuthProperties props;
     private MockRestServiceServer server;
     private SupabaseAuthClient client;
 
     @BeforeEach
     void setUp() {
-        props = new SupabaseAuthProperties();
-        props.setUrl("https://test.supabase.co");
-        props.setServiceRoleKey("test-key");
-
+        SupabaseAuthProperties props = new SupabaseAuthProperties();
+        props.setUrl("https://proj.supabase.co");
+        props.setPublishableKey("pub-key");
         RestClient.Builder builder = RestClient.builder();
         server = MockRestServiceServer.bindTo(builder).build();
-        client = new SupabaseAuthClient(props, builder.build());
+        client = new SupabaseAuthClient(props, builder);
+    }
+
+    private static String sessionJson(UUID userId) {
+        return """
+            {"access_token":"acc","token_type":"bearer","expires_in":3600,"expires_at":1,
+             "refresh_token":"ref","user":{"id":"%s","email":"ana@email.com","role":"authenticated"}}
+            """.formatted(userId);
+    }
+
+    private static String errorJson(String code) {
+        return "{\"code\":400,\"error_code\":\"" + code + "\",\"msg\":\"x\"}";
     }
 
     @Test
-    void createUser_shouldReturnSupabaseId_whenCreationSucceeds() {
-        UUID expectedId = UUID.randomUUID();
-        server.expect(requestTo(ADMIN_USERS_URL))
-                .andExpect(method(HttpMethod.POST))
-                .andExpect(header("apikey", "test-key"))
-                .andExpect(header("Authorization", "Bearer test-key"))
-                .andExpect(jsonPath("$.email").value("ana@email.com"))
-                .andExpect(jsonPath("$.password").value("senha123"))
-                .andExpect(jsonPath("$.email_confirm").value(true))
-                .andRespond(withSuccess(
-                        "{\"id\":\"" + expectedId + "\",\"email\":\"ana@email.com\"}",
-                        MediaType.APPLICATION_JSON));
+    void passwordGrantEnviaApikeyECredenciaisERetornaSessao() {
+        UUID userId = UUID.randomUUID();
+        server.expect(requestTo(BASE + "/token?grant_type=password"))
+            .andExpect(method(HttpMethod.POST))
+            .andExpect(header("apikey", "pub-key"))
+            .andExpect(content().json("{\"email\":\"ana@email.com\",\"password\":\"senha\"}"))
+            .andRespond(withSuccess(sessionJson(userId), MediaType.APPLICATION_JSON));
 
-        UUID id = client.createUser("ana@email.com", "senha123");
+        SupabaseAuthClient.Session session = client.passwordGrant("ana@email.com", "senha");
 
-        assertThat(id).isEqualTo(expectedId);
+        assertThat(session.accessToken()).isEqualTo("acc");
+        assertThat(session.refreshToken()).isEqualTo("ref");
+        assertThat(session.expiresIn()).isEqualTo(3600);
+        assertThat(session.user().id()).isEqualTo(userId);
         server.verify();
     }
 
     @Test
-    void createUser_shouldThrowBusinessException_whenEmailAlreadyExists() {
-        server.expect(requestTo(ADMIN_USERS_URL))
-                .andRespond(withStatus(HttpStatus.UNPROCESSABLE_ENTITY)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .body("{\"code\":422,\"error_code\":\"email_exists\",\"msg\":\"already registered\"}"));
+    void passwordGrantComCredenciaisInvalidasLancaInvalidCredentials() {
+        server.expect(requestTo(BASE + "/token?grant_type=password"))
+            .andRespond(withStatus(HttpStatus.BAD_REQUEST).contentType(MediaType.APPLICATION_JSON)
+                .body(errorJson("invalid_credentials")));
 
-        assertThatThrownBy(() -> client.createUser("ana@email.com", "senha123"))
-                .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("ana@email.com");
+        assertThatThrownBy(() -> client.passwordGrant("ana@email.com", "errada"))
+            .isInstanceOf(InvalidCredentialsException.class);
+    }
+
+    @Test
+    void passwordGrantComEmailNaoConfirmadoLancaEmailNotConfirmed() {
+        server.expect(requestTo(BASE + "/token?grant_type=password"))
+            .andRespond(withStatus(HttpStatus.BAD_REQUEST).contentType(MediaType.APPLICATION_JSON)
+                .body(errorJson("email_not_confirmed")));
+
+        assertThatThrownBy(() -> client.passwordGrant("ana@email.com", "senha"))
+            .isInstanceOf(EmailNotConfirmedException.class);
+    }
+
+    @Test
+    void erro5xxLancaAuthProviderUnavailable() {
+        server.expect(requestTo(BASE + "/token?grant_type=password")).andRespond(withServerError());
+
+        assertThatThrownBy(() -> client.passwordGrant("ana@email.com", "senha"))
+            .isInstanceOf(AuthProviderUnavailableException.class);
+    }
+
+    @Test
+    void refreshEnviaRefreshTokenERetornaNovaSessao() {
+        server.expect(requestTo(BASE + "/token?grant_type=refresh_token"))
+            .andExpect(header("apikey", "pub-key"))
+            .andExpect(content().json("{\"refresh_token\":\"ref-antigo\"}"))
+            .andRespond(withSuccess(sessionJson(UUID.randomUUID()), MediaType.APPLICATION_JSON));
+
+        assertThat(client.refresh("ref-antigo").accessToken()).isEqualTo("acc");
         server.verify();
     }
 
     @Test
-    void createUser_shouldThrowBusinessException_whenSupabaseReportsDuplicateWithoutErrorCode() {
-        server.expect(requestTo(ADMIN_USERS_URL))
-                .andRespond(withStatus(HttpStatus.BAD_REQUEST)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .body("{\"code\":400,\"msg\":\"User already registered\"}"));
+    void refreshComTokenJaUsadoLancaInvalidCredentials() {
+        server.expect(requestTo(BASE + "/token?grant_type=refresh_token"))
+            .andRespond(withStatus(HttpStatus.BAD_REQUEST).contentType(MediaType.APPLICATION_JSON)
+                .body(errorJson("refresh_token_already_used")));
 
-        assertThatThrownBy(() -> client.createUser("ana@email.com", "senha123"))
-                .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("ana@email.com");
-        server.verify();
+        assertThatThrownBy(() -> client.refresh("ref"))
+            .isInstanceOf(InvalidCredentialsException.class);
     }
 
     @Test
-    void createUser_shouldThrowIllegalArgument_whenSupabaseRejectsThePassword() {
-        server.expect(requestTo(ADMIN_USERS_URL))
-                .andRespond(withStatus(HttpStatus.UNPROCESSABLE_ENTITY)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .body("{\"code\":422,\"error_code\":\"weak_password\","
-                                + "\"msg\":\"Password should be at least 6 characters\"}"));
+    void logoutEnviaBearerDoUsuario() {
+        server.expect(requestTo(BASE + "/logout?scope=local"))
+            .andExpect(method(HttpMethod.POST))
+            .andExpect(header("apikey", "pub-key"))
+            .andExpect(header("Authorization", "Bearer acc"))
+            .andRespond(withNoContent());
 
-        assertThatThrownBy(() -> client.createUser("ana@email.com", "123"))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("A senha não atende aos requisitos mínimos de segurança");
-        server.verify();
-    }
-
-    @Test
-    void createUser_shouldThrowBadGateway_whenServiceRoleKeyIsRejected() {
-        server.expect(requestTo(ADMIN_USERS_URL))
-                .andRespond(withStatus(HttpStatus.UNAUTHORIZED)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .body("{\"msg\":\"Invalid API key\"}"));
-
-        assertThatThrownBy(() -> client.createUser("ana@email.com", "senha123"))
-                .isInstanceOf(ResponseStatusException.class)
-                .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode())
-                        .isEqualTo(HttpStatus.BAD_GATEWAY));
-        server.verify();
-    }
-
-    @Test
-    void createUser_shouldThrowBadGateway_whenResponseHasNoId() {
-        server.expect(requestTo(ADMIN_USERS_URL))
-                .andRespond(withSuccess("{\"email\":\"ana@email.com\"}", MediaType.APPLICATION_JSON));
-
-        assertThatThrownBy(() -> client.createUser("ana@email.com", "senha123"))
-                .isInstanceOf(ResponseStatusException.class)
-                .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode())
-                        .isEqualTo(HttpStatus.BAD_GATEWAY));
-        server.verify();
-    }
-
-    @Test
-    void createUser_shouldThrowServiceUnavailable_whenSupabaseIsNotConfigured() {
-        props.setServiceRoleKey("");
-
-        assertThatThrownBy(() -> client.createUser("ana@email.com", "senha123"))
-                .isInstanceOf(ResponseStatusException.class)
-                .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode())
-                        .isEqualTo(HttpStatus.SERVICE_UNAVAILABLE));
-        server.verify();
-    }
-
-    @Test
-    void verifyPassword_shouldAcceptCorrectPassword() {
-        server.expect(requestTo("https://test.supabase.co/auth/v1/token?grant_type=password"))
-                .andExpect(method(HttpMethod.POST))
-                .andExpect(jsonPath("$.email").value("contato@lojax.com"))
-                .andRespond(withSuccess("{\"access_token\":\"abc\"}", MediaType.APPLICATION_JSON));
-
-        client.verifyPassword("contato@lojax.com", "senha123");
-
-        server.verify();
-    }
-
-    @Test
-    void verifyPassword_shouldThrowForbidden_whenPasswordIsWrong() {
-        server.expect(requestTo("https://test.supabase.co/auth/v1/token?grant_type=password"))
-                .andRespond(withStatus(HttpStatus.BAD_REQUEST)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .body("{\"error\":\"invalid_grant\",\"error_description\":\"Invalid login credentials\"}"));
-
-        assertThatThrownBy(() -> client.verifyPassword("contato@lojax.com", "errada"))
-                .isInstanceOf(ResponseStatusException.class)
-                .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode())
-                        .isEqualTo(HttpStatus.FORBIDDEN));
-        server.verify();
-    }
-
-    @Test
-    void updateEmail_shouldCallAdminEndpoint() {
-        UUID id = UUID.randomUUID();
-        server.expect(requestTo(ADMIN_USERS_URL + "/" + id))
-                .andExpect(method(HttpMethod.PUT))
-                .andExpect(header("apikey", "test-key"))
-                .andExpect(jsonPath("$.email").value("novo@lojay.com"))
-                .andExpect(jsonPath("$.email_confirm").value(true))
-                .andRespond(withSuccess());
-
-        client.updateEmail(id, "novo@lojay.com");
-
-        server.verify();
-    }
-
-    @Test
-    void updateEmail_shouldThrowBusinessException_whenNewEmailIsTaken() {
-        UUID id = UUID.randomUUID();
-        server.expect(requestTo(ADMIN_USERS_URL + "/" + id))
-                .andRespond(withStatus(HttpStatus.UNPROCESSABLE_ENTITY)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .body("{\"code\":422,\"error_code\":\"email_exists\",\"msg\":\"already registered\"}"));
-
-        assertThatThrownBy(() -> client.updateEmail(id, "novo@lojay.com"))
-                .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("novo@lojay.com");
-        server.verify();
-    }
-
-    @Test
-    void deleteUser_shouldCallAdminEndpoint() {
-        UUID id = UUID.randomUUID();
-        server.expect(requestTo(ADMIN_USERS_URL + "/" + id))
-                .andExpect(method(HttpMethod.DELETE))
-                .andExpect(header("apikey", "test-key"))
-                .andRespond(withSuccess());
-
-        client.deleteUser(id);
-
-        server.verify();
-    }
-
-    @Test
-    void deleteUser_shouldSucceed_whenUserNoLongerExists() {
-        UUID id = UUID.randomUUID();
-        server.expect(requestTo(ADMIN_USERS_URL + "/" + id))
-                .andRespond(withStatus(HttpStatus.NOT_FOUND)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .body("{\"msg\":\"User not found\"}"));
-
-        client.deleteUser(id);
-
-        server.verify();
-    }
-
-    @Test
-    void deleteUser_shouldThrowBadGateway_whenSupabaseFails() {
-        UUID id = UUID.randomUUID();
-        server.expect(requestTo(ADMIN_USERS_URL + "/" + id))
-                .andRespond(withStatus(HttpStatus.INTERNAL_SERVER_ERROR));
-
-        assertThatThrownBy(() -> client.deleteUser(id))
-                .isInstanceOf(ResponseStatusException.class)
-                .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode())
-                        .isEqualTo(HttpStatus.BAD_GATEWAY));
+        client.logout("acc");
         server.verify();
     }
 }

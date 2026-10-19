@@ -1,44 +1,67 @@
 package com.ages.pie.application.service;
 
+import java.util.UUID;
+
 import com.ages.pie.application.dto.LoginRequestDTO;
 import com.ages.pie.application.dto.LoginResponseDTO;
 import com.ages.pie.application.dto.UserSummaryDTO;
-import com.ages.pie.application.exception.NoUsersAvailableException;
 import com.ages.pie.domain.entity.User;
+import com.ages.pie.infrastructure.auth.SupabaseAuthClient;
 import com.ages.pie.infrastructure.repository.UserRepository;
-import com.ages.pie.infrastructure.security.JwtTokenProvider;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Autenticação provisória de desenvolvimento (PIE-12): não valida as
- * credenciais recebidas, apenas emite um JWT para o primeiro usuário
- * cadastrado. A validação real de e-mail e senha entra na US23,
- * substituindo o corpo de {@link #login}.
+ * Autenticação delegada ao Supabase Auth. O id do usuário no Supabase
+ * ({@code sub} do JWT) é associado ao customer por {@code supabase_user_id};
+ * {@code user} vem nulo enquanto o customer ainda não foi cadastrado.
  */
 @Service
 public class AuthService {
 
+    private final SupabaseAuthClient supabaseAuthClient;
     private final UserRepository userRepository;
-    private final JwtTokenProvider jwtTokenProvider;
 
-    public AuthService(UserRepository userRepository, JwtTokenProvider jwtTokenProvider) {
+    public AuthService(SupabaseAuthClient supabaseAuthClient, UserRepository userRepository) {
+        this.supabaseAuthClient = supabaseAuthClient;
         this.userRepository = userRepository;
-        this.jwtTokenProvider = jwtTokenProvider;
     }
 
     @Transactional(readOnly = true)
     public LoginResponseDTO login(LoginRequestDTO request) {
-        User user = userRepository.findFirstByOrderByCreatedAtAsc()
-            .orElseThrow(() -> new NoUsersAvailableException("Nenhum usuário cadastrado"));
+        return toResponse(supabaseAuthClient.passwordGrant(request.email(), request.password()));
+    }
 
-        String token = jwtTokenProvider.generateToken(user.getId());
-        UserSummaryDTO summary = new UserSummaryDTO(
-            user.getId(),
-            user.getName(),
-            user.getEmail(),
-            user.getPhotoUrl()
+    @Transactional(readOnly = true)
+    public LoginResponseDTO refresh(String refreshToken) {
+        return toResponse(supabaseAuthClient.refresh(refreshToken));
+    }
+
+    public void logout(String accessToken) {
+        supabaseAuthClient.logout(accessToken);
+    }
+
+    @Transactional(readOnly = true)
+    public UserSummaryDTO findSummary(UUID userId) {
+        return userRepository.findById(userId).map(AuthService::toSummary).orElse(null);
+    }
+
+    private UserSummaryDTO findSummaryBySupabaseUserId(UUID supabaseUserId) {
+        return userRepository.findBySupabaseUserId(supabaseUserId).map(AuthService::toSummary).orElse(null);
+    }
+
+    private static UserSummaryDTO toSummary(User user) {
+        return new UserSummaryDTO(user.getId(), user.getName(), user.getEmail(), user.getPhotoUrl());
+    }
+
+    private LoginResponseDTO toResponse(SupabaseAuthClient.Session session) {
+        UserSummaryDTO user = session.user() == null ? null : findSummaryBySupabaseUserId(session.user().id());
+        return new LoginResponseDTO(
+            session.accessToken(),
+            session.refreshToken(),
+            session.expiresIn(),
+            session.tokenType(),
+            user
         );
-        return new LoginResponseDTO(token, summary);
     }
 }

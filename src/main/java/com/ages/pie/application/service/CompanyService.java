@@ -11,7 +11,7 @@ import com.ages.pie.application.exception.BusinessException;
 import com.ages.pie.application.exception.ResourceNotFoundException;
 import com.ages.pie.application.mapper.CompanyMapper;
 import com.ages.pie.domain.entity.Company;
-import com.ages.pie.infrastructure.auth.SupabaseAuthClient;
+import com.ages.pie.infrastructure.auth.SupabaseAdminClient;
 import com.ages.pie.infrastructure.repository.CompanyRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,13 +25,13 @@ public class CompanyService {
 
     private final CompanyRepository companyRepository;
     private final CompanyMapper companyMapper;
-    private final SupabaseAuthClient supabaseAuthClient;
+    private final SupabaseAdminClient supabaseAdminClient;
 
     public CompanyService(CompanyRepository companyRepository, CompanyMapper companyMapper,
-                          SupabaseAuthClient supabaseAuthClient) {
+                          SupabaseAdminClient supabaseAdminClient) {
         this.companyRepository = companyRepository;
         this.companyMapper = companyMapper;
-        this.supabaseAuthClient = supabaseAuthClient;
+        this.supabaseAdminClient = supabaseAdminClient;
     }
 
     @Transactional
@@ -43,7 +43,7 @@ public class CompanyService {
             throw new BusinessException("Email já cadastrado: " + dto.email());
         }
 
-        UUID supabaseUserId = supabaseAuthClient.createUser(dto.email(), dto.password());
+        UUID supabaseUserId = supabaseAdminClient.createUser(dto.email(), dto.password());
 
         try {
             Company company = companyMapper.toEntity(dto, supabaseUserId);
@@ -56,7 +56,7 @@ public class CompanyService {
 
     private void rollbackSupabaseUser(UUID supabaseUserId, String email) {
         try {
-            supabaseAuthClient.deleteUser(supabaseUserId);
+            supabaseAdminClient.deleteUser(supabaseUserId);
         } catch (RuntimeException e) {
             logger.error("Usuário {} ficou órfão no Supabase Auth após falha ao cadastrar {}",
                     supabaseUserId, email, e);
@@ -92,7 +92,7 @@ public class CompanyService {
             if (dto.currentPassword() == null || dto.currentPassword().isBlank()) {
                 throw new IllegalArgumentException("Informe a senha atual para alterar o e-mail");
             }
-            supabaseAuthClient.verifyPassword(currentEmail, dto.currentPassword());
+            supabaseAdminClient.verifyPassword(currentEmail, dto.currentPassword());
         }
 
         company.update(dto.name(), dto.socialReason(), dto.responsiblePerson(),
@@ -100,7 +100,7 @@ public class CompanyService {
         CompanyResponseDTO response = companyMapper.toResponseDTO(companyRepository.saveAndFlush(company));
 
         if (propagateEmail) {
-            supabaseAuthClient.updateEmail(company.getSupabaseUserId(), dto.email());
+            supabaseAdminClient.updateEmail(company.getSupabaseUserId(), dto.email());
         }
 
         return response;
