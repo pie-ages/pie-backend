@@ -162,15 +162,17 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
-          set -euo pipefail
+          set -Eeuo pipefail
+          trap 'exit_code=$?; echo "::error::ECS command failed at script line $LINENO (exit code $exit_code)." >&2; exit "$exit_code"' ERR
+
           # Build jobs can finish out of order. On push, only deploy the current dev commit.
           # Manual runs may deploy any branch on purpose.
           latest_sha="$GITHUB_SHA"
           if [[ "$GITHUB_EVENT_NAME" == "push" ]]; then
-          latest_sha=$(curl --fail --silent --show-error --location \
-            --header "Authorization: Bearer $GH_TOKEN" \
-            --header "Accept: application/vnd.github+json" \
-            "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/git/ref/heads/dev" | jq -er '.object.sha')
+            latest_sha=$(curl --fail --silent --show-error --location \
+              --header "Authorization: Bearer $GH_TOKEN" \
+              --header "Accept: application/vnd.github+json" \
+              "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/git/ref/heads/dev" | jq -er '.object.sha')
           fi
           if [[ "$latest_sha" != "$GITHUB_SHA" ]]; then
             echo "::notice::Skipping deployment because dev has a newer commit."
@@ -181,14 +183,23 @@ jobs:
           umask 077
           trap 'rm -f "$RUNNER_TEMP/express-service.json" "$RUNNER_TEMP/express-container.json"' EXIT
 
+          echo "Reading ECS Express service configuration..."
           aws ecs describe-express-gateway-service \
             --service-arn "$ECS_SERVICE_ARN" --output json > "$RUNNER_TEMP/express-service.json"
 
           # Preserve the current port, command, logs, variables and secret references.
-          jq -e '.service | .status.statusCode == "ACTIVE" and
+          if ! jq -e '.service | .status.statusCode == "ACTIVE" and
             (.activeConfigurations | length) == 1 and
             .activeConfigurations[0].cpuArchitecture == "X86_64"' \
-            "$RUNNER_TEMP/express-service.json" > /dev/null
+            "$RUNNER_TEMP/express-service.json" > /dev/null; then
+            echo "::error::The ECS service must be ACTIVE with exactly one active configuration and X86_64 architecture."
+            # Report only deployment metadata; container variables and secrets stay out of logs.
+            jq '{status: .service.status.statusCode,
+              activeConfigurations: (.service.activeConfigurations | length),
+              cpuArchitecture: .service.activeConfigurations[0].cpuArchitecture}' \
+              "$RUNNER_TEMP/express-service.json" >&2
+            exit 1
+          fi
 
           current=$(jq -r '.service.currentDeployment // empty' "$RUNNER_TEMP/express-service.json")
           if [[ -n "$current" ]]; then
@@ -204,11 +215,16 @@ jobs:
           jq --arg image "$image" '.service.activeConfigurations[0].primaryContainer | .image = $image' \
             "$RUNNER_TEMP/express-service.json" > "$RUNNER_TEMP/express-container.json"
 
+          echo "Updating ECS service image..."
           target=$(aws ecs update-express-gateway-service --service-arn "$ECS_SERVICE_ARN" \
             --primary-container "file://$RUNNER_TEMP/express-container.json" \
             --query 'service.targetConfiguration.serviceRevisionArn' --output text)
-          [[ "$target" == arn:*:ecs:*:service-revision/* ]]
+          if [[ "$target" != arn:*:ecs:*:service-revision/* ]]; then
+            echo "::error::AWS did not return the expected target service revision ARN. Check the service deployment history before retrying."
+            exit 1
+          fi
 
+          echo "Waiting for the target ECS revision to deploy..."
           deadline=$((SECONDS + 2400))
           tracked=""
           while (( SECONDS < deadline )); do
@@ -220,8 +236,14 @@ jobs:
             if [[ -n "$current" && "$current" != "None" ]]; then
               deployment=$(aws ecs describe-service-deployments \
                 --service-deployment-arns "$current" --output json)
-              jq -e '((.failures // []) | length) == 0 and (.serviceDeployments | length) == 1' \
-                <<< "$deployment" > /dev/null
+              if ! jq -e '((.failures // []) | length) == 0 and (.serviceDeployments | length) == 1' \
+                <<< "$deployment" > /dev/null; then
+                echo "::error::AWS could not describe the tracked deployment. Expected one deployment and no failures."
+                jq '{deploymentCount: (.serviceDeployments | length),
+                  failureCount: ((.failures // []) | length),
+                  failureReasons: [.failures[]?.reason]}' <<< "$deployment" >&2
+                exit 1
+              fi
               revision=$(jq -r '.serviceDeployments[0].targetServiceRevision.arn' <<< "$deployment")
               if [[ "$revision" == "$target" ]]; then
                 tracked="$current"
