@@ -1,6 +1,6 @@
 package com.ages.pie.infrastructure.ai;
 
-import com.ages.pie.application.dto.wardrobe.WardrobeImageAnalysisDTO;
+import com.ages.pie.application.dto.analysis.ImageAnalysisDTO;
 import com.ages.pie.domain.enums.ProductCategory;
 import com.ages.pie.domain.enums.ProductColor;
 import com.ages.pie.domain.enums.ProductStyle;
@@ -63,7 +63,7 @@ public class BedrockImageAnalysisClient {
         this.restClient = restClient;
     }
 
-    public WardrobeImageAnalysisDTO analyze(byte[] bytes, String format) {
+    public ImageAnalysisDTO analyze(byte[] bytes, String format) {
         if (apiKey.isBlank()) {
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
                     "A análise de imagens está indisponível. Preencha os campos manualmente.");
@@ -84,7 +84,7 @@ public class BedrockImageAnalysisClient {
                     .retrieve()
                     .body(String.class);
             JsonNode root = mapper.readTree(response);
-            logger.info("Wardrobe analysis tokens: input={}, output={}",
+            logger.info("Image analysis tokens: input={}, output={}",
                     root.path("usage").path("inputTokens").asInt(),
                     root.path("usage").path("outputTokens").asInt());
             if (!"end_turn".equals(root.path("stopReason").asString(""))) {
@@ -98,7 +98,7 @@ public class BedrockImageAnalysisClient {
             if (json.startsWith("```")) {
                 json = json.replaceFirst("^```(?:json)?\\s*", "").replaceFirst("\\s*```$", "");
             }
-            return mapper.readValue(json, WardrobeImageAnalysisDTO.class);
+            return mapper.readValue(json, ImageAnalysisDTO.class);
         } catch (RestClientException e) {
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
                     "Não foi possível analisar a peça. Envie outra foto ou preencha os campos manualmente.");

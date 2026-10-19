@@ -1,6 +1,6 @@
 package com.ages.pie.application.service;
 
-import com.ages.pie.application.dto.wardrobe.WardrobeImageAnalysisDTO;
+import com.ages.pie.application.dto.analysis.ImageAnalysisDTO;
 import com.ages.pie.domain.enums.ProductCategory;
 import com.ages.pie.domain.enums.ProductColor;
 import com.ages.pie.domain.enums.ProductStyle;
@@ -11,21 +11,22 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
+import java.util.Locale;
 import java.util.Map;
 
 @Service
-public class WardrobeImageAnalysisService {
+public class ImageAnalysisService {
 
     private static final long MAX_IMAGE_BYTES = 3_932_160;
     private static final Map<String, String> FORMATS = Map.of(
             "image/jpeg", "jpeg", "image/png", "png", "image/webp", "webp");
     private final BedrockImageAnalysisClient client;
 
-    public WardrobeImageAnalysisService(BedrockImageAnalysisClient client) {
+    public ImageAnalysisService(BedrockImageAnalysisClient client) {
         this.client = client;
     }
 
-    public WardrobeImageAnalysisDTO analyze(MultipartFile file) {
+    public ImageAnalysisDTO analyze(MultipartFile file) {
         if (file.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Adicione uma foto da peça.");
         }
@@ -45,7 +46,7 @@ public class WardrobeImageAnalysisService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "Não foi possível ler a foto. Envie outra foto.");
         }
-        WardrobeImageAnalysisDTO result = client.analyze(bytes, format);
+        ImageAnalysisDTO result = client.analyze(bytes, format);
         if (result == null) {
             throw invalidResponse();
         }
@@ -57,7 +58,11 @@ public class WardrobeImageAnalysisService {
                 || !ProductColor.isValid(result.color())) {
             throw invalidResponse();
         }
-        return result;
+        return new ImageAnalysisDTO(normalize(result.category()), normalize(result.style()), normalize(result.color()));
+    }
+
+    private static String normalize(String id) {
+        return id == null ? null : id.trim().toLowerCase(Locale.ROOT);
     }
 
     private ResponseStatusException invalidResponse() {
