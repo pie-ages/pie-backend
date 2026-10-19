@@ -8,7 +8,8 @@ public enum ProductStyle implements TaxonomyItem {
     CASUAL("casual", "Casual"),
     CRIATIVO("criativo", "Criativo"),
     DRAMATICO("dramatico", "Dramático"),
-    REFINADO("refinado", "Refinado");
+    REFINADO("refinado", "Refinado"),
+    SENSUAL("sensual", "Sensual");
 
     private final String id;
     private final String name;

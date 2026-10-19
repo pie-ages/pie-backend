@@ -60,6 +60,12 @@ public class UserController {
         return ResponseEntity.ok(userService.update(id, dto));
     }
 
+    @GetMapping("/me")
+    @SecurityRequirement(name = "bearerAuth")
+    public ResponseEntity<UserResponseDTO> getCurrentUser() {
+        return ResponseEntity.ok(userService.findById(authProvider.id()));
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable UUID id) {
         userService.delete(id);
@@ -94,4 +100,3 @@ public class UserController {
         return ResponseEntity.ok(styleIdentificationService.getIdentified(authProvider.id()));
     }
 }
-
