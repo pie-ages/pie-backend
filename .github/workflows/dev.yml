@@ -181,39 +181,72 @@ jobs:
           fi
 
           umask 077
-          trap 'rm -f "$RUNNER_TEMP/express-service.json" "$RUNNER_TEMP/express-container.json"' EXIT
+          trap 'rm -f "$RUNNER_TEMP/express-service.json" "$RUNNER_TEMP/express-configuration.json" "$RUNNER_TEMP/express-container.json"' EXIT
 
           echo "Reading ECS Express service configuration..."
           aws ecs describe-express-gateway-service \
             --service-arn "$ECS_SERVICE_ARN" --output json > "$RUNNER_TEMP/express-service.json"
 
-          # Preserve the current port, command, logs, variables and secret references.
+          # Express may retain several revisions; select the one actually deployed.
           if ! jq -e '.service | .status.statusCode == "ACTIVE" and
-            (.activeConfigurations | length) == 1 and
-            .activeConfigurations[0].cpuArchitecture == "X86_64"' \
+            (.activeConfigurations | length) > 0' \
             "$RUNNER_TEMP/express-service.json" > /dev/null; then
-            echo "::error::The ECS service must be ACTIVE with exactly one active configuration and X86_64 architecture."
+            echo "::error::The ECS service must be ACTIVE and have at least one active configuration."
             # Report only deployment metadata; container variables and secrets stay out of logs.
             jq '{status: .service.status.statusCode,
-              activeConfigurations: (.service.activeConfigurations | length),
-              cpuArchitecture: .service.activeConfigurations[0].cpuArchitecture}' \
+              activeConfigurations: (.service.activeConfigurations | length)}' \
               "$RUNNER_TEMP/express-service.json" >&2
             exit 1
           fi
 
           current=$(jq -r '.service.currentDeployment // empty' "$RUNNER_TEMP/express-service.json")
           if [[ -n "$current" ]]; then
-            state=$(aws ecs describe-service-deployments --service-deployment-arns "$current" \
-              --query 'serviceDeployments[0].status' --output text)
+            deployment=$(aws ecs describe-service-deployments --service-deployment-arns "$current" --output json)
+            if ! jq -e '((.failures // []) | length) == 0 and (.serviceDeployments | length) == 1' \
+              <<< "$deployment" > /dev/null; then
+              echo "::error::AWS could not describe the current deployment. Cannot identify the deployed revision."
+              jq '{deploymentCount: (.serviceDeployments | length),
+                failureCount: ((.failures // []) | length),
+                failureReasons: [.failures[]?.reason]}' <<< "$deployment" >&2
+              exit 1
+            fi
+            state=$(jq -r '.serviceDeployments[0].status' <<< "$deployment")
             case "$state" in
-              SUCCESSFUL|ROLLBACK_SUCCESSFUL) ;;
+              SUCCESSFUL) base_revision=$(jq -r '.serviceDeployments[0].targetServiceRevision.arn // empty' <<< "$deployment") ;;
+              ROLLBACK_SUCCESSFUL) base_revision=$(jq -r '.serviceDeployments[0].rollback.serviceRevisionArn // empty' <<< "$deployment") ;;
               *) echo "::error::Resolve the existing deployment first: $state"; exit 1 ;;
             esac
+          else
+            if [[ $(jq '.service.activeConfigurations | length' "$RUNNER_TEMP/express-service.json") != 1 ]]; then
+              echo "::error::The service has multiple configurations but no current deployment. Cannot identify the deployed revision."
+              exit 1
+            fi
+            base_revision=$(jq -r '.service.activeConfigurations[0].serviceRevisionArn // empty' "$RUNNER_TEMP/express-service.json")
           fi
 
+          if [[ "$base_revision" != arn:*:ecs:*:service-revision/* ]]; then
+            echo "::error::The current deployment did not identify a valid deployed service revision."
+            exit 1
+          fi
+
+          if ! jq -e --arg revision "$base_revision" \
+            '[.service.activeConfigurations[] | select(.serviceRevisionArn == $revision)] |
+              if length == 1 then .[0] else error("Expected exactly one configuration matching the deployed revision") end' \
+            "$RUNNER_TEMP/express-service.json" > "$RUNNER_TEMP/express-configuration.json"; then
+            echo "::error::Cannot match the deployed revision to a unique Express configuration."
+            exit 1
+          fi
+
+          if ! jq -e '.cpuArchitecture == "X86_64"' "$RUNNER_TEMP/express-configuration.json" > /dev/null; then
+            echo "::error::The deployed revision must use X86_64 architecture to match the Docker image."
+            jq '{cpuArchitecture}' "$RUNNER_TEMP/express-configuration.json" >&2
+            exit 1
+          fi
+
+          # Preserve the selected revision's port, command, logs, variables and secret references.
           image="$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
-          jq --arg image "$image" '.service.activeConfigurations[0].primaryContainer | .image = $image' \
-            "$RUNNER_TEMP/express-service.json" > "$RUNNER_TEMP/express-container.json"
+          jq --arg image "$image" '.primaryContainer | .image = $image' \
+            "$RUNNER_TEMP/express-configuration.json" > "$RUNNER_TEMP/express-container.json"
 
           echo "Updating ECS service image..."
           target=$(aws ecs update-express-gateway-service --service-arn "$ECS_SERVICE_ARN" \
