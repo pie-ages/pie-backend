@@ -11,8 +11,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
 import com.ages.pie.application.dto.wardrobe.WardrobeItemResponseDTO;
-import com.ages.pie.application.dto.wardrobe.WardrobeImageAnalysisDTO;
-import com.ages.pie.application.service.WardrobeImageAnalysisService;
+import com.ages.pie.application.dto.analysis.ImageAnalysisDTO;
+import com.ages.pie.application.service.ImageAnalysisService;
 import com.ages.pie.infrastructure.security.AuthenticatedUserProvider;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
@@ -35,7 +35,7 @@ class WardrobeItemControllerTest {
     private WardrobeItemService wardrobeItemService;
 
     @MockitoBean
-    private WardrobeImageAnalysisService analysisService;
+    private ImageAnalysisService analysisService;
 
     @MockitoBean
     private AuthenticatedUserProvider authenticatedUserProvider;
@@ -44,7 +44,7 @@ class WardrobeItemControllerTest {
     void analyzesPhotoForAuthenticatedUser() throws Exception {
         when(authenticatedUserProvider.id()).thenReturn(UUID.randomUUID());
         when(analysisService.analyze(any())).thenReturn(
-                new WardrobeImageAnalysisDTO("camisa", "casual", "azul"));
+                new ImageAnalysisDTO("camisa", "casual", "azul"));
         mockMvc.perform(multipart("/users/me/wardrobe/items/analyze")
                         .file(new MockMultipartFile("file", "camisa.jpg", "image/jpeg", new byte[] {1})))
                 .andExpect(status().isOk())

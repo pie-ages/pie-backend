@@ -1,7 +1,7 @@
 package com.ages.pie.application.service;
 
 import com.ages.pie.application.dto.product.ProductImageResponseDTO;
-import com.ages.pie.application.dto.wardrobe.WardrobeImageAnalysisDTO;
+import com.ages.pie.application.dto.analysis.ImageAnalysisDTO;
 import com.ages.pie.domain.entity.Company;
 import com.ages.pie.domain.entity.Product;
 import com.ages.pie.domain.entity.ProductImage;
@@ -39,7 +39,7 @@ class ProductImageServiceTest {
     private ImageStorageService imageStorageService;
 
     @Mock
-    private ProductImageAnalysisService productImageAnalysisService;
+    private ImageAnalysisService imageAnalysisService;
 
     @InjectMocks
     private ProductImageService productImageService;
@@ -201,8 +201,7 @@ class ProductImageServiceTest {
     @Test
     void uploadImage_firstImage_shouldFillEmptyFieldsFromAnalysis() {
         MockMultipartFile file = stubFirstUpload();
-        when(productImageAnalysisService.analyze(file))
-                .thenReturn(Optional.of(new WardrobeImageAnalysisDTO("vestido", "romantico", "verde")));
+        when(imageAnalysisService.analyze(file)).thenReturn(new ImageAnalysisDTO("vestido", "romantico", "verde"));
 
         productImageService.uploadImage(productId, companyId, file);
 
@@ -218,8 +217,7 @@ class ProductImageServiceTest {
         product.setStyles(List.of("classico"));
         product.setColor("preto");
         MockMultipartFile file = stubFirstUpload();
-        when(productImageAnalysisService.analyze(file))
-                .thenReturn(Optional.of(new WardrobeImageAnalysisDTO("vestido", "romantico", "verde")));
+        when(imageAnalysisService.analyze(file)).thenReturn(new ImageAnalysisDTO("vestido", "romantico", "verde"));
 
         productImageService.uploadImage(productId, companyId, file);
 
@@ -231,8 +229,21 @@ class ProductImageServiceTest {
     @Test
     void uploadImage_firstImage_whenAnalysisFails_shouldStillSaveImage() {
         MockMultipartFile file = stubFirstUpload();
-        when(productImageAnalysisService.analyze(file)).thenReturn(Optional.empty());
+        when(imageAnalysisService.analyze(file))
+                .thenThrow(new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE));
 
+        assertUploadSavedWithoutAnalysis(file);
+    }
+
+    @Test
+    void uploadImage_firstImage_whenAnalysisThrowsUnexpectedError_shouldStillSaveImage() {
+        MockMultipartFile file = stubFirstUpload();
+        when(imageAnalysisService.analyze(file)).thenThrow(new IllegalStateException("boom"));
+
+        assertUploadSavedWithoutAnalysis(file);
+    }
+
+    private void assertUploadSavedWithoutAnalysis(MockMultipartFile file) {
         ProductImageResponseDTO result = productImageService.uploadImage(productId, companyId, file);
 
         assertThat(result.isPrimary()).isTrue();
@@ -255,7 +266,7 @@ class ProductImageServiceTest {
 
         productImageService.uploadImage(productId, companyId, file);
 
-        verify(productImageAnalysisService, never()).analyze(any());
+        verify(imageAnalysisService, never()).analyze(any());
     }
 
     private MockMultipartFile stubFirstUpload() {

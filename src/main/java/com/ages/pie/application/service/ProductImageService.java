@@ -1,5 +1,6 @@
 package com.ages.pie.application.service;
 
+import com.ages.pie.application.dto.analysis.ImageAnalysisDTO;
 import com.ages.pie.application.dto.product.ProductImageResponseDTO;
 import com.ages.pie.domain.entity.Product;
 import com.ages.pie.domain.entity.ProductImage;
@@ -24,16 +25,16 @@ public class ProductImageService {
     private final ProductRepository productRepository;
     private final ProductImageRepository productImageRepository;
     private final ImageStorageService imageStorageService;
-    private final ProductImageAnalysisService productImageAnalysisService;
+    private final ImageAnalysisService imageAnalysisService;
 
     public ProductImageService(ProductRepository productRepository,
             ProductImageRepository productImageRepository,
             ImageStorageService imageStorageService,
-            ProductImageAnalysisService productImageAnalysisService) {
+            ImageAnalysisService imageAnalysisService) {
         this.productRepository = productRepository;
         this.productImageRepository = productImageRepository;
         this.imageStorageService = imageStorageService;
-        this.productImageAnalysisService = productImageAnalysisService;
+        this.imageAnalysisService = imageAnalysisService;
     }
 
     @Transactional
@@ -50,8 +51,7 @@ public class ProductImageService {
         ProductImage saved = productImageRepository.save(image);
 
         if (isFirst) {
-            productImageAnalysisService.analyze(file).ifPresent(analysis ->
-                    product.applyAnalysis(analysis.category(), analysis.style(), analysis.color()));
+            applyImageAnalysis(product, file);
             syncProductImageUrl(product, List.of(saved));
         }
 
@@ -119,6 +119,17 @@ public class ProductImageService {
         }
 
         return product;
+    }
+
+    private void applyImageAnalysis(Product product, MultipartFile file) {
+        try {
+            ImageAnalysisDTO analysis = imageAnalysisService.analyze(file);
+            product.applyAnalysis(analysis.category(), analysis.style(), analysis.color());
+        } catch (ResponseStatusException e) {
+            logger.warn("Análise da imagem do produto {} ignorada: status={}", product.getId(), e.getStatusCode().value());
+        } catch (RuntimeException e) {
+            logger.warn("Análise da imagem do produto {} ignorada por erro inesperado", product.getId(), e);
+        }
     }
 
     private void syncProductImageUrl(Product product, List<ProductImage> images) {
