@@ -1,21 +1,21 @@
 package com.ages.pie.application.service;
 
+import com.ages.pie.application.dto.user.ColorimetrySeasonDTO;
 import com.ages.pie.application.dto.user.PreferencesRequestDTO;
 import com.ages.pie.application.dto.user.PreferencesResponseDTO;
 import com.ages.pie.application.exception.ResourceNotFoundException;
 import com.ages.pie.domain.entity.BodyProfile;
 import com.ages.pie.domain.entity.User;
+import com.ages.pie.domain.enums.ColorimetrySeason;
 import com.ages.pie.infrastructure.repository.BodyProfileRepository;
 import com.ages.pie.infrastructure.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.Random;
 import java.util.UUID;
 
 @Service
@@ -23,39 +23,19 @@ public class PreferenceService {
 
     private final BodyProfileRepository bodyProfileRepository;
     private final UserRepository userRepository;
-    private final Random random;
 
     @Autowired
     public PreferenceService(BodyProfileRepository bodyProfileRepository,
                              UserRepository userRepository) {
         this.bodyProfileRepository = bodyProfileRepository;
         this.userRepository = userRepository;
-        this.random = new Random();
-    }
-
-    // Construtor para testes (permite injetar Random controlado)
-    PreferenceService(BodyProfileRepository bodyProfileRepository,
-                      UserRepository userRepository,
-                      Random random) {
-        this.bodyProfileRepository = bodyProfileRepository;
-        this.userRepository = userRepository;
-        this.random = random;
     }
 
     @Transactional(readOnly = true)
     public PreferencesResponseDTO getPreferences(UUID userId) {
         verifyUserExists(userId);
-
-        List<String> favoriteColors = bodyProfileRepository.findByCustomerId(userId)
-                .map(BodyProfile::getFavoriteColors)
-                .map(colors -> colors != null ? Arrays.asList(colors) : Collections.<String>emptyList())
-                .orElse(Collections.emptyList());
-
-        return new PreferencesResponseDTO(
-                generateRandomColors(4),
-                generateRandomColors(4),
-                favoriteColors
-        );
+        BodyProfile profile = bodyProfileRepository.findByCustomerId(userId).orElse(null);
+        return buildResponse(parseSeason(profile != null ? profile.getColorPalette() : null), profile);
     }
 
     @Transactional
@@ -73,11 +53,7 @@ public class PreferenceService {
         profile.setFavoriteColors(uniqueColors.toArray(new String[0]));
         bodyProfileRepository.save(profile);
 
-        return new PreferencesResponseDTO(
-                generateRandomColors(4),
-                generateRandomColors(4),
-                uniqueColors
-        );
+        return buildResponse(parseSeason(profile.getColorPalette()), profile);
     }
 
     private void verifyUserExists(UUID userId) {
@@ -86,11 +62,22 @@ public class PreferenceService {
         }
     }
 
-    List<String> generateRandomColors(int count) {
-        List<String> colors = new ArrayList<>();
-        for (int i = 0; i < count; i++) {
-            colors.add(String.format("#%06X", random.nextInt(0xFFFFFF + 1)));
+    private static PreferencesResponseDTO buildResponse(ColorimetrySeason season, BodyProfile profile) {
+        List<String> highlight = season != null ? season.getHighlightColors() : Collections.emptyList();
+        List<String> avoid = season != null ? season.getAvoidColors() : Collections.emptyList();
+        List<String> favorites = profile != null && profile.getFavoriteColors() != null
+                ? Arrays.asList(profile.getFavoriteColors())
+                : Collections.emptyList();
+        ColorimetrySeasonDTO seasonDTO = season != null ? ColorimetrySeasonDTO.from(season) : null;
+        return new PreferencesResponseDTO(highlight, avoid, favorites, seasonDTO);
+    }
+
+    private static ColorimetrySeason parseSeason(String colorPalette) {
+        if (colorPalette == null) return null;
+        try {
+            return ColorimetrySeason.valueOf(colorPalette.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            return null;
         }
-        return colors;
     }
 }

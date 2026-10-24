@@ -118,6 +118,10 @@ public class BodyProfile extends AuditableEntity {
         this.favoriteColors = favoriteColors;
     }
 
+    public void setColorPalette(String colorPalette) {
+        this.colorPalette = colorPalette;
+    }
+
     public String getIdentifiedStyle() {
         return identifiedStyle;
     }
