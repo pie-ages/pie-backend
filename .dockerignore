@@ -5,3 +5,6 @@ target/
 
 # Nunca empacotar credenciais locais na imagem Docker
 src/main/resources/application-local.properties
+.env*
+*.pem
+*.key

@@ -1,3 +1,13 @@
 spring.datasource.url=jdbc:postgresql://<host>/<db>?sslmode=require
 spring.datasource.username=<usuario>
 spring.datasource.password=<senha>
+
+# Supabase Auth (URL do projeto e publishable/anon key do ambiente)
+# Obter em: Project Settings > API Keys. Ver docs/auth/supabase.md
+supabase.auth.url=https://<ref>.supabase.co
+supabase.auth.publishable-key=sb_publishable_...
+
+# Supabase Storage (service_role key do ambiente)
+# Obter em: Project Settings > API Keys. Ver docs/auth/supabase.md
+supabase.storage.url=https://<ref>.supabase.co
+supabase.storage.service-role-key=<service_role_key>

@@ -1,0 +1,41 @@
+# Stack local do Supabase (`supabase start`). Só o Auth é usado por este backend;
+# os ambientes remotos (dev/prod) são configurados pelo dashboard — ver docs/auth/supabase.md.
+project_id = "pie-backend"
+
+[api]
+enabled = true
+port = 54321
+
+[db]
+port = 54322
+major_version = 17
+
+[studio]
+enabled = true
+port = 54323
+
+[inbucket]
+enabled = true
+port = 54324
+
+[auth]
+enabled = true
+site_url = "http://localhost:8081"
+additional_redirect_urls = [
+  "http://localhost:3000",
+  "http://localhost:8081",
+  "http://localhost:19006",
+  "exp://127.0.0.1:8081",
+]
+# Duração do access token em segundos (1h).
+jwt_expiry = 3600
+enable_refresh_token_rotation = true
+refresh_token_reuse_interval = 10
+enable_signup = true
+
+[auth.email]
+enable_signup = true
+# Local: sem confirmação para agilizar testes. Em prod a confirmação é obrigatória.
+enable_confirmations = false
+double_confirm_changes = true
+secure_password_change = true

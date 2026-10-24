@@ -7,7 +7,10 @@ import com.ages.pie.application.exception.BusinessException;
 import com.ages.pie.application.exception.ResourceNotFoundException;
 import com.ages.pie.application.mapper.UserMapper;
 import com.ages.pie.domain.entity.User;
+import com.ages.pie.infrastructure.auth.SupabaseAdminClient;
 import com.ages.pie.infrastructure.repository.UserRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,12 +20,17 @@ import java.util.UUID;
 @Service
 public class UserService {
 
+    private static final Logger logger = LoggerFactory.getLogger(UserService.class);
+
     private final UserRepository userRepository;
     private final UserMapper userMapper;
+    private final SupabaseAdminClient supabaseAdminClient;
 
-    public UserService(UserRepository userRepository, UserMapper userMapper) {
+    public UserService(UserRepository userRepository, UserMapper userMapper,
+                       SupabaseAdminClient supabaseAdminClient) {
         this.userRepository = userRepository;
         this.userMapper = userMapper;
+        this.supabaseAdminClient = supabaseAdminClient;
     }
 
     @Transactional
@@ -31,8 +39,24 @@ public class UserService {
             throw new BusinessException("Email já cadastrado: " + dto.email());
         }
 
-        User user = new User(dto.name(), dto.email(), hashPassword(dto.password()));
-        return userMapper.toResponseDTO(userRepository.save(user));
+        UUID supabaseUserId = supabaseAdminClient.createUser(dto.email(), dto.password());
+
+        try {
+            User user = new User(dto.name(), dto.email(), supabaseUserId);
+            return userMapper.toResponseDTO(userRepository.saveAndFlush(user));
+        } catch (RuntimeException e) {
+            rollbackSupabaseUser(supabaseUserId, dto.email());
+            throw e;
+        }
+    }
+
+    private void rollbackSupabaseUser(UUID supabaseUserId, String email) {
+        try {
+            supabaseAdminClient.deleteUser(supabaseUserId);
+        } catch (RuntimeException e) {
+            logger.error("Usuário {} ficou órfão no Supabase Auth após falha ao cadastrar {}",
+                    supabaseUserId, email, e);
+        }
     }
 
     @Transactional(readOnly = true)
@@ -61,13 +85,14 @@ public class UserService {
 
     @Transactional
     public void delete(UUID id) {
-        if (!userRepository.existsById(id)) {
-            throw new ResourceNotFoundException("Usuário não encontrado: " + id);
-        }
-        userRepository.deleteById(id);
-    }
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado: " + id));
 
-    private String hashPassword(String password) {
-        return "hash(" + password + ")";
+        userRepository.delete(user);
+        userRepository.flush();
+
+        if (user.getSupabaseUserId() != null) {
+            supabaseAdminClient.deleteUser(user.getSupabaseUserId());
+        }
     }
 }

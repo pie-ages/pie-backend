@@ -14,6 +14,7 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -67,7 +68,11 @@ public class UserController {
     }
 
     @DeleteMapping("/{id}")
+    @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<Void> delete(@PathVariable UUID id) {
+        if (!authProvider.id().equals(id)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Você só pode remover a própria conta");
+        }
         userService.delete(id);
         return ResponseEntity.noContent().build();
     }

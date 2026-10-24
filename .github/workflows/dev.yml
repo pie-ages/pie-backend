@@ -5,7 +5,17 @@ on:
   pull_request:
     branches: [dev, main]
   workflow_dispatch:
- 
+    inputs:
+      publish_only:
+        description: Publish the first image without updating ECS
+        type: boolean
+        default: false
+
+env:
+  AWS_PAGER: ""
+  AWS_RETRY_MODE: standard
+  AWS_MAX_ATTEMPTS: "10"
+
 permissions:
   contents: read
 
@@ -13,21 +23,22 @@ jobs:
   build-and-test:
     name: Build and Run tests
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      
+
       - name: Setup Java
         uses: actions/setup-java@v6
         with:
-          java-version: '21'
-          distribution: 'temurin'
+          java-version: "21"
+          distribution: "temurin"
           cache: maven
 
       - name: Build and Test
-        run: ./mvnw clean verify
+        run: |
+          chmod +x mvnw
+          ./mvnw --batch-mode clean verify
 
   mirror:
     name: Mirror to GitLab
@@ -48,3 +59,237 @@ jobs:
           git remote add gitlab https://${GITLAB_USERNAME}:${GITLAB_TOKEN}@tools.ages.pucrs.br/2026-2/2lm-4lm/pi-consultoria-de-imagem/backend.git
           git push --force gitlab HEAD:${BRANCH}
 
+  push-image-to-ecr:
+    name: Build and push image to ECR
+    needs: build-and-test
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/dev') || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: development
+    env:
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
+    outputs:
+      image_tag: ${{ steps.image.outputs.tag }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate image configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          for name in AWS_REGION ECR_REPOSITORY; do
+            if [[ -z "${!name}" ]]; then
+              echo "::error::Configure $name in the development environment."
+              exit 1
+            fi
+          done
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6.3.0
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push Docker image
+        id: image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          image="$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+          docker build --platform linux/amd64 --tag "$image" .
+          docker push "$image"
+          echo "tag=$IMAGE_TAG" >> "$GITHUB_OUTPUT"
+          echo "Published image tag: $IMAGE_TAG" >> "$GITHUB_STEP_SUMMARY"
+
+  deploy-ecs:
+    name: Deploy to ECS Express
+    needs: push-image-to-ecr
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/dev') || (github.event_name == 'workflow_dispatch' && !inputs.publish_only)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: development
+    concurrency:
+      group: deploy-ecs-dev
+      queue: max
+      cancel-in-progress: false
+    env:
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
+      ECS_SERVICE_ARN: ${{ secrets.ECS_SERVICE_ARN }}
+      IMAGE_TAG: ${{ needs.push-image-to-ecr.outputs.image_tag }}
+    steps:
+      - name: Validate ECS configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          for name in AWS_REGION ECR_REPOSITORY ECS_SERVICE_ARN IMAGE_TAG; do
+            if [[ -z "${!name}" ]]; then
+              echo "::error::Missing $name. Check the development environment and the ECR job."
+              exit 1
+            fi
+          done
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6.3.0
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Install AWS CLI with Express Mode support
+        run: |
+          curl --fail --silent --show-error --location https://awscli.amazonaws.com/awscli-exe-linux-x86_64-2.38.1.zip -o /tmp/awscliv2.zip
+          unzip -q /tmp/awscliv2.zip -d /tmp/pie-awscli
+          sudo /tmp/pie-awscli/aws/install --update
+
+      - name: Update service and wait for deployment
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          trap 'exit_code=$?; echo "::error::ECS command failed at script line $LINENO (exit code $exit_code)." >&2; exit "$exit_code"' ERR
+
+          # Build jobs can finish out of order. On push, only deploy the current dev commit.
+          # Manual runs may deploy any branch on purpose.
+          latest_sha="$GITHUB_SHA"
+          if [[ "$GITHUB_EVENT_NAME" == "push" ]]; then
+            latest_sha=$(curl --fail --silent --show-error --location \
+              --header "Authorization: Bearer $GH_TOKEN" \
+              --header "Accept: application/vnd.github+json" \
+              "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/git/ref/heads/dev" | jq -er '.object.sha')
+          fi
+          if [[ "$latest_sha" != "$GITHUB_SHA" ]]; then
+            echo "::notice::Skipping deployment because dev has a newer commit."
+            echo "ECS deployment skipped: this run no longer points to the current dev commit." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          umask 077
+          trap 'rm -f "$RUNNER_TEMP/express-service.json" "$RUNNER_TEMP/express-configuration.json" "$RUNNER_TEMP/express-container.json"' EXIT
+
+          echo "Reading ECS Express service configuration..."
+          aws ecs describe-express-gateway-service \
+            --service-arn "$ECS_SERVICE_ARN" --output json > "$RUNNER_TEMP/express-service.json"
+
+          # Express may retain several revisions; select the one actually deployed.
+          if ! jq -e '.service | .status.statusCode == "ACTIVE" and
+            (.activeConfigurations | length) > 0' \
+            "$RUNNER_TEMP/express-service.json" > /dev/null; then
+            echo "::error::The ECS service must be ACTIVE and have at least one active configuration."
+            # Report only deployment metadata; container variables and secrets stay out of logs.
+            jq '{status: .service.status.statusCode,
+              activeConfigurations: (.service.activeConfigurations | length)}' \
+              "$RUNNER_TEMP/express-service.json" >&2
+            exit 1
+          fi
+
+          current=$(jq -r '.service.currentDeployment // empty' "$RUNNER_TEMP/express-service.json")
+          if [[ -n "$current" ]]; then
+            deployment=$(aws ecs describe-service-deployments --service-deployment-arns "$current" --output json)
+            if ! jq -e '((.failures // []) | length) == 0 and (.serviceDeployments | length) == 1' \
+              <<< "$deployment" > /dev/null; then
+              echo "::error::AWS could not describe the current deployment. Cannot identify the deployed revision."
+              jq '{deploymentCount: (.serviceDeployments | length),
+                failureCount: ((.failures // []) | length),
+                failureReasons: [.failures[]?.reason]}' <<< "$deployment" >&2
+              exit 1
+            fi
+            state=$(jq -r '.serviceDeployments[0].status' <<< "$deployment")
+            case "$state" in
+              SUCCESSFUL) base_revision=$(jq -r '.serviceDeployments[0].targetServiceRevision.arn // empty' <<< "$deployment") ;;
+              ROLLBACK_SUCCESSFUL) base_revision=$(jq -r '.serviceDeployments[0].rollback.serviceRevisionArn // empty' <<< "$deployment") ;;
+              *) echo "::error::Resolve the existing deployment first: $state"; exit 1 ;;
+            esac
+          else
+            if [[ $(jq '.service.activeConfigurations | length' "$RUNNER_TEMP/express-service.json") != 1 ]]; then
+              echo "::error::The service has multiple configurations but no current deployment. Cannot identify the deployed revision."
+              exit 1
+            fi
+            base_revision=$(jq -r '.service.activeConfigurations[0].serviceRevisionArn // empty' "$RUNNER_TEMP/express-service.json")
+          fi
+
+          if [[ "$base_revision" != arn:*:ecs:*:service-revision/* ]]; then
+            echo "::error::The current deployment did not identify a valid deployed service revision."
+            exit 1
+          fi
+
+          if ! jq -e --arg revision "$base_revision" \
+            '[.service.activeConfigurations[] | select(.serviceRevisionArn == $revision)] |
+              if length == 1 then .[0] else error("Expected exactly one configuration matching the deployed revision") end' \
+            "$RUNNER_TEMP/express-service.json" > "$RUNNER_TEMP/express-configuration.json"; then
+            echo "::error::Cannot match the deployed revision to a unique Express configuration."
+            exit 1
+          fi
+
+          if ! jq -e '.cpuArchitecture == "X86_64"' "$RUNNER_TEMP/express-configuration.json" > /dev/null; then
+            echo "::error::The deployed revision must use X86_64 architecture to match the Docker image."
+            jq '{cpuArchitecture}' "$RUNNER_TEMP/express-configuration.json" >&2
+            exit 1
+          fi
+
+          # Preserve the selected revision's port, command, logs, variables and secret references.
+          image="$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+          jq --arg image "$image" '.primaryContainer | .image = $image' \
+            "$RUNNER_TEMP/express-configuration.json" > "$RUNNER_TEMP/express-container.json"
+
+          echo "Updating ECS service image..."
+          target=$(aws ecs update-express-gateway-service --service-arn "$ECS_SERVICE_ARN" \
+            --primary-container "file://$RUNNER_TEMP/express-container.json" \
+            --query 'service.targetConfiguration.serviceRevisionArn' --output text)
+          if [[ "$target" != arn:*:ecs:*:service-revision/* ]]; then
+            echo "::error::AWS did not return the expected target service revision ARN. Check the service deployment history before retrying."
+            exit 1
+          fi
+
+          echo "Waiting for the target ECS revision to deploy..."
+          deadline=$((SECONDS + 2400))
+          tracked=""
+          while (( SECONDS < deadline )); do
+            current="$tracked"
+            if [[ -z "$current" ]]; then
+              current=$(aws ecs describe-express-gateway-service --service-arn "$ECS_SERVICE_ARN" \
+                --query 'service.currentDeployment' --output text)
+            fi
+            if [[ -n "$current" && "$current" != "None" ]]; then
+              deployment=$(aws ecs describe-service-deployments \
+                --service-deployment-arns "$current" --output json)
+              if ! jq -e '((.failures // []) | length) == 0 and (.serviceDeployments | length) == 1' \
+                <<< "$deployment" > /dev/null; then
+                echo "::error::AWS could not describe the tracked deployment. Expected one deployment and no failures."
+                jq '{deploymentCount: (.serviceDeployments | length),
+                  failureCount: ((.failures // []) | length),
+                  failureReasons: [.failures[]?.reason]}' <<< "$deployment" >&2
+                exit 1
+              fi
+              revision=$(jq -r '.serviceDeployments[0].targetServiceRevision.arn' <<< "$deployment")
+              if [[ "$revision" == "$target" ]]; then
+                tracked="$current"
+                state=$(jq -r '.serviceDeployments[0].status' <<< "$deployment")
+                echo "ECS deployment: $state"
+                case "$state" in
+                  SUCCESSFUL) echo "ECS deployment succeeded." >> "$GITHUB_STEP_SUMMARY"; exit 0 ;;
+                  PENDING|IN_PROGRESS) ;;
+                  *) echo "::error::Deployment failed or rolled back: $state"; exit 1 ;;
+                esac
+              fi
+            fi
+            sleep 20
+          done
+          echo "::error::ECS did not confirm the new revision within 40 minutes."
+          exit 1

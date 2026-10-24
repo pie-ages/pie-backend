@@ -17,6 +17,12 @@ import com.ages.pie.infrastructure.security.AuthenticatedUserProvider;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 import com.ages.pie.application.service.WardrobeItemService;
+import com.ages.pie.application.config.SecurityConfig;
+import com.ages.pie.application.config.SupabaseAuthProperties;
+import org.springframework.context.annotation.Import;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.test.context.support.WithAnonymousUser;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -26,7 +32,10 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.mock.web.MockMultipartFile;
 
 @WebMvcTest(WardrobeItemController.class)
+@Import({SecurityConfig.class, SupabaseAuthProperties.class})
+@WithMockUser
 class WardrobeItemControllerTest {
+    @MockitoBean JwtDecoder jwtDecoder;
 
     @Autowired
     private MockMvc mockMvc;
@@ -54,6 +63,7 @@ class WardrobeItemControllerTest {
         verifyNoInteractions(wardrobeItemService);
     }
 
+    @WithAnonymousUser
     @Test
     void rejectsAnalysisWithoutAuthentication() throws Exception {
         when(authenticatedUserProvider.id()).thenThrow(
