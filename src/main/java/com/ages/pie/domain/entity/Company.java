@@ -5,8 +5,12 @@ import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
+import com.ages.pie.domain.enums.CompanyRole;
+import com.ages.pie.domain.enums.CompanyStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
@@ -44,6 +48,12 @@ public class Company extends AuditableEntity {
 
     private boolean active = true;
 
+    @Enumerated(EnumType.STRING)
+    private CompanyRole role = CompanyRole.COMPANY;
+
+    @Enumerated(EnumType.STRING)
+    private CompanyStatus status = CompanyStatus.PENDING;
+
     @Column(name = "photo_url")
     private String photoUrl;
 
@@ -78,6 +88,11 @@ public class Company extends AuditableEntity {
 
     public void deactivate() {
         this.active = false;
+    }
+
+    public void updateStatus(CompanyStatus newStatus) {
+        this.status = newStatus;
+        this.active = newStatus == CompanyStatus.ACTIVE;
     }
 
     private String requireText(String value, String message) {
@@ -133,6 +148,14 @@ public class Company extends AuditableEntity {
 
     public String getPhotoUrl() {
         return photoUrl;
+    }
+
+    public CompanyRole getRole() {
+        return role;
+    }
+
+    public CompanyStatus getStatus() {
+        return status;
     }
 
     public List<Product> getProducts() {
