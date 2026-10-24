@@ -35,6 +35,7 @@ public class SecurityConfig {
 
     private static final String[] PUBLIC_ENDPOINTS = {
         "/auth/login",
+        "/auth/company/login",
         "/auth/refresh",
         "/v3/api-docs/**",
         "/swagger-ui/**",
@@ -52,7 +53,8 @@ public class SecurityConfig {
         "/taxonomy",
         "/products",
         "/products/*/public",
-        "/products/*/images"
+        "/products/*/images",
+        "/companies/active"
     };
 
     @Bean

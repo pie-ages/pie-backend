@@ -35,6 +35,8 @@ public class CompanyMapper {
             company.getWebsite(),
             company.isActive(),
             company.getPhotoUrl(),
+            company.getRole() != null ? company.getRole().name() : null,
+            company.getStatus() != null ? company.getStatus().name() : null,
             company.getCreatedAt(),
             company.getUpdatedAt()
         );

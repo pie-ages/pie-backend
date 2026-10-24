@@ -7,16 +7,22 @@ import java.util.UUID;
 import com.ages.pie.application.dto.company.CompanyRequestDTO;
 import com.ages.pie.application.dto.company.CompanyResponseDTO;
 import com.ages.pie.application.dto.company.CompanyUpdateDTO;
+import com.ages.pie.application.dto.company.UpdateStatusDTO;
 import com.ages.pie.application.exception.BusinessException;
 import com.ages.pie.application.exception.ResourceNotFoundException;
 import com.ages.pie.application.mapper.CompanyMapper;
 import com.ages.pie.domain.entity.Company;
+import com.ages.pie.domain.enums.CompanyRole;
+import com.ages.pie.domain.enums.CompanyStatus;
 import com.ages.pie.infrastructure.auth.SupabaseAdminClient;
 import com.ages.pie.infrastructure.repository.CompanyRepository;
+import com.ages.pie.infrastructure.security.AuthenticatedUserProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class CompanyService {
@@ -26,12 +32,15 @@ public class CompanyService {
     private final CompanyRepository companyRepository;
     private final CompanyMapper companyMapper;
     private final SupabaseAdminClient supabaseAdminClient;
+    private final AuthenticatedUserProvider authenticatedUserProvider;
 
     public CompanyService(CompanyRepository companyRepository, CompanyMapper companyMapper,
-                          SupabaseAdminClient supabaseAdminClient) {
+                          SupabaseAdminClient supabaseAdminClient,
+                          AuthenticatedUserProvider authenticatedUserProvider) {
         this.companyRepository = companyRepository;
         this.companyMapper = companyMapper;
         this.supabaseAdminClient = supabaseAdminClient;
+        this.authenticatedUserProvider = authenticatedUserProvider;
     }
 
     @Transactional
@@ -66,6 +75,24 @@ public class CompanyService {
     @Transactional(readOnly = true)
     public List<CompanyResponseDTO> findAll() {
         return companyRepository.findAllByActiveTrue()
+                .stream()
+                .map(companyMapper::toResponseDTO)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<CompanyResponseDTO> findAllByStatus(CompanyStatus status) {
+        requireAdmin();
+        return companyRepository.findAllByStatusAndRoleNot(status, CompanyRole.ADMIN)
+                .stream()
+                .map(companyMapper::toResponseDTO)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<CompanyResponseDTO> findAllAdmin() {
+        requireAdmin();
+        return companyRepository.findAllByRoleNot(CompanyRole.ADMIN)
                 .stream()
                 .map(companyMapper::toResponseDTO)
                 .toList();
@@ -111,6 +138,20 @@ public class CompanyService {
         Company company = findEntity(id);
         company.deactivate();
         companyRepository.save(company);
+    }
+
+    @Transactional
+    public CompanyResponseDTO updateStatus(UUID id, UpdateStatusDTO dto) {
+        requireAdmin();
+        Company company = findEntity(id);
+        company.updateStatus(dto.status());
+        return companyMapper.toResponseDTO(companyRepository.saveAndFlush(company));
+    }
+
+    private void requireAdmin() {
+        if (!authenticatedUserProvider.isAdmin()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Acesso restrito ao administrador");
+        }
     }
 
     private Company findEntity(UUID id) {

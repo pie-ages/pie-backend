@@ -55,7 +55,7 @@ class SignupControllerTest {
     void cadastroDeEmpresaNaoExigeToken() throws Exception {
         when(companyService.create(any())).thenReturn(
                 new CompanyResponseDTO(UUID.randomUUID(), "Loja", "12345678000199", "Loja LTDA",
-                        "Ana", "loja@email.com", null, true, null, null, null));
+                        "Ana", "loja@email.com", null, true, null, null, null, null, null));
 
         mockMvc.perform(post("/companies")
                         .contentType(MediaType.APPLICATION_JSON)

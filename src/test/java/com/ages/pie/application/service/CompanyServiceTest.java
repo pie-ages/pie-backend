@@ -56,7 +56,7 @@ class CompanyServiceTest {
         company = new Company(companyId, "Loja X", "12345678000199", "Loja X LTDA", "Maria",
                 "contato@lojax.com", UUID.randomUUID(), null, null);
         responseDTO = new CompanyResponseDTO(companyId, "Loja X", "12345678000199", "Loja X LTDA",
-                "Maria", "contato@lojax.com", null, true, null, OffsetDateTime.now(), OffsetDateTime.now());
+                "Maria", "contato@lojax.com", null, true, null, null, null, OffsetDateTime.now(), OffsetDateTime.now());
     }
 
     private CompanyRequestDTO requestDTO() {

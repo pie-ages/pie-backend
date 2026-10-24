@@ -13,6 +13,8 @@ public record CompanyResponseDTO(
     String website,
     boolean active,
     String photoUrl,
+    String role,
+    String status,
     OffsetDateTime createdAt,
     OffsetDateTime updatedAt
 ) {
