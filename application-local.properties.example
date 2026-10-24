@@ -6,3 +6,8 @@ spring.datasource.password=<senha>
 # Obter em: Project Settings > API Keys. Ver docs/auth/supabase.md
 supabase.auth.url=https://<ref>.supabase.co
 supabase.auth.publishable-key=sb_publishable_...
+
+# Supabase Storage (service_role key do ambiente)
+# Obter em: Project Settings > API Keys. Ver docs/auth/supabase.md
+supabase.storage.url=https://<ref>.supabase.co
+supabase.storage.service-role-key=<service_role_key>
