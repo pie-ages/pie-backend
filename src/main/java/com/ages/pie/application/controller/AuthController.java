@@ -1,12 +1,9 @@
 package com.ages.pie.application.controller;
 
-import java.util.UUID;
-
 import com.ages.pie.application.dto.LoginRequestDTO;
 import com.ages.pie.application.dto.LoginResponseDTO;
 import com.ages.pie.application.dto.RefreshRequestDTO;
 import com.ages.pie.application.dto.UserSummaryDTO;
-import com.ages.pie.application.exception.ResourceNotFoundException;
 import com.ages.pie.application.service.AuthService;
 import com.ages.pie.infrastructure.security.AuthenticatedUserProvider;
 import jakarta.validation.Valid;
@@ -33,7 +30,12 @@ public class AuthController {
 
     @PostMapping("/login")
     public LoginResponseDTO login(@Valid @RequestBody LoginRequestDTO request) {
-        return authService.login(request);
+        return authService.loginCustomer(request);
+    }
+
+    @PostMapping("/company/login")
+    public LoginResponseDTO loginCompany(@Valid @RequestBody LoginRequestDTO request) {
+        return authService.loginCompany(request);
     }
 
     @PostMapping("/refresh")
@@ -49,11 +51,6 @@ public class AuthController {
 
     @GetMapping("/me")
     public UserSummaryDTO me() {
-        UUID userId = authenticatedUserProvider.id();
-        UserSummaryDTO summary = authService.findSummary(userId);
-        if (summary == null) {
-            throw new ResourceNotFoundException("Usuário autenticado sem cadastro: " + userId);
-        }
-        return summary;
+        return authService.findSummary(authenticatedUserProvider.id());
     }
 }

@@ -7,13 +7,19 @@ import com.ages.pie.application.exception.BusinessException;
 import com.ages.pie.application.exception.ResourceNotFoundException;
 import com.ages.pie.application.mapper.UserMapper;
 import com.ages.pie.domain.entity.User;
+import com.ages.pie.infrastructure.auth.SupabaseAdminClient;
 import com.ages.pie.infrastructure.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatus;
+import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -34,6 +40,9 @@ class UserServiceTest {
     @Mock
     private UserMapper userMapper;
 
+    @Mock
+    private SupabaseAdminClient supabaseAdminClient;
+
     @InjectMocks
     private UserService userService;
 
@@ -44,7 +53,7 @@ class UserServiceTest {
     @BeforeEach
     void setUp() {
         userId = UUID.randomUUID();
-        user = new User("Ana Silva", "ana@email.com", "hash(senha123)");
+        user = new User("Ana Silva", "ana@email.com", UUID.randomUUID());
         responseDTO = new UserResponseDTO(
                 userId, "Ana Silva", "ana@email.com", null,
                 OffsetDateTime.now(), OffsetDateTime.now()
@@ -56,13 +65,78 @@ class UserServiceTest {
         UserRequestDTO dto = new UserRequestDTO("Ana Silva", "ana@email.com", "senha123");
 
         when(userRepository.existsByEmail(dto.email())).thenReturn(false);
-        when(userRepository.save(any(User.class))).thenReturn(user);
+        when(supabaseAdminClient.createUser(dto.email(), dto.password())).thenReturn(UUID.randomUUID());
+        when(userRepository.saveAndFlush(any(User.class))).thenReturn(user);
         when(userMapper.toResponseDTO(user)).thenReturn(responseDTO);
 
         UserResponseDTO result = userService.create(dto);
 
         assertThat(result).isEqualTo(responseDTO);
-        verify(userRepository).save(any(User.class));
+        verify(userRepository).saveAndFlush(any(User.class));
+    }
+
+    @Test
+    void create_shouldAssociateSupabaseUserId_whenCreationSucceeds() {
+        UserRequestDTO dto = new UserRequestDTO("Ana Silva", "ana@email.com", "senha123");
+        UUID supabaseUserId = UUID.randomUUID();
+
+        when(userRepository.existsByEmail(dto.email())).thenReturn(false);
+        when(supabaseAdminClient.createUser(dto.email(), dto.password())).thenReturn(supabaseUserId);
+        when(userRepository.saveAndFlush(any(User.class))).thenReturn(user);
+        when(userMapper.toResponseDTO(user)).thenReturn(responseDTO);
+
+        userService.create(dto);
+
+        ArgumentCaptor<User> saved = ArgumentCaptor.forClass(User.class);
+        verify(userRepository).saveAndFlush(saved.capture());
+        assertThat(saved.getValue().getSupabaseUserId()).isEqualTo(supabaseUserId);
+    }
+
+    @Test
+    void create_shouldRemoveSupabaseUser_whenLocalSaveFails() {
+        UserRequestDTO dto = new UserRequestDTO("Ana Silva", "ana@email.com", "senha123");
+        UUID supabaseUserId = UUID.randomUUID();
+
+        when(userRepository.existsByEmail(dto.email())).thenReturn(false);
+        when(supabaseAdminClient.createUser(dto.email(), dto.password())).thenReturn(supabaseUserId);
+        when(userRepository.saveAndFlush(any(User.class)))
+                .thenThrow(new DataIntegrityViolationException("email duplicado"));
+
+        assertThatThrownBy(() -> userService.create(dto))
+                .isInstanceOf(DataIntegrityViolationException.class);
+
+        verify(supabaseAdminClient).deleteUser(supabaseUserId);
+    }
+
+    @Test
+    void create_shouldKeepOriginalError_whenCompensatingDeleteAlsoFails() {
+        UserRequestDTO dto = new UserRequestDTO("Ana Silva", "ana@email.com", "senha123");
+        UUID supabaseUserId = UUID.randomUUID();
+
+        when(userRepository.existsByEmail(dto.email())).thenReturn(false);
+        when(supabaseAdminClient.createUser(dto.email(), dto.password())).thenReturn(supabaseUserId);
+        when(userRepository.saveAndFlush(any(User.class)))
+                .thenThrow(new DataIntegrityViolationException("email duplicado"));
+        doThrow(new ResponseStatusException(HttpStatus.BAD_GATEWAY))
+                .when(supabaseAdminClient).deleteUser(supabaseUserId);
+
+        assertThatThrownBy(() -> userService.create(dto))
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    void create_shouldNotSave_whenSupabaseRejectsTheEmail() {
+        UserRequestDTO dto = new UserRequestDTO("Ana Silva", "ana@email.com", "senha123");
+
+        when(userRepository.existsByEmail(dto.email())).thenReturn(false);
+        when(supabaseAdminClient.createUser(dto.email(), dto.password()))
+                .thenThrow(new BusinessException("Email já cadastrado: " + dto.email()));
+
+        assertThatThrownBy(() -> userService.create(dto))
+                .isInstanceOf(BusinessException.class);
+
+        verify(userRepository, never()).saveAndFlush(any());
+        verify(supabaseAdminClient, never()).deleteUser(any());
     }
 
     @Test
@@ -75,7 +149,8 @@ class UserServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("ana@email.com");
 
-        verify(userRepository, never()).save(any());
+        verify(supabaseAdminClient, never()).createUser(any(), any());
+        verify(userRepository, never()).saveAndFlush(any());
     }
 
     @Test
@@ -145,21 +220,34 @@ class UserServiceTest {
 
     @Test
     void delete_shouldDeleteUser_whenUserExists() {
-        when(userRepository.existsById(userId)).thenReturn(true);
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
 
         userService.delete(userId);
 
-        verify(userRepository).deleteById(userId);
+        verify(userRepository).delete(user);
+        verify(supabaseAdminClient).deleteUser(user.getSupabaseUserId());
+    }
+
+    @Test
+    void delete_shouldNotCallSupabase_whenUserHasNoIdentity() {
+        ReflectionTestUtils.setField(user, "supabaseUserId", null);
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+
+        userService.delete(userId);
+
+        verify(userRepository).delete(user);
+        verify(supabaseAdminClient, never()).deleteUser(any());
     }
 
     @Test
     void delete_shouldThrowResourceNotFoundException_whenUserDoesNotExist() {
-        when(userRepository.existsById(userId)).thenReturn(false);
+        when(userRepository.findById(userId)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> userService.delete(userId))
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessageContaining(userId.toString());
 
-        verify(userRepository, never()).deleteById(any());
+        verify(userRepository, never()).delete(any());
+        verify(supabaseAdminClient, never()).deleteUser(any());
     }
 }

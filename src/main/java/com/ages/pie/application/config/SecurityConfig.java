@@ -35,10 +35,16 @@ public class SecurityConfig {
 
     private static final String[] PUBLIC_ENDPOINTS = {
         "/auth/login",
+        "/auth/company/login",
         "/auth/refresh",
         "/v3/api-docs/**",
         "/swagger-ui/**",
         "/swagger-ui.html"
+    };
+
+    private static final String[] PUBLIC_POST_ENDPOINTS = {
+        "/users",
+        "/companies"
     };
 
     private static final String[] PUBLIC_GET_ENDPOINTS = {
@@ -47,7 +53,8 @@ public class SecurityConfig {
         "/taxonomy",
         "/products",
         "/products/*/public",
-        "/products/*/images"
+        "/products/*/images",
+        "/companies/active"
     };
 
     @Bean
@@ -60,6 +67,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers(PUBLIC_ENDPOINTS).permitAll()
                 .requestMatchers(HttpMethod.GET, PUBLIC_GET_ENDPOINTS).permitAll()
+                .requestMatchers(HttpMethod.POST, PUBLIC_POST_ENDPOINTS).permitAll()
                 .anyRequest().authenticated())
             .oauth2ResourceServer(oauth2 -> oauth2
                 .jwt(Customizer.withDefaults())

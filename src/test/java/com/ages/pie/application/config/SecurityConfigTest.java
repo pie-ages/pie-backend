@@ -10,12 +10,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import java.time.Instant;
 import java.util.Date;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import com.ages.pie.application.controller.AuthController;
 import com.ages.pie.application.dto.LoginResponseDTO;
 import com.ages.pie.application.dto.UserSummaryDTO;
 import com.ages.pie.application.service.AuthService;
+import com.ages.pie.infrastructure.repository.CompanyRepository;
 import com.ages.pie.infrastructure.security.AuthenticatedUserProvider;
 import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JWSAlgorithm;
@@ -37,9 +39,12 @@ import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
 import org.springframework.http.MediaType;
 import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm;
+import com.ages.pie.domain.entity.User;
+import com.ages.pie.infrastructure.repository.UserRepository;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.test.context.TestPropertySource;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -78,6 +83,12 @@ class SecurityConfigTest {
 
     @MockitoBean
     private AuthService authService;
+
+    @MockitoBean
+    private UserRepository userRepository;
+
+    @MockitoBean
+    private CompanyRepository companyRepository;
 
     private static ECKey generateKey() {
         try {
@@ -119,12 +130,16 @@ class SecurityConfigTest {
     }
 
     @Test
-    void tokenValidoIdentificaUsuarioPeloSub() throws Exception {
+    void tokenValidoResolveOCustomerPeloSub() throws Exception {
+        UUID supabaseUserId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
-        when(authService.findSummary(userId)).thenReturn(new UserSummaryDTO(userId, "Ana", "ana@email.com", null));
+        User user = new User("Ana", "ana@email.com", supabaseUserId);
+        ReflectionTestUtils.setField(user, "id", userId);
+        when(userRepository.findBySupabaseUserId(supabaseUserId)).thenReturn(Optional.of(user));
+        when(authService.findSummary(userId)).thenReturn(new UserSummaryDTO(userId, "Ana", "ana@email.com", null, null, null));
 
         mockMvc.perform(get("/auth/me")
-                .header("Authorization", "Bearer " + sign(validClaims(userId).build(), SIGNING_KEY)))
+                .header("Authorization", "Bearer " + sign(validClaims(supabaseUserId).build(), SIGNING_KEY)))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.id").value(userId.toString()));
     }
@@ -170,7 +185,7 @@ class SecurityConfigTest {
 
     @Test
     void loginEPublico() throws Exception {
-        when(authService.login(any())).thenReturn(new LoginResponseDTO("acc", "ref", 3600, "bearer", null));
+        when(authService.loginCustomer(any())).thenReturn(new LoginResponseDTO("acc", "ref", 3600, "bearer", null));
 
         mockMvc.perform(post("/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)

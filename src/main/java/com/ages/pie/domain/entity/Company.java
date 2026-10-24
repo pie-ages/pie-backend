@@ -5,8 +5,12 @@ import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
+import com.ages.pie.domain.enums.CompanyRole;
+import com.ages.pie.domain.enums.CompanyStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
@@ -39,10 +43,16 @@ public class Company extends AuditableEntity {
     @Column(unique = true)
     private String email;
 
-    @Column(name = "password_hash")
-    private String passwordHash;
+    @Column(name = "supabase_user_id", unique = true)
+    private UUID supabaseUserId;
 
     private boolean active = true;
+
+    @Enumerated(EnumType.STRING)
+    private CompanyRole role = CompanyRole.COMPANY;
+
+    @Enumerated(EnumType.STRING)
+    private CompanyStatus status = CompanyStatus.PENDING;
 
     @Column(name = "photo_url")
     private String photoUrl;
@@ -54,14 +64,14 @@ public class Company extends AuditableEntity {
     }
 
     public Company(UUID id, String name, String cnpj, String socialReason, String responsiblePerson,
-            String email, String passwordHash, String website, String photoUrl) {
+            String email, UUID supabaseUserId, String website, String photoUrl) {
         this.id = id;
         this.name = requireText(name, "Nome é obrigatório");
         this.cnpj = requireText(cnpj, "CNPJ é obrigatório");
         this.socialReason = requireText(socialReason, "Razão social é obrigatória");
         this.responsiblePerson = requireText(responsiblePerson, "Responsável é obrigatório");
         this.email = requireEmail(email);
-        this.passwordHash = Objects.requireNonNull(passwordHash, "Senha não pode ser nula");
+        this.supabaseUserId = Objects.requireNonNull(supabaseUserId, "Identificador do Supabase é obrigatório");
         this.website = website;
         this.photoUrl = photoUrl;
     }
@@ -78,6 +88,11 @@ public class Company extends AuditableEntity {
 
     public void deactivate() {
         this.active = false;
+    }
+
+    public void updateStatus(CompanyStatus newStatus) {
+        this.status = newStatus;
+        this.active = newStatus == CompanyStatus.ACTIVE;
     }
 
     private String requireText(String value, String message) {
@@ -123,12 +138,24 @@ public class Company extends AuditableEntity {
         return email;
     }
 
+    public UUID getSupabaseUserId() {
+        return supabaseUserId;
+    }
+
     public boolean isActive() {
         return active;
     }
 
     public String getPhotoUrl() {
         return photoUrl;
+    }
+
+    public CompanyRole getRole() {
+        return role;
+    }
+
+    public CompanyStatus getStatus() {
+        return status;
     }
 
     public List<Product> getProducts() {

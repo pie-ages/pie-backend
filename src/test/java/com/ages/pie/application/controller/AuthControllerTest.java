@@ -10,6 +10,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.util.Optional;
 import java.util.UUID;
 
 import com.ages.pie.application.config.SecurityConfig;
@@ -20,14 +21,18 @@ import com.ages.pie.application.exception.AuthProviderUnavailableException;
 import com.ages.pie.application.exception.EmailNotConfirmedException;
 import com.ages.pie.application.exception.InvalidCredentialsException;
 import com.ages.pie.application.service.AuthService;
+import com.ages.pie.infrastructure.repository.CompanyRepository;
 import com.ages.pie.infrastructure.security.AuthenticatedUserProvider;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import com.ages.pie.domain.entity.User;
+import com.ages.pie.infrastructure.repository.UserRepository;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(AuthController.class)
@@ -45,11 +50,17 @@ class AuthControllerTest {
     @MockitoBean
     private JwtDecoder jwtDecoder;
 
+    @MockitoBean
+    private UserRepository userRepository;
+
+    @MockitoBean
+    private CompanyRepository companyRepository;
+
     @Test
     void loginRetorna200ComTokensEUsuario() throws Exception {
         UUID id = UUID.randomUUID();
-        when(authService.login(any())).thenReturn(new LoginResponseDTO(
-            "acc", "ref", 3600, "bearer", new UserSummaryDTO(id, "Ana", "ana@email.com", null)));
+        when(authService.loginCustomer(any())).thenReturn(new LoginResponseDTO(
+            "acc", "ref", 3600, "bearer", new UserSummaryDTO(id, "Ana", "ana@email.com", null, null, null)));
 
         mockMvc.perform(post("/auth/login").contentType(MediaType.APPLICATION_JSON).content(LOGIN_BODY))
             .andExpect(status().isOk())
@@ -64,7 +75,7 @@ class AuthControllerTest {
 
     @Test
     void loginComCredenciaisInvalidasRetorna401() throws Exception {
-        when(authService.login(any())).thenThrow(new InvalidCredentialsException("Credenciais inválidas"));
+        when(authService.loginCustomer(any())).thenThrow(new InvalidCredentialsException("Credenciais inválidas"));
 
         mockMvc.perform(post("/auth/login").contentType(MediaType.APPLICATION_JSON).content(LOGIN_BODY))
             .andExpect(status().isUnauthorized())
@@ -73,7 +84,7 @@ class AuthControllerTest {
 
     @Test
     void loginComEmailNaoConfirmadoRetorna403() throws Exception {
-        when(authService.login(any())).thenThrow(new EmailNotConfirmedException("E-mail ainda não confirmado"));
+        when(authService.loginCustomer(any())).thenThrow(new EmailNotConfirmedException("E-mail ainda não confirmado"));
 
         mockMvc.perform(post("/auth/login").contentType(MediaType.APPLICATION_JSON).content(LOGIN_BODY))
             .andExpect(status().isForbidden());
@@ -81,7 +92,7 @@ class AuthControllerTest {
 
     @Test
     void loginComSupabaseIndisponivelRetorna503() throws Exception {
-        when(authService.login(any())).thenThrow(new AuthProviderUnavailableException("indisponível"));
+        when(authService.loginCustomer(any())).thenThrow(new AuthProviderUnavailableException("indisponível"));
 
         mockMvc.perform(post("/auth/login").contentType(MediaType.APPLICATION_JSON).content(LOGIN_BODY))
             .andExpect(status().isServiceUnavailable());
@@ -134,9 +145,13 @@ class AuthControllerTest {
     @Test
     void meRetornaUsuarioDoToken() throws Exception {
         UUID id = UUID.randomUUID();
-        when(authService.findSummary(id)).thenReturn(new UserSummaryDTO(id, "Ana", "ana@email.com", null));
+        UUID supabaseUserId = UUID.randomUUID();
+        User user = new User("Ana", "ana@email.com", supabaseUserId);
+        ReflectionTestUtils.setField(user, "id", id);
+        when(userRepository.findBySupabaseUserId(supabaseUserId)).thenReturn(Optional.of(user));
+        when(authService.findSummary(id)).thenReturn(new UserSummaryDTO(id, "Ana", "ana@email.com", null, null, null));
 
-        mockMvc.perform(get("/auth/me").with(jwt().jwt(j -> j.subject(id.toString()))))
+        mockMvc.perform(get("/auth/me").with(jwt().jwt(j -> j.subject(supabaseUserId.toString()))))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.id").value(id.toString()))
             .andExpect(jsonPath("$.name").value("Ana"));
@@ -144,9 +159,10 @@ class AuthControllerTest {
 
     @Test
     void meRetorna404QuandoCustomerNaoCadastrado() throws Exception {
-        UUID id = UUID.randomUUID();
+        UUID supabaseUserId = UUID.randomUUID();
+        when(userRepository.findBySupabaseUserId(supabaseUserId)).thenReturn(Optional.empty());
 
-        mockMvc.perform(get("/auth/me").with(jwt().jwt(j -> j.subject(id.toString()))))
+        mockMvc.perform(get("/auth/me").with(jwt().jwt(j -> j.subject(supabaseUserId.toString()))))
             .andExpect(status().isNotFound());
     }
 }
