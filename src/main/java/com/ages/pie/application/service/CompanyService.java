@@ -12,6 +12,7 @@ import com.ages.pie.application.exception.BusinessException;
 import com.ages.pie.application.exception.ResourceNotFoundException;
 import com.ages.pie.application.mapper.CompanyMapper;
 import com.ages.pie.domain.entity.Company;
+import com.ages.pie.domain.enums.CompanyRole;
 import com.ages.pie.domain.enums.CompanyStatus;
 import com.ages.pie.infrastructure.auth.SupabaseAdminClient;
 import com.ages.pie.infrastructure.repository.CompanyRepository;
@@ -82,7 +83,7 @@ public class CompanyService {
     @Transactional(readOnly = true)
     public List<CompanyResponseDTO> findAllByStatus(CompanyStatus status) {
         requireAdmin();
-        return companyRepository.findAllByStatus(status)
+        return companyRepository.findAllByStatusAndRoleNot(status, CompanyRole.ADMIN)
                 .stream()
                 .map(companyMapper::toResponseDTO)
                 .toList();
@@ -91,7 +92,7 @@ public class CompanyService {
     @Transactional(readOnly = true)
     public List<CompanyResponseDTO> findAllAdmin() {
         requireAdmin();
-        return companyRepository.findAll()
+        return companyRepository.findAllByRoleNot(CompanyRole.ADMIN)
                 .stream()
                 .map(companyMapper::toResponseDTO)
                 .toList();

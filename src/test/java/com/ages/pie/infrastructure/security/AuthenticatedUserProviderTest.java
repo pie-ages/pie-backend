@@ -12,6 +12,7 @@ import java.util.UUID;
 
 import com.ages.pie.application.exception.ResourceNotFoundException;
 import com.ages.pie.domain.entity.User;
+import com.ages.pie.infrastructure.repository.CompanyRepository;
 import com.ages.pie.infrastructure.repository.UserRepository;
 
 import org.junit.jupiter.api.AfterEach;
@@ -25,7 +26,8 @@ import org.springframework.web.server.ResponseStatusException;
 class AuthenticatedUserProviderTest {
 
     private final UserRepository userRepository = mock(UserRepository.class);
-    private final AuthenticatedUserProvider provider = new AuthenticatedUserProvider(userRepository);
+    private final CompanyRepository companyRepository = mock(CompanyRepository.class);
+    private final AuthenticatedUserProvider provider = new AuthenticatedUserProvider(userRepository, companyRepository);
 
     private UUID registerCustomer(UUID supabaseUserId) {
         UUID localId = UUID.randomUUID();
@@ -69,6 +71,7 @@ class AuthenticatedUserProviderTest {
     void id_shouldThrowNotFound_whenSubjectHasNoCustomer() {
         UUID supabaseUserId = UUID.randomUUID();
         when(userRepository.findBySupabaseUserId(any())).thenReturn(Optional.empty());
+        when(companyRepository.findBySupabaseUserId(any())).thenReturn(Optional.empty());
         authenticateWithSubject(supabaseUserId.toString());
 
         assertThat(catchThrowable(provider::id))

@@ -15,6 +15,7 @@ import com.ages.pie.domain.entity.User;
 import com.ages.pie.infrastructure.auth.SupabaseAuthClient;
 import com.ages.pie.infrastructure.auth.SupabaseAuthClient.Session;
 import com.ages.pie.infrastructure.auth.SupabaseAuthClient.SessionUser;
+import com.ages.pie.infrastructure.repository.CompanyRepository;
 import com.ages.pie.infrastructure.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -32,6 +33,9 @@ class AuthServiceTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private CompanyRepository companyRepository;
 
     @InjectMocks
     private AuthService authService;

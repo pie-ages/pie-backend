@@ -21,6 +21,7 @@ import com.ages.pie.application.exception.AuthProviderUnavailableException;
 import com.ages.pie.application.exception.EmailNotConfirmedException;
 import com.ages.pie.application.exception.InvalidCredentialsException;
 import com.ages.pie.application.service.AuthService;
+import com.ages.pie.infrastructure.repository.CompanyRepository;
 import com.ages.pie.infrastructure.security.AuthenticatedUserProvider;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -52,11 +53,14 @@ class AuthControllerTest {
     @MockitoBean
     private UserRepository userRepository;
 
+    @MockitoBean
+    private CompanyRepository companyRepository;
+
     @Test
     void loginRetorna200ComTokensEUsuario() throws Exception {
         UUID id = UUID.randomUUID();
         when(authService.login(any())).thenReturn(new LoginResponseDTO(
-            "acc", "ref", 3600, "bearer", new UserSummaryDTO(id, "Ana", "ana@email.com", null)));
+            "acc", "ref", 3600, "bearer", new UserSummaryDTO(id, "Ana", "ana@email.com", null, null, null)));
 
         mockMvc.perform(post("/auth/login").contentType(MediaType.APPLICATION_JSON).content(LOGIN_BODY))
             .andExpect(status().isOk())
@@ -145,7 +149,7 @@ class AuthControllerTest {
         User user = new User("Ana", "ana@email.com", supabaseUserId);
         ReflectionTestUtils.setField(user, "id", id);
         when(userRepository.findBySupabaseUserId(supabaseUserId)).thenReturn(Optional.of(user));
-        when(authService.findSummary(id)).thenReturn(new UserSummaryDTO(id, "Ana", "ana@email.com", null));
+        when(authService.findSummary(id)).thenReturn(new UserSummaryDTO(id, "Ana", "ana@email.com", null, null, null));
 
         mockMvc.perform(get("/auth/me").with(jwt().jwt(j -> j.subject(supabaseUserId.toString()))))
             .andExpect(status().isOk())
