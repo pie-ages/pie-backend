@@ -185,7 +185,7 @@ class SecurityConfigTest {
 
     @Test
     void loginEPublico() throws Exception {
-        when(authService.login(any())).thenReturn(new LoginResponseDTO("acc", "ref", 3600, "bearer", null));
+        when(authService.loginCustomer(any())).thenReturn(new LoginResponseDTO("acc", "ref", 3600, "bearer", null));
 
         mockMvc.perform(post("/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)

@@ -5,6 +5,7 @@ import java.util.UUID;
 import com.ages.pie.application.dto.LoginRequestDTO;
 import com.ages.pie.application.dto.LoginResponseDTO;
 import com.ages.pie.application.dto.UserSummaryDTO;
+import com.ages.pie.application.exception.InvalidCredentialsException;
 import com.ages.pie.domain.entity.Company;
 import com.ages.pie.domain.entity.User;
 import com.ages.pie.infrastructure.auth.SupabaseAuthClient;
@@ -30,6 +31,24 @@ public class AuthService {
     @Transactional(readOnly = true)
     public LoginResponseDTO login(LoginRequestDTO request) {
         return toResponse(supabaseAuthClient.passwordGrant(request.email(), request.password()));
+    }
+
+    @Transactional(readOnly = true)
+    public LoginResponseDTO loginCustomer(LoginRequestDTO request) {
+        LoginResponseDTO response = login(request);
+        if (response.user() != null && response.user().role() != null) {
+            throw new InvalidCredentialsException("Credenciais inválidas");
+        }
+        return response;
+    }
+
+    @Transactional(readOnly = true)
+    public LoginResponseDTO loginCompany(LoginRequestDTO request) {
+        LoginResponseDTO response = login(request);
+        if (response.user() == null || response.user().role() == null) {
+            throw new InvalidCredentialsException("Credenciais inválidas");
+        }
+        return response;
     }
 
     @Transactional(readOnly = true)

@@ -30,7 +30,12 @@ public class AuthController {
 
     @PostMapping("/login")
     public LoginResponseDTO login(@Valid @RequestBody LoginRequestDTO request) {
-        return authService.login(request);
+        return authService.loginCustomer(request);
+    }
+
+    @PostMapping("/company/login")
+    public LoginResponseDTO loginCompany(@Valid @RequestBody LoginRequestDTO request) {
+        return authService.loginCompany(request);
     }
 
     @PostMapping("/refresh")

@@ -59,7 +59,7 @@ class AuthControllerTest {
     @Test
     void loginRetorna200ComTokensEUsuario() throws Exception {
         UUID id = UUID.randomUUID();
-        when(authService.login(any())).thenReturn(new LoginResponseDTO(
+        when(authService.loginCustomer(any())).thenReturn(new LoginResponseDTO(
             "acc", "ref", 3600, "bearer", new UserSummaryDTO(id, "Ana", "ana@email.com", null, null, null)));
 
         mockMvc.perform(post("/auth/login").contentType(MediaType.APPLICATION_JSON).content(LOGIN_BODY))
@@ -75,7 +75,7 @@ class AuthControllerTest {
 
     @Test
     void loginComCredenciaisInvalidasRetorna401() throws Exception {
-        when(authService.login(any())).thenThrow(new InvalidCredentialsException("Credenciais inválidas"));
+        when(authService.loginCustomer(any())).thenThrow(new InvalidCredentialsException("Credenciais inválidas"));
 
         mockMvc.perform(post("/auth/login").contentType(MediaType.APPLICATION_JSON).content(LOGIN_BODY))
             .andExpect(status().isUnauthorized())
@@ -84,7 +84,7 @@ class AuthControllerTest {
 
     @Test
     void loginComEmailNaoConfirmadoRetorna403() throws Exception {
-        when(authService.login(any())).thenThrow(new EmailNotConfirmedException("E-mail ainda não confirmado"));
+        when(authService.loginCustomer(any())).thenThrow(new EmailNotConfirmedException("E-mail ainda não confirmado"));
 
         mockMvc.perform(post("/auth/login").contentType(MediaType.APPLICATION_JSON).content(LOGIN_BODY))
             .andExpect(status().isForbidden());
@@ -92,7 +92,7 @@ class AuthControllerTest {
 
     @Test
     void loginComSupabaseIndisponivelRetorna503() throws Exception {
-        when(authService.login(any())).thenThrow(new AuthProviderUnavailableException("indisponível"));
+        when(authService.loginCustomer(any())).thenThrow(new AuthProviderUnavailableException("indisponível"));
 
         mockMvc.perform(post("/auth/login").contentType(MediaType.APPLICATION_JSON).content(LOGIN_BODY))
             .andExpect(status().isServiceUnavailable());
