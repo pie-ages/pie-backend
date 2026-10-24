@@ -21,6 +21,8 @@ public interface CompanyRepository extends JpaRepository<Company, UUID> {
 
     Optional<Company> findBySupabaseUserId(UUID supabaseUserId);
 
+    Optional<Company> findByEmail(String email);
+
     boolean existsByCnpj(String cnpj);
 
     boolean existsByEmail(String email);

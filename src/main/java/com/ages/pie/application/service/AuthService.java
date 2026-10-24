@@ -42,13 +42,24 @@ public class AuthService {
         return response;
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public LoginResponseDTO loginCompany(LoginRequestDTO request) {
-        LoginResponseDTO response = login(request);
-        if (response.user() == null || response.user().role() == null) {
+        SupabaseAuthClient.Session session = supabaseAuthClient.passwordGrant(request.email(), request.password());
+        UserSummaryDTO user = findSummaryBySupabaseUserId(session.user().id());
+        if (user == null) {
+            user = companyRepository.findByEmail(request.email())
+                .map(c -> {
+                    c.linkSupabaseUser(session.user().id());
+                    companyRepository.save(c);
+                    return toSummary(c);
+                })
+                .orElse(null);
+        }
+        if (user == null || user.role() == null) {
             throw new InvalidCredentialsException("Credenciais inválidas");
         }
-        return response;
+        return new LoginResponseDTO(session.accessToken(), session.refreshToken(),
+            session.expiresIn(), session.tokenType(), user);
     }
 
     @Transactional(readOnly = true)
