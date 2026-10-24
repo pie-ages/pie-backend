@@ -6,6 +6,7 @@ import com.ages.pie.application.dto.user.StyleIdentificationResponseDTO;
 import com.ages.pie.application.dto.user.UserRequestDTO;
 import com.ages.pie.application.dto.user.UserResponseDTO;
 import com.ages.pie.application.dto.user.UserUpdateDTO;
+import com.ages.pie.application.service.ColorimetryService;
 import com.ages.pie.application.service.PreferenceService;
 import com.ages.pie.application.service.StyleIdentificationService;
 import com.ages.pie.application.service.UserService;
@@ -13,9 +14,11 @@ import com.ages.pie.infrastructure.security.AuthenticatedUserProvider;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.UUID;
@@ -27,15 +30,18 @@ public class UserController {
     private final UserService userService;
     private final PreferenceService preferenceService;
     private final StyleIdentificationService styleIdentificationService;
+    private final ColorimetryService colorimetryService;
     private final AuthenticatedUserProvider authProvider;
 
     public UserController(UserService userService,
                           PreferenceService preferenceService,
                           StyleIdentificationService styleIdentificationService,
+                          ColorimetryService colorimetryService,
                           AuthenticatedUserProvider authProvider) {
         this.userService = userService;
         this.preferenceService = preferenceService;
         this.styleIdentificationService = styleIdentificationService;
+        this.colorimetryService = colorimetryService;
         this.authProvider = authProvider;
     }
 
@@ -97,6 +103,13 @@ public class UserController {
     public ResponseEntity<StyleIdentificationResponseDTO> identifyStyle() {
         UUID userId = authProvider.id();
         return ResponseEntity.ok(styleIdentificationService.identify(userId));
+    }
+
+    @PostMapping(value = "/me/colorimetry", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @SecurityRequirement(name = "bearerAuth")
+    public ResponseEntity<PreferencesResponseDTO> analyzeColorimetry(
+            @RequestPart("file") MultipartFile file) {
+        return ResponseEntity.ok(colorimetryService.analyze(authProvider.id(), file));
     }
 
     @GetMapping("/me/style/identified")
