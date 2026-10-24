@@ -2,7 +2,6 @@ package com.ages.pie.application.controller;
 
 import com.ages.pie.application.config.SecurityConfig;
 import com.ages.pie.application.config.SupabaseAuthProperties;
-import com.ages.pie.application.service.ColorimetryService;
 import com.ages.pie.application.service.PreferenceService;
 import com.ages.pie.application.service.StyleIdentificationService;
 import com.ages.pie.application.service.UserService;
@@ -47,9 +46,6 @@ class UserDeleteControllerTest {
 
     @MockitoBean
     private StyleIdentificationService styleIdentificationService;
-
-    @MockitoBean
-    private ColorimetryService colorimetryService;
 
     @MockitoBean
     private AuthenticatedUserProvider authProvider;

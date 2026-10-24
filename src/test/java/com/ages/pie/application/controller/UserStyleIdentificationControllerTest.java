@@ -1,7 +1,6 @@
 package com.ages.pie.application.controller;
 
 import com.ages.pie.application.dto.user.StyleIdentificationResponseDTO;
-import com.ages.pie.application.service.ColorimetryService;
 import com.ages.pie.application.service.PreferenceService;
 import com.ages.pie.application.service.StyleIdentificationService;
 import com.ages.pie.application.service.UserService;
@@ -47,9 +46,6 @@ class UserStyleIdentificationControllerTest {
 
     @MockitoBean
     private StyleIdentificationService styleIdentificationService;
-
-    @MockitoBean
-    private ColorimetryService colorimetryService;
 
     @MockitoBean
     private AuthenticatedUserProvider authProvider;
