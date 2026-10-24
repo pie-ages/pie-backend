@@ -3,63 +3,63 @@ package com.ages.pie.infrastructure.security;
 import java.util.Optional;
 import java.util.UUID;
 
-import io.jsonwebtoken.JwtException;
-import jakarta.servlet.http.HttpServletRequest;
+import com.ages.pie.application.exception.ResourceNotFoundException;
+import com.ages.pie.domain.entity.Company;
+import com.ages.pie.domain.entity.User;
+import com.ages.pie.domain.enums.CompanyRole;
+import com.ages.pie.infrastructure.repository.CompanyRepository;
+import com.ages.pie.infrastructure.repository.UserRepository;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ResponseStatusException;
 
 @Component
 public class AuthenticatedUserProvider {
 
-    private static final String AUTHORIZATION_HEADER = "Authorization";
-    private static final String BEARER_PREFIX = "Bearer ";
+    private final UserRepository userRepository;
+    private final CompanyRepository companyRepository;
 
-    private final HttpServletRequest request;
-    private final JwtTokenProvider jwtTokenProvider;
-
-    public AuthenticatedUserProvider(HttpServletRequest request, JwtTokenProvider jwtTokenProvider) {
-        this.request = request;
-        this.jwtTokenProvider = jwtTokenProvider;
+    public AuthenticatedUserProvider(UserRepository userRepository, CompanyRepository companyRepository) {
+        this.userRepository = userRepository;
+        this.companyRepository = companyRepository;
     }
 
     public UUID id() {
-        String authorization = request.getHeader(AUTHORIZATION_HEADER);
-        if (authorization == null
-                || !authorization.regionMatches(true, 0, BEARER_PREFIX, 0, BEARER_PREFIX.length())) {
-            throw unauthenticated(null);
-        }
-
-        String token = authorization.substring(BEARER_PREFIX.length()).trim();
-        if (token.isEmpty()) {
-            throw unauthenticated(null);
-        }
-
-        try {
-            return jwtTokenProvider.extractUserId(token);
-        } catch (JwtException | IllegalArgumentException e) {
-            throw unauthenticated(e);
-        }
+        UUID supabaseUserId = subject().orElseThrow(
+            () -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Usuário não autenticado"));
+        return userRepository.findBySupabaseUserId(supabaseUserId)
+            .map(User::getId)
+            .or(() -> companyRepository.findBySupabaseUserId(supabaseUserId).map(Company::getId))
+            .orElseThrow(() -> new ResourceNotFoundException(
+                "Usuário autenticado sem cadastro: " + supabaseUserId));
     }
 
     public Optional<UUID> optionalId() {
-        String authorization = request.getHeader(AUTHORIZATION_HEADER);
-        if (authorization == null
-                || !authorization.regionMatches(true, 0, BEARER_PREFIX, 0, BEARER_PREFIX.length())) {
-            return Optional.empty();
-        }
-        String token = authorization.substring(BEARER_PREFIX.length()).trim();
-        if (token.isEmpty()) {
+        return subject()
+            .flatMap(supabaseId -> userRepository.findBySupabaseUserId(supabaseId)
+                .map(User::getId)
+                .or(() -> companyRepository.findBySupabaseUserId(supabaseId).map(Company::getId)));
+    }
+
+    public boolean isAdmin() {
+        return subject()
+            .flatMap(companyRepository::findBySupabaseUserId)
+            .map(c -> c.getRole() == CompanyRole.ADMIN)
+            .orElse(false);
+    }
+
+    private Optional<UUID> subject() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (!(authentication instanceof JwtAuthenticationToken jwtAuthentication)) {
             return Optional.empty();
         }
         try {
-            return Optional.of(jwtTokenProvider.extractUserId(token));
-        } catch (JwtException | IllegalArgumentException e) {
+            return Optional.of(UUID.fromString(jwtAuthentication.getToken().getSubject()));
+        } catch (IllegalArgumentException | NullPointerException e) {
             return Optional.empty();
         }
-    }
-
-    private ResponseStatusException unauthenticated(Throwable cause) {
-        return new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Usuário não autenticado", cause);
     }
 }

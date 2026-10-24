@@ -58,7 +58,7 @@ class WardrobeItemServiceTest {
     @BeforeEach
     void setUp() {
         userId = UUID.randomUUID();
-        user = new User("Ana Silva", "ana@email.com", "hash(senha123)");
+        user = new User("Ana Silva", "ana@email.com", UUID.randomUUID());
         setId(user, userId);
         service = new WardrobeItemService(wardrobeItemRepository, userRepository, productRepository,
                 imageStorageService, authenticatedUserProvider);

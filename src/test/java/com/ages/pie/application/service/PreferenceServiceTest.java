@@ -45,7 +45,7 @@ class PreferenceServiceTest {
         preferenceService = new PreferenceService(bodyProfileRepository, userRepository, new Random(42));
 
         userId = UUID.randomUUID();
-        user = new User("Ana Silva", "ana@email.com", "hash(senha123)");
+        user = new User("Ana Silva", "ana@email.com", UUID.randomUUID());
         ReflectionTestUtils.setField(user, "id", userId);
     }
 

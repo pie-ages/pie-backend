@@ -2,8 +2,6 @@ package com.ages.pie.application.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -12,14 +10,16 @@ import java.util.UUID;
 
 import com.ages.pie.application.dto.LoginRequestDTO;
 import com.ages.pie.application.dto.LoginResponseDTO;
-import com.ages.pie.application.exception.NoUsersAvailableException;
+import com.ages.pie.application.exception.InvalidCredentialsException;
 import com.ages.pie.domain.entity.User;
+import com.ages.pie.infrastructure.auth.SupabaseAuthClient;
+import com.ages.pie.infrastructure.auth.SupabaseAuthClient.Session;
+import com.ages.pie.infrastructure.auth.SupabaseAuthClient.SessionUser;
+import com.ages.pie.infrastructure.repository.CompanyRepository;
 import com.ages.pie.infrastructure.repository.UserRepository;
-import com.ages.pie.infrastructure.security.JwtTokenProvider;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -29,79 +29,83 @@ import org.springframework.test.util.ReflectionTestUtils;
 class AuthServiceTest {
 
     @Mock
+    private SupabaseAuthClient supabaseAuthClient;
+
+    @Mock
     private UserRepository userRepository;
 
     @Mock
-    private JwtTokenProvider jwtTokenProvider;
+    private CompanyRepository companyRepository;
 
     @InjectMocks
     private AuthService authService;
 
     private UUID userId;
+    private UUID supabaseUserId;
     private User user;
 
     @BeforeEach
     void setUp() {
         userId = UUID.randomUUID();
-        user = new User("Ana Silva", "ana@email.com", "hash(x)");
+        supabaseUserId = UUID.randomUUID();
+        user = new User("Ana Silva", "ana@email.com", supabaseUserId);
         ReflectionTestUtils.setField(user, "id", userId);
     }
 
+    private Session session(String access, String refresh) {
+        return new Session(access, refresh, 3600, "bearer", new SessionUser(supabaseUserId, "ana@email.com"));
+    }
+
     @Test
-    void loginRetornaTokenEDadosDoUsuario() {
-        when(userRepository.findFirstByOrderByCreatedAtAsc()).thenReturn(Optional.of(user));
-        when(jwtTokenProvider.generateToken(userId)).thenReturn("tok-123");
+    void loginResolveOCustomerLocalPeloSub() {
+        when(supabaseAuthClient.passwordGrant("ana@email.com", "senha")).thenReturn(session("acc", "ref"));
+        when(userRepository.findBySupabaseUserId(supabaseUserId)).thenReturn(Optional.of(user));
 
         LoginResponseDTO result = authService.login(new LoginRequestDTO("ana@email.com", "senha"));
 
-        assertThat(result.token()).isEqualTo("tok-123");
+        assertThat(result.accessToken()).isEqualTo("acc");
+        assertThat(result.refreshToken()).isEqualTo("ref");
+        assertThat(result.expiresIn()).isEqualTo(3600);
+        assertThat(result.tokenType()).isEqualTo("bearer");
         assertThat(result.user().id()).isEqualTo(userId);
         assertThat(result.user().name()).isEqualTo("Ana Silva");
-        assertThat(result.user().email()).isEqualTo("ana@email.com");
     }
 
     @Test
-    void loginNaoValidaCredenciais() {
-        when(userRepository.findFirstByOrderByCreatedAtAsc()).thenReturn(Optional.of(user));
-        when(jwtTokenProvider.generateToken(any())).thenReturn("tok");
+    void loginRetornaUserNuloQuandoCustomerAindaNaoFoiCadastrado() {
+        when(supabaseAuthClient.passwordGrant("ana@email.com", "senha")).thenReturn(session("acc", "ref"));
+        when(userRepository.findBySupabaseUserId(supabaseUserId)).thenReturn(Optional.empty());
 
-        LoginResponseDTO result = authService.login(new LoginRequestDTO(null, null));
+        LoginResponseDTO result = authService.login(new LoginRequestDTO("ana@email.com", "senha"));
 
-        assertThat(result.token()).isEqualTo("tok");
-        verify(userRepository, never()).findByEmail(any());
+        assertThat(result.accessToken()).isEqualTo("acc");
+        assertThat(result.user()).isNull();
     }
 
     @Test
-    void loginUsaOPrimeiroUsuarioDisponivel() {
-        when(userRepository.findFirstByOrderByCreatedAtAsc()).thenReturn(Optional.of(user));
-        when(jwtTokenProvider.generateToken(any())).thenReturn("tok");
+    void loginPropagaCredenciaisInvalidas() {
+        when(supabaseAuthClient.passwordGrant("ana@email.com", "errada"))
+            .thenThrow(new InvalidCredentialsException("Credenciais inválidas"));
 
-        authService.login(new LoginRequestDTO("x", "y"));
-
-        verify(userRepository).findFirstByOrderByCreatedAtAsc();
-        verify(userRepository, never()).findAll();
+        assertThatThrownBy(() -> authService.login(new LoginRequestDTO("ana@email.com", "errada")))
+            .isInstanceOf(InvalidCredentialsException.class);
     }
 
     @Test
-    void loginGeraTokenComOIdDoUsuarioEncontrado() {
-        when(userRepository.findFirstByOrderByCreatedAtAsc()).thenReturn(Optional.of(user));
-        when(jwtTokenProvider.generateToken(any())).thenReturn("tok");
+    void refreshRetornaNovoParDeTokens() {
+        when(supabaseAuthClient.refresh("ref-antigo")).thenReturn(session("acc-novo", "ref-novo"));
+        when(userRepository.findBySupabaseUserId(supabaseUserId)).thenReturn(Optional.of(user));
 
-        authService.login(new LoginRequestDTO("x", "y"));
+        LoginResponseDTO result = authService.refresh("ref-antigo");
 
-        ArgumentCaptor<UUID> captor = ArgumentCaptor.forClass(UUID.class);
-        verify(jwtTokenProvider).generateToken(captor.capture());
-        assertThat(captor.getValue()).isEqualTo(userId);
+        assertThat(result.accessToken()).isEqualTo("acc-novo");
+        assertThat(result.refreshToken()).isEqualTo("ref-novo");
     }
 
     @Test
-    void loginLancaQuandoNaoHaUsuarios() {
-        when(userRepository.findFirstByOrderByCreatedAtAsc()).thenReturn(Optional.empty());
+    void logoutDelegaAoSupabaseComOAccessToken() {
+        authService.logout("acc");
 
-        assertThatThrownBy(() -> authService.login(new LoginRequestDTO("x", "y")))
-            .isInstanceOf(NoUsersAvailableException.class)
-            .hasMessage("Nenhum usuário cadastrado");
-
-        verify(jwtTokenProvider, never()).generateToken(any());
+        verify(supabaseAuthClient).logout("acc");
     }
 }

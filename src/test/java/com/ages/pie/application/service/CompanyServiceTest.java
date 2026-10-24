@@ -7,13 +7,19 @@ import com.ages.pie.application.exception.BusinessException;
 import com.ages.pie.application.exception.ResourceNotFoundException;
 import com.ages.pie.application.mapper.CompanyMapper;
 import com.ages.pie.domain.entity.Company;
+import com.ages.pie.infrastructure.auth.SupabaseAdminClient;
 import com.ages.pie.infrastructure.repository.CompanyRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatus;
+import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -34,6 +40,9 @@ class CompanyServiceTest {
     @Mock
     private CompanyMapper companyMapper;
 
+    @Mock
+    private SupabaseAdminClient supabaseAdminClient;
+
     @InjectMocks
     private CompanyService companyService;
 
@@ -45,9 +54,9 @@ class CompanyServiceTest {
     void setUp() {
         companyId = UUID.randomUUID();
         company = new Company(companyId, "Loja X", "12345678000199", "Loja X LTDA", "Maria",
-                "contato@lojax.com", "hash(senha123)", null, null);
+                "contato@lojax.com", UUID.randomUUID(), null, null);
         responseDTO = new CompanyResponseDTO(companyId, "Loja X", "12345678000199", "Loja X LTDA",
-                "Maria", "contato@lojax.com", null, true, null, OffsetDateTime.now(), OffsetDateTime.now());
+                "Maria", "contato@lojax.com", null, true, null, null, null, OffsetDateTime.now(), OffsetDateTime.now());
     }
 
     private CompanyRequestDTO requestDTO() {
@@ -56,7 +65,7 @@ class CompanyServiceTest {
     }
 
     private CompanyUpdateDTO updateDTO() {
-        return new CompanyUpdateDTO("Loja Y", "Loja Y LTDA", "Joao", "novo@lojay.com", null, null);
+        return new CompanyUpdateDTO("Loja Y", "Loja Y LTDA", "Joao", "novo@lojay.com", null, null, "senha123");
     }
 
     @Test
@@ -64,14 +73,65 @@ class CompanyServiceTest {
         CompanyRequestDTO dto = requestDTO();
         when(companyRepository.existsByCnpj(dto.cnpj())).thenReturn(false);
         when(companyRepository.existsByEmail(dto.email())).thenReturn(false);
+        when(supabaseAdminClient.createUser(dto.email(), dto.password())).thenReturn(UUID.randomUUID());
         when(companyMapper.toEntity(any(), any())).thenReturn(company);
-        when(companyRepository.save(company)).thenReturn(company);
+        when(companyRepository.saveAndFlush(company)).thenReturn(company);
         when(companyMapper.toResponseDTO(company)).thenReturn(responseDTO);
 
         CompanyResponseDTO result = companyService.create(dto);
 
         assertThat(result).isEqualTo(responseDTO);
-        verify(companyRepository).save(company);
+        verify(companyRepository).saveAndFlush(company);
+    }
+
+    @Test
+    void create_shouldAssociateSupabaseUserId_whenCreationSucceeds() {
+        CompanyRequestDTO dto = requestDTO();
+        UUID supabaseUserId = UUID.randomUUID();
+        when(companyRepository.existsByCnpj(dto.cnpj())).thenReturn(false);
+        when(companyRepository.existsByEmail(dto.email())).thenReturn(false);
+        when(supabaseAdminClient.createUser(dto.email(), dto.password())).thenReturn(supabaseUserId);
+        when(companyMapper.toEntity(any(), any())).thenReturn(company);
+        when(companyRepository.saveAndFlush(company)).thenReturn(company);
+        when(companyMapper.toResponseDTO(company)).thenReturn(responseDTO);
+
+        companyService.create(dto);
+
+        ArgumentCaptor<UUID> captured = ArgumentCaptor.forClass(UUID.class);
+        verify(companyMapper).toEntity(any(), captured.capture());
+        assertThat(captured.getValue()).isEqualTo(supabaseUserId);
+    }
+
+    @Test
+    void create_shouldRemoveSupabaseUser_whenLocalSaveFails() {
+        CompanyRequestDTO dto = requestDTO();
+        UUID supabaseUserId = UUID.randomUUID();
+        when(companyRepository.existsByCnpj(dto.cnpj())).thenReturn(false);
+        when(companyRepository.existsByEmail(dto.email())).thenReturn(false);
+        when(supabaseAdminClient.createUser(dto.email(), dto.password())).thenReturn(supabaseUserId);
+        when(companyMapper.toEntity(any(), any())).thenReturn(company);
+        when(companyRepository.saveAndFlush(company))
+                .thenThrow(new DataIntegrityViolationException("cnpj duplicado"));
+
+        assertThatThrownBy(() -> companyService.create(dto))
+                .isInstanceOf(DataIntegrityViolationException.class);
+
+        verify(supabaseAdminClient).deleteUser(supabaseUserId);
+    }
+
+    @Test
+    void create_shouldNotSave_whenSupabaseRejectsTheEmail() {
+        CompanyRequestDTO dto = requestDTO();
+        when(companyRepository.existsByCnpj(dto.cnpj())).thenReturn(false);
+        when(companyRepository.existsByEmail(dto.email())).thenReturn(false);
+        when(supabaseAdminClient.createUser(dto.email(), dto.password()))
+                .thenThrow(new BusinessException("Email já cadastrado: " + dto.email()));
+
+        assertThatThrownBy(() -> companyService.create(dto))
+                .isInstanceOf(BusinessException.class);
+
+        verify(companyRepository, never()).saveAndFlush(any());
+        verify(supabaseAdminClient, never()).deleteUser(any());
     }
 
     @Test
@@ -83,7 +143,8 @@ class CompanyServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining(dto.cnpj());
 
-        verify(companyRepository, never()).save(any());
+        verify(supabaseAdminClient, never()).createUser(any(), any());
+        verify(companyRepository, never()).saveAndFlush(any());
     }
 
     @Test
@@ -96,21 +157,8 @@ class CompanyServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining(dto.email());
 
-        verify(companyRepository, never()).save(any());
-    }
-
-    @Test
-    void create_shouldThrowIllegalArgumentException_whenPasswordIsBlank() {
-        CompanyRequestDTO dto = new CompanyRequestDTO("Loja X", "12345678000199", "Loja X LTDA",
-                "Maria", "contato@lojax.com", "  ", null, null);
-        when(companyRepository.existsByCnpj(dto.cnpj())).thenReturn(false);
-        when(companyRepository.existsByEmail(dto.email())).thenReturn(false);
-
-        assertThatThrownBy(() -> companyService.create(dto))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Senha");
-
-        verify(companyRepository, never()).save(any());
+        verify(supabaseAdminClient, never()).createUser(any(), any());
+        verify(companyRepository, never()).saveAndFlush(any());
     }
 
     @Test
@@ -118,6 +166,7 @@ class CompanyServiceTest {
         CompanyRequestDTO dto = requestDTO();
         when(companyRepository.existsByCnpj(dto.cnpj())).thenReturn(false);
         when(companyRepository.existsByEmail(dto.email())).thenReturn(false);
+        when(supabaseAdminClient.createUser(dto.email(), dto.password())).thenReturn(UUID.randomUUID());
         when(companyMapper.toEntity(any(), any()))
                 .thenThrow(new IllegalArgumentException("Nome é obrigatório"));
 
@@ -125,7 +174,8 @@ class CompanyServiceTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Nome");
 
-        verify(companyRepository, never()).save(any());
+        verify(companyRepository, never()).saveAndFlush(any());
+        verify(supabaseAdminClient).deleteUser(any());
     }
 
     @Test
@@ -165,14 +215,100 @@ class CompanyServiceTest {
         CompanyUpdateDTO dto = updateDTO();
         when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
         when(companyRepository.existsByEmailAndIdNot(dto.email(), companyId)).thenReturn(false);
-        when(companyRepository.save(company)).thenReturn(company);
+        when(companyRepository.saveAndFlush(company)).thenReturn(company);
         when(companyMapper.toResponseDTO(company)).thenReturn(responseDTO);
 
         companyService.update(companyId, dto);
 
         assertThat(company.getName()).isEqualTo("Loja Y");
         assertThat(company.getEmail()).isEqualTo("novo@lojay.com");
-        verify(companyRepository).save(company);
+        verify(companyRepository).saveAndFlush(company);
+    }
+
+    @Test
+    void update_shouldPropagateNewEmailToSupabase_whenEmailChanges() {
+        CompanyUpdateDTO dto = updateDTO();
+        UUID supabaseUserId = company.getSupabaseUserId();
+        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
+        when(companyRepository.existsByEmailAndIdNot(dto.email(), companyId)).thenReturn(false);
+        when(companyRepository.saveAndFlush(company)).thenReturn(company);
+        when(companyMapper.toResponseDTO(company)).thenReturn(responseDTO);
+
+        companyService.update(companyId, dto);
+
+        verify(supabaseAdminClient).updateEmail(supabaseUserId, "novo@lojay.com");
+    }
+
+    @Test
+    void update_shouldVerifyCurrentPassword_whenEmailChanges() {
+        CompanyUpdateDTO dto = updateDTO();
+        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
+        when(companyRepository.existsByEmailAndIdNot(dto.email(), companyId)).thenReturn(false);
+        when(companyRepository.saveAndFlush(company)).thenReturn(company);
+        when(companyMapper.toResponseDTO(company)).thenReturn(responseDTO);
+
+        companyService.update(companyId, dto);
+
+        verify(supabaseAdminClient).verifyPassword("contato@lojax.com", "senha123");
+    }
+
+    @Test
+    void update_shouldRequireCurrentPassword_whenEmailChanges() {
+        CompanyUpdateDTO dto = new CompanyUpdateDTO("Loja Y", "Loja Y LTDA", "Joao",
+                "novo@lojay.com", null, null, null);
+        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
+        when(companyRepository.existsByEmailAndIdNot(dto.email(), companyId)).thenReturn(false);
+
+        assertThatThrownBy(() -> companyService.update(companyId, dto))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("senha atual");
+
+        verify(supabaseAdminClient, never()).verifyPassword(any(), any());
+        verify(companyRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void update_shouldNotChangeEmail_whenCurrentPasswordIsWrong() {
+        CompanyUpdateDTO dto = updateDTO();
+        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
+        when(companyRepository.existsByEmailAndIdNot(dto.email(), companyId)).thenReturn(false);
+        doThrow(new ResponseStatusException(HttpStatus.FORBIDDEN, "Senha atual incorreta"))
+                .when(supabaseAdminClient).verifyPassword(any(), any());
+
+        assertThatThrownBy(() -> companyService.update(companyId, dto))
+                .isInstanceOf(ResponseStatusException.class);
+
+        verify(companyRepository, never()).saveAndFlush(any());
+        verify(supabaseAdminClient, never()).updateEmail(any(), any());
+    }
+
+    @Test
+    void update_shouldNotTouchSupabase_whenEmailIsUnchanged() {
+        CompanyUpdateDTO dto = new CompanyUpdateDTO("Loja Y", "Loja Y LTDA", "Joao",
+                "contato@lojax.com", null, null, null);
+        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
+        when(companyRepository.existsByEmailAndIdNot(dto.email(), companyId)).thenReturn(false);
+        when(companyRepository.saveAndFlush(company)).thenReturn(company);
+        when(companyMapper.toResponseDTO(company)).thenReturn(responseDTO);
+
+        companyService.update(companyId, dto);
+
+        verify(supabaseAdminClient, never()).verifyPassword(any(), any());
+        verify(supabaseAdminClient, never()).updateEmail(any(), any());
+    }
+
+    @Test
+    void update_shouldNotTouchSupabase_whenCompanyHasNoIdentity() {
+        ReflectionTestUtils.setField(company, "supabaseUserId", null);
+        CompanyUpdateDTO dto = updateDTO();
+        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
+        when(companyRepository.existsByEmailAndIdNot(dto.email(), companyId)).thenReturn(false);
+        when(companyRepository.saveAndFlush(company)).thenReturn(company);
+        when(companyMapper.toResponseDTO(company)).thenReturn(responseDTO);
+
+        companyService.update(companyId, dto);
+
+        verify(supabaseAdminClient, never()).updateEmail(any(), any());
     }
 
     @Test
@@ -183,7 +319,7 @@ class CompanyServiceTest {
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessageContaining(companyId.toString());
 
-        verify(companyRepository, never()).save(any());
+        verify(companyRepository, never()).saveAndFlush(any());
     }
 
     @Test
@@ -196,20 +332,20 @@ class CompanyServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining(dto.email());
 
-        verify(companyRepository, never()).save(any());
+        verify(companyRepository, never()).saveAndFlush(any());
     }
 
     @Test
     void update_shouldThrowIllegalArgumentException_whenEntityRejectsData() {
         CompanyUpdateDTO dto = new CompanyUpdateDTO("  ", "Loja Y LTDA", "Joao",
-                "novo@lojay.com", null, null);
+                "novo@lojay.com", null, null, "senha123");
         when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
         when(companyRepository.existsByEmailAndIdNot(dto.email(), companyId)).thenReturn(false);
 
         assertThatThrownBy(() -> companyService.update(companyId, dto))
                 .isInstanceOf(IllegalArgumentException.class);
 
-        verify(companyRepository, never()).save(any());
+        verify(companyRepository, never()).saveAndFlush(any());
     }
 
     @Test
