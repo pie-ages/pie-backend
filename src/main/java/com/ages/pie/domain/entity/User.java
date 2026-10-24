@@ -35,8 +35,8 @@ public class User extends AuditableEntity {
     @Column(unique = true)
     private String email;
 
-    @Column(name = "password_hash")
-    private String passwordHash;
+    @Column(name = "supabase_user_id", unique = true)
+    private UUID supabaseUserId;
 
     @Column(name = "photo_url")
     private String photoUrl;
@@ -69,10 +69,10 @@ public class User extends AuditableEntity {
     protected User() {
     }
 
-    public User(String name, String email, String passwordHash) {
+    public User(String name, String email, UUID supabaseUserId) {
         this.name = validateName(name);
         this.email = validateEmail(email);
-        this.passwordHash = Objects.requireNonNull(passwordHash, "Senha não pode ser nula");
+        this.supabaseUserId = Objects.requireNonNull(supabaseUserId, "Identificador do Supabase é obrigatório");
     }
 
     public void update(String name, String photoUrl) {
@@ -120,6 +120,10 @@ public class User extends AuditableEntity {
 
     public String getPhotoUrl() {
         return photoUrl;
+    }
+
+    public UUID getSupabaseUserId() {
+        return supabaseUserId;
     }
 
     public List<ProductStyle> getStyles() {

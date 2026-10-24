@@ -26,3 +26,6 @@ supabase.storage.look-bucket=look-images
 # Obter em: Project Settings > API Keys. Ver docs/auth/supabase.md
 supabase.auth.url=https://<ref>.supabase.co
 supabase.auth.publishable-key=sb_publishable_...
+
+# As rotas de cadastro usam a admin API do Auth e herdam a service_role
+# configurada acima (supabase.auth.service-role-key=supabase.storage.service-role-key).

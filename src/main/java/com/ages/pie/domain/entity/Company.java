@@ -39,8 +39,8 @@ public class Company extends AuditableEntity {
     @Column(unique = true)
     private String email;
 
-    @Column(name = "password_hash")
-    private String passwordHash;
+    @Column(name = "supabase_user_id", unique = true)
+    private UUID supabaseUserId;
 
     private boolean active = true;
 
@@ -54,14 +54,14 @@ public class Company extends AuditableEntity {
     }
 
     public Company(UUID id, String name, String cnpj, String socialReason, String responsiblePerson,
-            String email, String passwordHash, String website, String photoUrl) {
+            String email, UUID supabaseUserId, String website, String photoUrl) {
         this.id = id;
         this.name = requireText(name, "Nome é obrigatório");
         this.cnpj = requireText(cnpj, "CNPJ é obrigatório");
         this.socialReason = requireText(socialReason, "Razão social é obrigatória");
         this.responsiblePerson = requireText(responsiblePerson, "Responsável é obrigatório");
         this.email = requireEmail(email);
-        this.passwordHash = Objects.requireNonNull(passwordHash, "Senha não pode ser nula");
+        this.supabaseUserId = Objects.requireNonNull(supabaseUserId, "Identificador do Supabase é obrigatório");
         this.website = website;
         this.photoUrl = photoUrl;
     }
@@ -121,6 +121,10 @@ public class Company extends AuditableEntity {
 
     public String getEmail() {
         return email;
+    }
+
+    public UUID getSupabaseUserId() {
+        return supabaseUserId;
     }
 
     public boolean isActive() {

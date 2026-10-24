@@ -10,6 +10,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.util.Optional;
 import java.util.UUID;
 
 import com.ages.pie.application.config.SecurityConfig;
@@ -23,11 +24,14 @@ import com.ages.pie.application.service.AuthService;
 import com.ages.pie.infrastructure.security.AuthenticatedUserProvider;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import com.ages.pie.domain.entity.User;
+import com.ages.pie.infrastructure.repository.UserRepository;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(AuthController.class)
@@ -44,6 +48,9 @@ class AuthControllerTest {
 
     @MockitoBean
     private JwtDecoder jwtDecoder;
+
+    @MockitoBean
+    private UserRepository userRepository;
 
     @Test
     void loginRetorna200ComTokensEUsuario() throws Exception {
@@ -134,9 +141,13 @@ class AuthControllerTest {
     @Test
     void meRetornaUsuarioDoToken() throws Exception {
         UUID id = UUID.randomUUID();
+        UUID supabaseUserId = UUID.randomUUID();
+        User user = new User("Ana", "ana@email.com", supabaseUserId);
+        ReflectionTestUtils.setField(user, "id", id);
+        when(userRepository.findBySupabaseUserId(supabaseUserId)).thenReturn(Optional.of(user));
         when(authService.findSummary(id)).thenReturn(new UserSummaryDTO(id, "Ana", "ana@email.com", null));
 
-        mockMvc.perform(get("/auth/me").with(jwt().jwt(j -> j.subject(id.toString()))))
+        mockMvc.perform(get("/auth/me").with(jwt().jwt(j -> j.subject(supabaseUserId.toString()))))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.id").value(id.toString()))
             .andExpect(jsonPath("$.name").value("Ana"));
@@ -144,9 +155,10 @@ class AuthControllerTest {
 
     @Test
     void meRetorna404QuandoCustomerNaoCadastrado() throws Exception {
-        UUID id = UUID.randomUUID();
+        UUID supabaseUserId = UUID.randomUUID();
+        when(userRepository.findBySupabaseUserId(supabaseUserId)).thenReturn(Optional.empty());
 
-        mockMvc.perform(get("/auth/me").with(jwt().jwt(j -> j.subject(id.toString()))))
+        mockMvc.perform(get("/auth/me").with(jwt().jwt(j -> j.subject(supabaseUserId.toString()))))
             .andExpect(status().isNotFound());
     }
 }

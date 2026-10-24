@@ -5,10 +5,12 @@ import com.ages.pie.application.dto.company.CompanyResponseDTO;
 import com.ages.pie.domain.entity.Company;
 import org.springframework.stereotype.Component;
 
+import java.util.UUID;
+
 @Component
 public class CompanyMapper {
 
-    public Company toEntity(CompanyRequestDTO dto, String passwordHash) {
+    public Company toEntity(CompanyRequestDTO dto, UUID supabaseUserId) {
         return new Company(
             null,
             dto.name(),
@@ -16,7 +18,7 @@ public class CompanyMapper {
             dto.socialReason(),
             dto.responsiblePerson(),
             dto.email(),
-            passwordHash,
+            supabaseUserId,
             dto.website(),
             dto.photoUrl()
         );

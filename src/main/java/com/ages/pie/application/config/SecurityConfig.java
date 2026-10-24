@@ -41,6 +41,11 @@ public class SecurityConfig {
         "/swagger-ui.html"
     };
 
+    private static final String[] PUBLIC_POST_ENDPOINTS = {
+        "/users",
+        "/companies"
+    };
+
     private static final String[] PUBLIC_GET_ENDPOINTS = {
         "/style/questions",
         "/styles",
@@ -60,6 +65,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers(PUBLIC_ENDPOINTS).permitAll()
                 .requestMatchers(HttpMethod.GET, PUBLIC_GET_ENDPOINTS).permitAll()
+                .requestMatchers(HttpMethod.POST, PUBLIC_POST_ENDPOINTS).permitAll()
                 .anyRequest().authenticated())
             .oauth2ResourceServer(oauth2 -> oauth2
                 .jwt(Customizer.withDefaults())

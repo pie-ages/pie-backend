@@ -31,7 +31,7 @@ class StyleIdentificationFromAnswersTest {
     @Test
     void identifiesSinglePersistedQuestionnaireAnswer() {
         UUID userId = UUID.randomUUID();
-        User user = new User("Ana", "ana@pie.com", "hash");
+        User user = new User("Ana", "ana@pie.com", UUID.randomUUID());
         ReflectionTestUtils.setField(user, "id", userId);
         BodyProfile profile = new BodyProfile(user);
         StyleQuestion question = new StyleQuestion("Qual look?", 1);
@@ -165,7 +165,7 @@ class StyleIdentificationFromAnswersTest {
     }
 
     private User user(UUID userId) {
-        User user = new User("Ana", "ana@pie.com", "hash");
+        User user = new User("Ana", "ana@pie.com", UUID.randomUUID());
         ReflectionTestUtils.setField(user, "id", userId);
         return user;
     }

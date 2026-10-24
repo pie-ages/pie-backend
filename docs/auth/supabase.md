@@ -7,18 +7,20 @@ O backend usa o Supabase Auth (e-mail e senha) e atua como:
   - assinatura assimétrica, via JWKS (`<SUPABASE_URL>/auth/v1/.well-known/jwks.json`);
   - `iss` (`<SUPABASE_URL>/auth/v1`), `aud` (`authenticated`) e `exp`/`nbf`.
 
-O `sub` do token é o id do usuário no Supabase e também o `customer.id` no nosso banco. Por isso, o cadastro deve criar o customer com esse id. `GET /auth/me` devolve o customer do token, ou 404 se ele ainda não tiver cadastro.
+O `sub` do token é o id da identidade no Supabase. O `auth.users` fica em outro banco que não o da aplicação, então a associação com o customer é a coluna `customer.supabase_user_id` (sem FK), preenchida no cadastro. Toda rota autenticada traduz o `sub` para o id local; um token válido sem cadastro correspondente responde 404, inclusive em `GET /auth/me`.
 
 ## Endpoints
 
 | Método | Rota | Auth | Resposta |
 | --- | --- | --- | --- |
+| POST | `/api/users` | pública | cadastro de cliente |
+| POST | `/api/companies` | pública | cadastro de empresa |
 | POST | `/api/auth/login` | pública | `{accessToken, refreshToken, expiresIn, tokenType, user}` |
 | POST | `/api/auth/refresh` | pública | mesmo corpo do login (o refresh token é rotacionado) |
 | POST | `/api/auth/logout` | Bearer | 204; revoga os refresh tokens da sessão |
 | GET | `/api/auth/me` | Bearer | `UserSummaryDTO` |
 
-Erros: credenciais ou refresh inválidos → 401; e-mail não confirmado → 403; Supabase fora do ar → 503; token ausente ou inválido → 401.
+Erros: credenciais ou refresh inválidos → 401; e-mail não confirmado → 403; Supabase fora do ar → 503; token ausente ou inválido → 401; token válido sem cadastro local → 404.
 
 Logout: o access token continua válido até expirar (no máximo 1h), porque o JWT é stateless. A sessão não pode mais ser renovada.
 
