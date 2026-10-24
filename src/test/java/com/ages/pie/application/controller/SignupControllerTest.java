@@ -4,7 +4,6 @@ import com.ages.pie.application.config.SecurityConfig;
 import com.ages.pie.application.config.SupabaseAuthProperties;
 import com.ages.pie.application.dto.company.CompanyResponseDTO;
 import com.ages.pie.application.dto.user.UserResponseDTO;
-import com.ages.pie.application.service.ColorimetryService;
 import com.ages.pie.application.service.CompanyService;
 import com.ages.pie.application.service.PreferenceService;
 import com.ages.pie.application.service.StyleIdentificationService;
@@ -37,7 +36,6 @@ class SignupControllerTest {
     @MockitoBean private CompanyService companyService;
     @MockitoBean private PreferenceService preferenceService;
     @MockitoBean private StyleIdentificationService styleIdentificationService;
-    @MockitoBean private ColorimetryService colorimetryService;
     @MockitoBean private AuthenticatedUserProvider authProvider;
 
     @Autowired private MockMvc mockMvc;
