@@ -24,7 +24,7 @@ public class CorsConfig {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         CorsConfiguration config = new CorsConfiguration();
 
-        config.setAllowCredentials(true);
+        config.setAllowCredentials(false);
 
         config.setAllowedOrigins(Arrays.asList(allowedOrigins));
 
