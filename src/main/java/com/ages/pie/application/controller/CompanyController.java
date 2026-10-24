@@ -38,6 +38,11 @@ public class CompanyController {
         return ResponseEntity.status(HttpStatus.CREATED).body(companyService.create(dto));
     }
 
+    @GetMapping("/active")
+    public ResponseEntity<List<CompanyResponseDTO>> findActive() {
+        return ResponseEntity.ok(companyService.findAll());
+    }
+
     @GetMapping
     public ResponseEntity<List<CompanyResponseDTO>> findAll(
             @RequestParam(required = false) CompanyStatus status) {

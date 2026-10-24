@@ -53,7 +53,8 @@ public class SecurityConfig {
         "/taxonomy",
         "/products",
         "/products/*/public",
-        "/products/*/images"
+        "/products/*/images",
+        "/companies/active"
     };
 
     @Bean
