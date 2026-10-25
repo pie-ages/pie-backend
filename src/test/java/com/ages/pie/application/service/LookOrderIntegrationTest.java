@@ -21,7 +21,7 @@ import com.ages.pie.infrastructure.repository.UserRepository;
 import com.ages.pie.infrastructure.repository.WardrobeItemRepository;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -35,7 +35,7 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @SpringBootTest
 @Transactional
-@Disabled("Requires real PostgreSQL database — run locally with -Dspring-boot.run.profiles=local")
+@EnabledIfEnvironmentVariable(named = "SPRING_DATASOURCE_URL", matches = ".+")
 class LookOrderIntegrationTest {
 
     @Autowired
@@ -57,7 +57,7 @@ class LookOrderIntegrationTest {
     @BeforeEach
     void seed() {
         user = userRepository.save(new User("Ordem", "ordem-" + UUID.randomUUID() + "@teste.com", UUID.randomUUID()));
-        company = companyRepository.save(new Company(UUID.randomUUID(), "Loja", unique14(), "Loja LTDA", "Maria",
+        company = companyRepository.save(new Company(null, "Loja", unique14(), "Loja LTDA", "Maria",
                 "loja-" + UUID.randomUUID() + "@teste.com", UUID.randomUUID(), null, null));
     }
 
