@@ -33,11 +33,6 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-/**
- * Garante o contrato HTTP de criação de look: o JSON enviado pelo app (campo {@code items}, com um
- * único id por peça) chega ao serviço como {@link LookRequestDTO} na mesma ordem, e a resposta
- * serializa as peças na ordem devolvida pelo serviço.
- */
 @WebMvcTest(LookController.class)
 @Import({SecurityConfig.class, SupabaseAuthProperties.class})
 @WithMockUser
@@ -70,7 +65,6 @@ class LookControllerTest {
                 item(null, calca, "Calça"),
                 item(tenis, null, "Tênis"))));
 
-        // Mesmo formato enviado pelo frontend: cada item traz só wardrobeItemId OU productId.
         String body = """
                 {"title":"Look","occasion":"Trabalho","items":[
                   {"productId":"%s"},
