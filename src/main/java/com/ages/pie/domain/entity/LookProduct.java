@@ -37,12 +37,19 @@ public class LookProduct {
     @Column(name = "created_at", updatable = false)
     private OffsetDateTime createdAt;
 
+    @Column(name = "display_order", nullable = false)
+    private int position;
+
     protected LookProduct() {
     }
 
-    public LookProduct(Look look, Product product) {
+    public LookProduct(Look look, Product product, int position) {
         this.look = Objects.requireNonNull(look, "Look é obrigatório");
         this.product = Objects.requireNonNull(product, "Produto é obrigatório");
+        if (position < 0) {
+            throw new IllegalArgumentException("Posição da peça não pode ser negativa");
+        }
+        this.position = position;
     }
 
     @PrePersist
@@ -64,5 +71,9 @@ public class LookProduct {
 
     public OffsetDateTime getCreatedAt() {
         return createdAt;
+    }
+
+    public int getPosition() {
+        return position;
     }
 }
