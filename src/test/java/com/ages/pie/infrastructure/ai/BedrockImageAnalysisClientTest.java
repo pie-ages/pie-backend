@@ -51,6 +51,33 @@ class BedrockImageAnalysisClientTest {
     }
 
     @Test
+    void classifiesColorimetryAxesWithItsOwnPromptAndTokenBudget() {
+        server.expect(requestTo("https://bedrock-runtime.us-east-2.amazonaws.com/model/google.gemma-3-27b-it/converse"))
+                .andExpect(jsonPath("$.inferenceConfig.maxTokens").value(64))
+                .andExpect(jsonPath("$.inferenceConfig.temperature").value(0))
+                .andExpect(jsonPath("$.messages[0].content[0].image.format").value("jpeg"))
+                .andExpect(jsonPath("$.messages[0].content[1].text").value(containsString("depth: light,medium,deep")))
+                .andRespond(withSuccess(response("{\"face\":true,\"temperature\":\"warm\",\"depth\":\"deep\",\"chroma\":\"soft\"}", "end_turn"), MediaType.APPLICATION_JSON));
+        var result = client.analyzeColorimetry(new byte[] {1, 2, 3}, "jpeg");
+        assertThat(result.face()).isTrue();
+        assertThat(result.temperature()).isEqualTo("warm");
+        assertThat(result.depth()).isEqualTo("deep");
+        assertThat(result.chroma()).isEqualTo("soft");
+        server.verify();
+    }
+
+    @Test
+    void colorimetryFailuresUseColorimetryMessages() {
+        server.expect(requestTo(org.hamcrest.Matchers.any(String.class))).andRespond(
+                withStatus(HttpStatus.TOO_MANY_REQUESTS).body("provider-internal-details"));
+        assertThatThrownBy(() -> client.analyzeColorimetry(new byte[] {1}, "jpeg"))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("Não foi possível analisar sua foto")
+                .hasMessageNotContaining("peça");
+        server.verify();
+    }
+
+    @Test
     void parsesJsonInsideModelMarkdownFence() {
         server.expect(requestTo(org.hamcrest.Matchers.any(String.class))).andRespond(withSuccess(
                 response("```json\n{\"category\":\"camisa\",\"style\":\"classico\",\"color\":\"branco\"}\n```", "end_turn"), MediaType.APPLICATION_JSON));
@@ -67,6 +94,23 @@ class BedrockImageAnalysisClientTest {
                 .hasMessageNotContaining("provider-internal-details")
                 .satisfies(error -> assertThat(((ResponseStatusException) error).getStatusCode()).isEqualTo(HttpStatus.BAD_GATEWAY));
         server.verify();
+    }
+
+    @Test
+    void expiredOrRejectedCredentialReportsUnavailableInsteadOfAskingForAnotherPhoto() {
+        for (HttpStatus status : new HttpStatus[] {HttpStatus.FORBIDDEN, HttpStatus.UNAUTHORIZED}) {
+            server.reset();
+            server.expect(requestTo(org.hamcrest.Matchers.any(String.class))).andRespond(
+                    withStatus(status).body("{\"message\":\"Bearer Token has expired\"}"));
+            assertThatThrownBy(() -> client.analyzeColorimetry(new byte[] {1}, "jpeg"))
+                    .isInstanceOf(ResponseStatusException.class)
+                    .hasMessageContaining("indisponível")
+                    .hasMessageNotContaining("outra foto")
+                    .hasMessageNotContaining("Bearer Token")
+                    .satisfies(error -> assertThat(((ResponseStatusException) error).getStatusCode())
+                            .isEqualTo(HttpStatus.SERVICE_UNAVAILABLE));
+            server.verify();
+        }
     }
 
     @Test
