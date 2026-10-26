@@ -1,6 +1,6 @@
 package com.ages.pie.application.service;
 
-import com.ages.pie.application.dto.wardrobe.WardrobeImageAnalysisDTO;
+import com.ages.pie.application.dto.analysis.ImageAnalysisDTO;
 import com.ages.pie.infrastructure.ai.BedrockImageAnalysisClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -16,21 +16,28 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-class WardrobeImageAnalysisServiceTest {
+class ImageAnalysisServiceTest {
     private BedrockImageAnalysisClient client;
-    private WardrobeImageAnalysisService service;
+    private ImageAnalysisService service;
 
     @BeforeEach
     void setUp() {
         client = mock(BedrockImageAnalysisClient.class);
-        service = new WardrobeImageAnalysisService(client);
+        service = new ImageAnalysisService(client);
     }
 
     @Test
     void returnsOnlyExistingTaxonomyIds() {
-        var expected = new WardrobeImageAnalysisDTO("vestido", "romantico", "verde");
+        var expected = new ImageAnalysisDTO("vestido", "romantico", "verde");
         when(client.analyze(any(), eq("png"))).thenReturn(expected);
         assertThat(service.analyze(photo("image/png", 10))).isEqualTo(expected);
+    }
+
+    @Test
+    void normalizesIdsToLowercase() {
+        when(client.analyze(any(), eq("png"))).thenReturn(new ImageAnalysisDTO("Vestido", "ROMANTICO", "Off-White"));
+        assertThat(service.analyze(photo("image/png", 10)))
+                .isEqualTo(new ImageAnalysisDTO("vestido", "romantico", "off-white"));
     }
 
     @Test
@@ -43,15 +50,15 @@ class WardrobeImageAnalysisServiceTest {
 
     @Test
     void rejectsUnknownOrMissingTaxonomyValues() {
-        when(client.analyze(any(), any())).thenReturn(new WardrobeImageAnalysisDTO("vestido", "maxi", "verde"));
+        when(client.analyze(any(), any())).thenReturn(new ImageAnalysisDTO("vestido", "maxi", "verde"));
         assertStatus(photo("image/png", 10), HttpStatus.BAD_GATEWAY);
-        when(client.analyze(any(), any())).thenReturn(new WardrobeImageAnalysisDTO("vestido", "casual", null));
+        when(client.analyze(any(), any())).thenReturn(new ImageAnalysisDTO("vestido", "casual", null));
         assertStatus(photo("image/png", 10), HttpStatus.BAD_GATEWAY);
     }
 
     @Test
     void asksForAnotherPhotoWhenNoGarmentIsVisible() {
-        when(client.analyze(any(), any())).thenReturn(new WardrobeImageAnalysisDTO(null, null, null));
+        when(client.analyze(any(), any())).thenReturn(new ImageAnalysisDTO(null, null, null));
         assertStatus(photo("image/png", 10), HttpStatus.UNPROCESSABLE_ENTITY);
     }
 

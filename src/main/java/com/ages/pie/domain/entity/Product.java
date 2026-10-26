@@ -186,4 +186,20 @@ public class Product extends AuditableEntity {
     public void setCompany(Company company) {
         this.company = company;
     }
+
+    public void applyAnalysis(String category, String style, String color) {
+        if (isBlank(this.category) && !isBlank(category)) {
+            this.category = category;
+        }
+        if ((styles == null || styles.isEmpty()) && !isBlank(style)) {
+            this.styles = new ArrayList<>(List.of(style));
+        }
+        if (isBlank(this.color) && !isBlank(color)) {
+            this.color = color;
+        }
+    }
+
+    private static boolean isBlank(String value) {
+        return value == null || value.isBlank();
+    }
 }
