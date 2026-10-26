@@ -86,6 +86,10 @@ public class Company extends AuditableEntity {
         this.photoUrl = photoUrl;
     }
 
+    public void linkSupabaseUser(UUID supabaseUserId) {
+        this.supabaseUserId = Objects.requireNonNull(supabaseUserId);
+    }
+
     public void deactivate() {
         this.active = false;
     }
