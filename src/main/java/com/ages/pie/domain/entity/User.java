@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
+import com.ages.pie.domain.enums.ProductColor;
 import com.ages.pie.domain.enums.ProductStyle;
 import com.ages.pie.domain.enums.Style;
 import jakarta.persistence.Column;
@@ -45,6 +46,11 @@ public class User extends AuditableEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "styles", columnDefinition = "varchar[]")
     private List<ProductStyle> styles;
+
+    @JdbcTypeCode(SqlTypes.ARRAY)
+    @Enumerated(EnumType.STRING)
+    @Column(name = "favorite_colors", columnDefinition = "varchar[]", nullable = false)
+    private List<ProductColor> favoriteColors = new ArrayList<>();
 
     @JdbcTypeCode(SqlTypes.ARRAY)
     @Column(name = "style_result", columnDefinition = "varchar[]")
@@ -92,6 +98,15 @@ public class User extends AuditableEntity {
             .toList());
     }
 
+    public void updateFavoriteColors(List<ProductColor> colors) {
+        Objects.requireNonNull(colors, "Cores favoritas são obrigatórias");
+
+        this.favoriteColors = new ArrayList<>(colors.stream()
+                .map(color -> Objects.requireNonNull(color, "Cor não pode ser nula"))
+                .distinct()
+                .toList());
+    }
+
     private String validateName(String name) {
         if (name == null || name.isBlank()) {
             throw new IllegalArgumentException("Nome é obrigatório");
@@ -132,6 +147,10 @@ public class User extends AuditableEntity {
 
     public void updateStyles(List<ProductStyle> styles) {
         this.styles = styles;
+    }
+
+    public List<ProductColor> getFavoriteColors() {
+        return List.copyOf(favoriteColors);
     }
 
     public List<String> getStyleResult() {

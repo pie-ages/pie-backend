@@ -6,6 +6,7 @@ import com.ages.pie.application.dto.user.PreferencesResponseDTO;
 import com.ages.pie.application.exception.ResourceNotFoundException;
 import com.ages.pie.domain.entity.BodyProfile;
 import com.ages.pie.domain.entity.User;
+import com.ages.pie.domain.service.ProductColorMapper;
 import com.ages.pie.domain.service.SeasonCatalog;
 import com.ages.pie.domain.service.SeasonCatalog.Season;
 import com.ages.pie.infrastructure.repository.BodyProfileRepository;
@@ -15,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -42,12 +44,21 @@ public class PreferenceService {
     @Transactional
     public PreferencesResponseDTO updateFavoriteColors(UUID userId, PreferencesRequestDTO dto) {
         BodyProfile profile = findOrCreateProfile(userId);
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado: " + userId));
 
         List<String> uniqueColors = dto.favoriteColors().stream()
+                .map(color -> color.toUpperCase(Locale.ROOT))
                 .distinct()
                 .toList();
 
+        user.updateFavoriteColors(uniqueColors.stream()
+                .map(ProductColorMapper::fromHex)
+                .toList());
+
         profile.setFavoriteColors(uniqueColors.toArray(new String[0]));
+
+        userRepository.save(user);
         bodyProfileRepository.save(profile);
 
         return toResponse(Optional.of(profile));
