@@ -4,6 +4,7 @@ import com.ages.pie.application.dto.user.PreferencesRequestDTO;
 import com.ages.pie.domain.entity.BodyProfile;
 import com.ages.pie.domain.entity.User;
 import com.ages.pie.domain.enums.ProductColor;
+import com.ages.pie.domain.service.SeasonCatalog;
 import com.ages.pie.infrastructure.repository.BodyProfileRepository;
 import com.ages.pie.infrastructure.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -15,7 +16,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.Random;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -40,11 +40,11 @@ class PreferenceColorMappingTest {
         service = new PreferenceService(
                 bodyProfileRepository,
                 userRepository,
-                new Random(42)
+                new SeasonCatalog()
         );
 
         userId = UUID.randomUUID();
-        user = new User("Ana Silva", "ana@email.com", "hash");
+        user = new User("Ana Silva", "ana@email.com", UUID.randomUUID());
 
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
     }
