@@ -4,6 +4,7 @@ import com.ages.pie.application.config.SecurityConfig;
 import com.ages.pie.application.config.SupabaseAuthProperties;
 import com.ages.pie.application.dto.user.UserResponseDTO;
 import com.ages.pie.application.exception.ResourceNotFoundException;
+import com.ages.pie.application.service.ColorimetryService;
 import com.ages.pie.application.service.PreferenceService;
 import com.ages.pie.application.service.StyleIdentificationService;
 import com.ages.pie.application.service.UserService;
@@ -45,6 +46,9 @@ class UserControllerTest {
 
     @MockitoBean
     private PreferenceService preferenceService;
+
+    @MockitoBean
+    private ColorimetryService colorimetryService;
 
     @MockitoBean
     private StyleIdentificationService styleIdentificationService;
