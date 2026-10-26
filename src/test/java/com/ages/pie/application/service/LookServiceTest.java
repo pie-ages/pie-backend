@@ -1,6 +1,7 @@
 package com.ages.pie.application.service;
 
 import com.ages.pie.application.dto.look.LookItemDTO;
+import com.ages.pie.application.dto.look.LookItemRefDTO;
 import com.ages.pie.application.dto.look.LookPageDTO;
 import com.ages.pie.application.dto.look.LookRequestDTO;
 import com.ages.pie.application.dto.look.LookResponseDTO;
@@ -439,7 +440,7 @@ class LookServiceTest {
 
     @Test
     void removeWardrobeItem_shouldDeleteLink_whenItemIsInLook() {
-        LookWardrobeItem link = new LookWardrobeItem(look, wardrobeItem);
+        LookWardrobeItem link = new LookWardrobeItem(look, wardrobeItem, 0);
         when(lookRepository.findByIdAndCustomerId(lookId, userId)).thenReturn(Optional.of(look));
         when(lookWardrobeItemRepository.findByLookIdAndWardrobeItemId(lookId, wardrobeItemId))
                 .thenReturn(Optional.of(link));
@@ -462,7 +463,7 @@ class LookServiceTest {
 
     @Test
     void removeProduct_shouldDeleteLink_whenProductIsInLook() {
-        LookProduct link = new LookProduct(look, product);
+        LookProduct link = new LookProduct(look, product, 0);
         when(lookRepository.findByIdAndCustomerId(lookId, userId)).thenReturn(Optional.of(look));
         when(lookProductRepository.findByLookIdAndProductId(lookId, productId))
                 .thenReturn(Optional.of(link));
@@ -660,5 +661,111 @@ class LookServiceTest {
         when(lookMapper.toSuggestionDTO(List.of(), List.of())).thenReturn(empty);
 
         assertThat(lookService.suggestion(userId)).isEqualTo(empty);
+    }
+
+    @Test
+    void create_shouldAssignPositionsFollowingRequestOrder_whenTypesAreInterleaved() {
+        UUID camisaId = UUID.randomUUID();
+        WardrobeItem camisa = new WardrobeItem(user, null, "Camisa", "Camisas", "casual", "Azul");
+        ReflectionTestUtils.setField(camisa, "id", camisaId);
+        UUID tenisId = UUID.randomUUID();
+        Product tenis = new Product(product.getCompany(), "Tênis");
+        ReflectionTestUtils.setField(tenis, "id", tenisId);
+
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        // O banco devolve em ordem arbitrária (diferente da solicitada) — a ordem deve vir do request.
+        when(wardrobeItemRepository.findByIdInAndCustomerId(anyCollection(), eq(userId)))
+                .thenReturn(List.of(wardrobeItem, camisa));
+        when(productRepository.findAllById(anySet())).thenReturn(List.of(tenis, product));
+        when(lookRepository.save(any(Look.class))).thenReturn(look);
+        when(lookMapper.toItemDTO(any(WardrobeItem.class))).thenAnswer(inv ->
+                new LookItemDTO(((WardrobeItem) inv.getArgument(0)).getId(), null, null, null, null, null));
+        when(lookMapper.toItemDTO(any(Product.class))).thenAnswer(inv ->
+                new LookItemDTO(null, ((Product) inv.getArgument(0)).getId(), null, null, null, null));
+        when(lookMapper.toResponseDTO(eq(look), anyList())).thenReturn(responseDTO());
+
+        // casaco(produto) -> camisa -> calça(guarda-roupa) -> tênis(produto)
+        lookService.create(userId, new LookRequestDTO("Look", null, null, null, null, List.of(
+                new LookItemRefDTO(null, productId),
+                new LookItemRefDTO(camisaId, null),
+                new LookItemRefDTO(wardrobeItemId, null),
+                new LookItemRefDTO(null, tenisId))));
+
+        ArgumentCaptor<List<LookWardrobeItem>> wardrobeCaptor = ArgumentCaptor.captor();
+        ArgumentCaptor<List<LookProduct>> productCaptor = ArgumentCaptor.captor();
+        verify(lookWardrobeItemRepository).saveAll(wardrobeCaptor.capture());
+        verify(lookProductRepository).saveAll(productCaptor.capture());
+        assertThat(wardrobeCaptor.getValue())
+                .extracting(l -> l.getWardrobeItem().getId(), LookWardrobeItem::getPosition)
+                .containsExactly(org.assertj.core.groups.Tuple.tuple(camisaId, 1),
+                        org.assertj.core.groups.Tuple.tuple(wardrobeItemId, 2));
+        assertThat(productCaptor.getValue())
+                .extracting(l -> l.getProduct().getId(), LookProduct::getPosition)
+                .containsExactly(org.assertj.core.groups.Tuple.tuple(productId, 0),
+                        org.assertj.core.groups.Tuple.tuple(tenisId, 3));
+
+        ArgumentCaptor<List<LookItemDTO>> itemsCaptor = ArgumentCaptor.captor();
+        verify(lookMapper).toResponseDTO(eq(look), itemsCaptor.capture());
+        assertThat(itemsCaptor.getValue())
+                .extracting(i -> i.wardrobeItemId() != null ? i.wardrobeItemId() : i.productId())
+                .containsExactly(productId, camisaId, wardrobeItemId, tenisId);
+    }
+
+    @Test
+    void create_shouldPutWardrobeItemsBeforeProducts_whenLegacyListsAreUsed() {
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        when(wardrobeItemRepository.findByIdInAndCustomerId(anyCollection(), eq(userId)))
+                .thenReturn(List.of(wardrobeItem));
+        when(productRepository.findAllById(anySet())).thenReturn(List.of(product));
+        when(lookRepository.save(any(Look.class))).thenReturn(look);
+        when(lookMapper.toResponseDTO(eq(look), anyList())).thenReturn(responseDTO());
+
+        lookService.create(userId, new LookRequestDTO("Look", null, null,
+                List.of(wardrobeItemId), List.of(productId)));
+
+        ArgumentCaptor<List<LookWardrobeItem>> wardrobeCaptor = ArgumentCaptor.captor();
+        ArgumentCaptor<List<LookProduct>> productCaptor = ArgumentCaptor.captor();
+        verify(lookWardrobeItemRepository).saveAll(wardrobeCaptor.capture());
+        verify(lookProductRepository).saveAll(productCaptor.capture());
+        assertThat(wardrobeCaptor.getValue().get(0).getPosition()).isZero();
+        assertThat(productCaptor.getValue().get(0).getPosition()).isEqualTo(1);
+    }
+
+    @Test
+    void create_shouldThrowBusinessException_whenItemRefHasBothOrNoIds() {
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+
+        assertThatThrownBy(() -> lookService.create(userId, new LookRequestDTO("Look", null, null, null, null,
+                List.of(new LookItemRefDTO(wardrobeItemId, productId)))))
+                .isInstanceOf(BusinessException.class);
+        assertThatThrownBy(() -> lookService.create(userId, new LookRequestDTO("Look", null, null, null, null,
+                List.of(new LookItemRefDTO(null, null)))))
+                .isInstanceOf(BusinessException.class);
+    }
+
+    @Test
+    void addWardrobeItem_shouldAppendAfterLastPositionOfAnyType() {
+        when(lookRepository.findByIdAndCustomerId(lookId, userId)).thenReturn(Optional.of(look));
+        when(wardrobeItemRepository.findByIdAndCustomerId(wardrobeItemId, userId))
+                .thenReturn(Optional.of(wardrobeItem));
+        when(lookWardrobeItemRepository.existsByLookIdAndWardrobeItemId(lookId, wardrobeItemId)).thenReturn(false);
+        when(lookWardrobeItemRepository.findMaxPositionByLookId(lookId)).thenReturn(1);
+        when(lookProductRepository.findMaxPositionByLookId(lookId)).thenReturn(2);
+
+        lookService.addWardrobeItem(userId, lookId, wardrobeItemId);
+
+        ArgumentCaptor<LookWardrobeItem> captor = ArgumentCaptor.forClass(LookWardrobeItem.class);
+        verify(lookWardrobeItemRepository).save(captor.capture());
+        assertThat(captor.getValue().getPosition()).isEqualTo(3);
+    }
+
+    @Test
+    void update_shouldNotTouchPieceLinks() {
+        when(lookRepository.findByIdAndCustomerId(lookId, userId)).thenReturn(Optional.of(look));
+        when(lookRepository.save(look)).thenReturn(look);
+
+        lookService.update(userId, lookId, new com.ages.pie.application.dto.look.LookUpdateDTO("Novo", null, null));
+
+        verifyNoInteractions(lookWardrobeItemRepository, lookProductRepository);
     }
 }
