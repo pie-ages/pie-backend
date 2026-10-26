@@ -1,5 +1,6 @@
 package com.ages.pie.application.mapper;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Stream;
 
@@ -17,10 +18,18 @@ import org.springframework.stereotype.Component;
 public class LookMapper {
 
     public LookResponseDTO toResponseDTO(Look look) {
+        record Positioned(int position, int typeRank, LookItemDTO item) {
+        }
+
         List<LookItemDTO> items = Stream.concat(
-            look.getWardrobeItems().stream().map(this::toItemDTO),
-            look.getProducts().stream().map(this::toItemDTO)
-        ).toList();
+            look.getWardrobeItems().stream()
+                .map(link -> new Positioned(link.getPosition(), 0, toItemDTO(link))),
+            look.getProducts().stream()
+                .map(link -> new Positioned(link.getPosition(), 1, toItemDTO(link)))
+        )
+            .sorted(Comparator.comparingInt(Positioned::position).thenComparingInt(Positioned::typeRank))
+            .map(Positioned::item)
+            .toList();
 
         return toResponseDTO(look, items);
     }
