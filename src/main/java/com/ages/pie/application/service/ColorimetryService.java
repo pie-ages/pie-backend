@@ -20,6 +20,7 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.Iterator;
+import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
 
@@ -34,17 +35,20 @@ public class ColorimetryService {
     static final int MAX_IMAGE_SIDE = 512;
     // Phone cameras top out around 48 MP; anything larger is not a selfie and only costs decode time.
     static final long MAX_SOURCE_PIXELS = 50_000_000L;
-    private static final Set<String> FORMATS = Set.of("image/jpeg", "image/png");
+    // Some Android pickers report JPEGs with the non-standard "image/jpg" type.
+    private static final Set<String> FORMATS = Set.of("image/jpeg", "image/jpg", "image/png");
 
     private final BedrockImageAnalysisClient client;
     private final SeasonCatalog seasonCatalog;
     private final PreferenceService preferenceService;
+    private final ColorimetryRateLimiter rateLimiter;
 
     public ColorimetryService(BedrockImageAnalysisClient client, SeasonCatalog seasonCatalog,
-                              PreferenceService preferenceService) {
+                              PreferenceService preferenceService, ColorimetryRateLimiter rateLimiter) {
         this.client = client;
         this.seasonCatalog = seasonCatalog;
         this.preferenceService = preferenceService;
+        this.rateLimiter = rateLimiter;
     }
 
     public PreferencesResponseDTO analyze(UUID userId, MultipartFile file) {
@@ -55,7 +59,9 @@ public class ColorimetryService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "Formato não suportado: " + file.getContentType() + ". Envie uma foto JPEG ou PNG.");
         }
-        ColorimetryAnalysisDTO result = client.analyzeColorimetry(downscale(file), "jpeg");
+        byte[] image = downscale(file);
+        rateLimiter.acquire(userId);
+        ColorimetryAnalysisDTO result = client.analyzeColorimetry(image, "jpeg");
         if (result == null) {
             throw invalidResponse();
         }
@@ -64,11 +70,17 @@ public class ColorimetryService {
             throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
                     "Não identificamos um rosto na foto. Tire outra foto de frente, com o rosto visível.");
         }
-        Season season = seasonCatalog.findByAxes(result.temperature(), result.depth(), result.chroma());
+        Season season = seasonCatalog.findByAxes(
+                normalize(result.temperature()), normalize(result.depth()), normalize(result.chroma()));
         if (season == null) {
             throw invalidResponse();
         }
         return preferenceService.saveSeason(userId, season);
+    }
+
+    // The model may vary casing or pad values even at temperature 0; the catalog keys are lowercase.
+    private static String normalize(String axis) {
+        return axis == null ? null : axis.trim().toLowerCase(Locale.ROOT);
     }
 
     private byte[] downscale(MultipartFile file) {

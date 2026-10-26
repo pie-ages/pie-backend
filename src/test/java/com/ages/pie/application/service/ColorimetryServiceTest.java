@@ -26,6 +26,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -35,13 +36,15 @@ class ColorimetryServiceTest {
     private final UUID userId = UUID.randomUUID();
     private BedrockImageAnalysisClient client;
     private PreferenceService preferenceService;
+    private ColorimetryRateLimiter rateLimiter;
     private ColorimetryService service;
 
     @BeforeEach
     void setUp() {
         client = mock(BedrockImageAnalysisClient.class);
         preferenceService = mock(PreferenceService.class);
-        service = new ColorimetryService(client, catalog, preferenceService);
+        rateLimiter = new ColorimetryRateLimiter();
+        service = new ColorimetryService(client, catalog, preferenceService, rateLimiter);
     }
 
     @Test
@@ -51,6 +54,47 @@ class ColorimetryServiceTest {
         when(preferenceService.saveSeason(userId, catalog.findById("soft_autumn").orElseThrow())).thenReturn(expected);
 
         assertThat(service.analyze(userId, photo("image/png", 40, 30))).isEqualTo(expected);
+    }
+
+    @Test
+    void normalizesAxesCasingAndWhitespaceFromTheModel() throws IOException {
+        var expected = new PreferencesResponseDTO(List.of("#FFB58C"), List.of("#00C4A1"), List.of(), null);
+        when(client.analyzeColorimetry(any(), eq("jpeg"))).thenReturn(new ColorimetryAnalysisDTO(true, "Warm", " MEDIUM ", "Soft"));
+        when(preferenceService.saveSeason(userId, catalog.findById("soft_autumn").orElseThrow())).thenReturn(expected);
+
+        assertThat(service.analyze(userId, photo("image/png", 40, 30))).isEqualTo(expected);
+    }
+
+    @Test
+    void acceptsTheNonStandardJpgContentType() throws IOException {
+        when(client.analyzeColorimetry(any(), eq("jpeg"))).thenReturn(new ColorimetryAnalysisDTO(true, "cool", "light", "soft"));
+
+        service.analyze(userId, photo("image/jpg", 40, 30));
+
+        verify(preferenceService).saveSeason(userId, catalog.findByAxes("cool", "light", "soft"));
+    }
+
+    @Test
+    void stopsCallingTheModelOnceTheHourlyLimitIsReached() throws IOException {
+        when(client.analyzeColorimetry(any(), any())).thenReturn(new ColorimetryAnalysisDTO(true, "cool", "deep", "bright"));
+        for (int i = 0; i < ColorimetryRateLimiter.MAX_ANALYSES; i++) {
+            service.analyze(userId, photo("image/png", 10, 10));
+        }
+
+        assertStatus(photo("image/png", 10, 10), HttpStatus.TOO_MANY_REQUESTS);
+        verify(client, times(ColorimetryRateLimiter.MAX_ANALYSES)).analyzeColorimetry(any(), any());
+    }
+
+    @Test
+    void rejectedUploadsDoNotConsumeTheHourlyLimit() throws IOException {
+        for (int i = 0; i < ColorimetryRateLimiter.MAX_ANALYSES; i++) {
+            assertStatus(new MockMultipartFile("file", "a.jpg", "image/jpeg", new byte[10]), HttpStatus.BAD_REQUEST);
+        }
+        when(client.analyzeColorimetry(any(), any())).thenReturn(new ColorimetryAnalysisDTO(true, "cool", "deep", "bright"));
+
+        service.analyze(userId, photo("image/png", 10, 10));
+
+        verify(client).analyzeColorimetry(any(), any());
     }
 
     @Test
