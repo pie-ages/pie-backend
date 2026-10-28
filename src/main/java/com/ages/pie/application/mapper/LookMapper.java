@@ -6,7 +6,6 @@ import java.util.stream.Stream;
 
 import com.ages.pie.application.dto.look.LookItemDTO;
 import com.ages.pie.application.dto.look.LookResponseDTO;
-import com.ages.pie.application.dto.look.LookSuggestionDTO;
 import com.ages.pie.domain.entity.Look;
 import com.ages.pie.domain.entity.LookProduct;
 import com.ages.pie.domain.entity.LookWardrobeItem;
@@ -48,13 +47,6 @@ public class LookMapper {
         );
     }
 
-    public LookSuggestionDTO toSuggestionDTO(List<WardrobeItem> wardrobeItems, List<Product> products) {
-        return new LookSuggestionDTO(Stream.concat(
-            wardrobeItems.stream().map(this::toItemDTO),
-            products.stream().map(this::toItemDTO)
-        ).toList());
-    }
-
     public LookItemDTO toItemDTO(LookWardrobeItem link) {
         return toItemDTO(link.getWardrobeItem());
     }
@@ -69,14 +61,10 @@ public class LookMapper {
         return new LookItemDTO(
             wardrobeItem.getId(),
             null,
-            wardrobeItem.getName() != null
-                ? wardrobeItem.getName()
-                : product != null ? product.getName() : wardrobeItem.getCategory(),
+            wardrobeItem.getName() != null ? wardrobeItem.getName() : product != null ? product.getName() : wardrobeItem.getCategory(),
             wardrobeItem.getCategory(),
             wardrobeItem.getColor(),
-            wardrobeItem.getPhotoUrl() != null || product == null
-                ? wardrobeItem.getPhotoUrl()
-                : product.getImageUrl()
+            wardrobeItem.getPhotoUrl() != null || product == null ? wardrobeItem.getPhotoUrl() : product.getImageUrl()
         );
     }
 
