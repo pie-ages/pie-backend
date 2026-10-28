@@ -5,30 +5,61 @@ import java.util.UUID;
 import com.ages.pie.application.dto.LoginRequestDTO;
 import com.ages.pie.application.dto.LoginResponseDTO;
 import com.ages.pie.application.dto.UserSummaryDTO;
+import com.ages.pie.application.exception.InvalidCredentialsException;
+import com.ages.pie.domain.entity.Company;
+import com.ages.pie.domain.entity.User;
 import com.ages.pie.infrastructure.auth.SupabaseAuthClient;
+import com.ages.pie.infrastructure.repository.CompanyRepository;
 import com.ages.pie.infrastructure.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/**
- * Autenticação delegada ao Supabase Auth. O id do usuário no Supabase
- * ({@code sub} do JWT) é o id do customer; {@code user} vem nulo enquanto
- * o customer ainda não foi cadastrado.
- */
 @Service
 public class AuthService {
 
     private final SupabaseAuthClient supabaseAuthClient;
     private final UserRepository userRepository;
+    private final CompanyRepository companyRepository;
 
-    public AuthService(SupabaseAuthClient supabaseAuthClient, UserRepository userRepository) {
+    public AuthService(SupabaseAuthClient supabaseAuthClient, UserRepository userRepository,
+            CompanyRepository companyRepository) {
         this.supabaseAuthClient = supabaseAuthClient;
         this.userRepository = userRepository;
+        this.companyRepository = companyRepository;
     }
 
     @Transactional(readOnly = true)
     public LoginResponseDTO login(LoginRequestDTO request) {
         return toResponse(supabaseAuthClient.passwordGrant(request.email(), request.password()));
+    }
+
+    @Transactional(readOnly = true)
+    public LoginResponseDTO loginCustomer(LoginRequestDTO request) {
+        LoginResponseDTO response = login(request);
+        if (response.user() != null && response.user().role() != null) {
+            throw new InvalidCredentialsException("Credenciais inválidas");
+        }
+        return response;
+    }
+
+    @Transactional
+    public LoginResponseDTO loginCompany(LoginRequestDTO request) {
+        SupabaseAuthClient.Session session = supabaseAuthClient.passwordGrant(request.email(), request.password());
+        UserSummaryDTO user = findSummaryBySupabaseUserId(session.user().id());
+        if (user == null) {
+            user = companyRepository.findByEmail(request.email())
+                .map(c -> {
+                    c.linkSupabaseUser(session.user().id());
+                    companyRepository.save(c);
+                    return toSummary(c);
+                })
+                .orElse(null);
+        }
+        if (user == null || user.role() == null) {
+            throw new InvalidCredentialsException("Credenciais inválidas");
+        }
+        return new LoginResponseDTO(session.accessToken(), session.refreshToken(),
+            session.expiresIn(), session.tokenType(), user);
     }
 
     @Transactional(readOnly = true)
@@ -43,12 +74,35 @@ public class AuthService {
     @Transactional(readOnly = true)
     public UserSummaryDTO findSummary(UUID userId) {
         return userRepository.findById(userId)
-            .map(user -> new UserSummaryDTO(user.getId(), user.getName(), user.getEmail(), user.getPhotoUrl()))
+            .map(AuthService::toSummary)
+            .or(() -> companyRepository.findById(userId).map(AuthService::toSummary))
             .orElse(null);
     }
 
+    private UserSummaryDTO findSummaryBySupabaseUserId(UUID supabaseUserId) {
+        return userRepository.findBySupabaseUserId(supabaseUserId)
+            .map(AuthService::toSummary)
+            .or(() -> companyRepository.findBySupabaseUserId(supabaseUserId).map(AuthService::toSummary))
+            .orElse(null);
+    }
+
+    private static UserSummaryDTO toSummary(User user) {
+        return new UserSummaryDTO(user.getId(), user.getName(), user.getEmail(), user.getPhotoUrl(), null, null);
+    }
+
+    private static UserSummaryDTO toSummary(Company company) {
+        return new UserSummaryDTO(
+            company.getId(),
+            company.getName(),
+            company.getEmail(),
+            company.getPhotoUrl(),
+            company.getRole() != null ? company.getRole().name() : null,
+            company.getStatus() != null ? company.getStatus().name() : null
+        );
+    }
+
     private LoginResponseDTO toResponse(SupabaseAuthClient.Session session) {
-        UserSummaryDTO user = session.user() == null ? null : findSummary(session.user().id());
+        UserSummaryDTO user = session.user() == null ? null : findSummaryBySupabaseUserId(session.user().id());
         return new LoginResponseDTO(
             session.accessToken(),
             session.refreshToken(),

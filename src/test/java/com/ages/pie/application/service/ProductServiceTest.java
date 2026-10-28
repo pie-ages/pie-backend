@@ -78,7 +78,7 @@ class ProductServiceTest {
         companyId = UUID.randomUUID();
         productId = UUID.randomUUID();
         company = new Company(companyId, "Loja X", "12345678000199", "Loja X LTDA", "Maria",
-                "loja@email.com", "hash(senha123)", null, null);
+                "loja@email.com", UUID.randomUUID(), null, null);
         product = new Product(company, "Camiseta");
         product.setDescription("Camiseta 100% algodão");
         product.setCategory("Camiseta");
@@ -203,7 +203,7 @@ class ProductServiceTest {
     void update_shouldResolveNewCompany_whenCompanyIdChanges() {
         UUID otherCompanyId = UUID.randomUUID();
         Company otherCompany = new Company(otherCompanyId, "Loja Y", "98765432000188", "Loja Y LTDA",
-                "Joao", "outra@email.com", "hash(senha456)", null, null);
+                "Joao", "outra@email.com", UUID.randomUUID(), null, null);
         ProductUpdateDTO dto = new ProductUpdateDTO(null, null, null, null, null, null, null, null, null, null, otherCompanyId);
         stubSavePassthrough();
         when(productRepository.findById(productId)).thenReturn(Optional.of(product));

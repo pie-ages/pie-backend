@@ -63,7 +63,7 @@ class StyleServiceTest {
                 questionRepository, optionRepository, answerRepository, userRepository);
 
         userId = UUID.randomUUID();
-        user = new User("Ana Silva", "ana@email.com", "hash(senha123)");
+        user = new User("Ana Silva", "ana@email.com", UUID.randomUUID());
         ReflectionTestUtils.setField(user, "id", userId);
 
         question1 = new StyleQuestion("Pergunta 1?", 1);

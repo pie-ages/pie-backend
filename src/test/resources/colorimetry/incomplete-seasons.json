@@ -1,0 +1,13 @@
+{
+  "method": "test fixture",
+  "seasons": [
+    {
+      "id": "soft_autumn",
+      "label": "Outono Suave",
+      "aliases": [],
+      "axes": { "temperature": "warm", "depth": "medium", "chroma": "soft" },
+      "highlightColors": ["#FFB58C"],
+      "palette": ["#FFB58C"]
+    }
+  ]
+}

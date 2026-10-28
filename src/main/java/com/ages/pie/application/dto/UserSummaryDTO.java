@@ -6,6 +6,8 @@ public record UserSummaryDTO(
     UUID id,
     String name,
     String email,
-    String photoUrl
+    String photoUrl,
+    String role,
+    String status
 ) {
 }

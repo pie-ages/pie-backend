@@ -46,11 +46,11 @@ public class Look extends AuditableEntity {
     private String photoStorageKey;
 
     @OneToMany(mappedBy = "look", fetch = FetchType.LAZY)
-    @OrderBy("createdAt")
+    @OrderBy("position ASC, createdAt ASC")
     private List<LookWardrobeItem> wardrobeItems = new ArrayList<>();
 
     @OneToMany(mappedBy = "look", fetch = FetchType.LAZY)
-    @OrderBy("createdAt")
+    @OrderBy("position ASC, createdAt ASC")
     private List<LookProduct> products = new ArrayList<>();
 
     protected Look() {

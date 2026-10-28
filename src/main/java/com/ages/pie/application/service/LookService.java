@@ -9,11 +9,13 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Stream;
+import java.util.function.Function;
 
 import com.ages.pie.application.dto.look.LookItemDTO;
+import com.ages.pie.application.dto.look.LookItemRefDTO;
 import com.ages.pie.application.dto.look.LookPageDTO;
 import com.ages.pie.application.dto.look.LookRequestDTO;
 import com.ages.pie.application.dto.look.LookResponseDTO;
@@ -88,23 +90,35 @@ public class LookService {
         User customer = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado: " + userId));
 
-        List<WardrobeItem> wardrobeItems = resolveWardrobeItems(userId, dto.wardrobeItemIds());
-        List<Product> products = resolveProducts(dto.productIds());
+        List<LookItemRefDTO> refs = orderedRefs(dto);
+        Map<UUID, WardrobeItem> wardrobeItems = indexBy(
+                resolveWardrobeItems(userId, idsOf(refs, LookItemRefDTO::wardrobeItemId)),
+                WardrobeItem::getId);
+        Map<UUID, Product> products = indexBy(
+                resolveProducts(idsOf(refs, LookItemRefDTO::productId)),
+                Product::getId);
 
         Look look = lookRepository.save(
                 new Look(customer, dto.title(), dto.description(), dto.occasion()));
 
-        lookWardrobeItemRepository.saveAll(wardrobeItems.stream()
-                .map(wardrobeItem -> new LookWardrobeItem(look, wardrobeItem))
-                .toList());
-        lookProductRepository.saveAll(products.stream()
-                .map(product -> new LookProduct(look, product))
-                .toList());
+        List<LookWardrobeItem> wardrobeLinks = new ArrayList<>();
+        List<LookProduct> productLinks = new ArrayList<>();
+        List<LookItemDTO> items = new ArrayList<>();
+        for (int position = 0; position < refs.size(); position++) {
+            LookItemRefDTO ref = refs.get(position);
+            if (ref.wardrobeItemId() != null) {
+                WardrobeItem wardrobeItem = wardrobeItems.get(ref.wardrobeItemId());
+                wardrobeLinks.add(new LookWardrobeItem(look, wardrobeItem, position));
+                items.add(lookMapper.toItemDTO(wardrobeItem));
+            } else {
+                Product product = products.get(ref.productId());
+                productLinks.add(new LookProduct(look, product, position));
+                items.add(lookMapper.toItemDTO(product));
+            }
+        }
 
-        List<LookItemDTO> items = Stream.concat(
-            wardrobeItems.stream().map(lookMapper::toItemDTO),
-            products.stream().map(lookMapper::toItemDTO)
-        ).toList();
+        lookWardrobeItemRepository.saveAll(wardrobeLinks);
+        lookProductRepository.saveAll(productLinks);
 
         return lookMapper.toResponseDTO(look, items);
     }
@@ -191,7 +205,7 @@ public class LookService {
             throw new BusinessException("Peça já está no look: " + wardrobeItemId);
         }
 
-        lookWardrobeItemRepository.save(new LookWardrobeItem(look, wardrobeItem));
+        lookWardrobeItemRepository.save(new LookWardrobeItem(look, wardrobeItem, nextPosition(lookId)));
         return lookMapper.toItemDTO(wardrobeItem);
     }
 
@@ -217,7 +231,7 @@ public class LookService {
             throw new BusinessException("Produto já está no look: " + productId);
         }
 
-        lookProductRepository.save(new LookProduct(look, product));
+        lookProductRepository.save(new LookProduct(look, product, nextPosition(lookId)));
         return lookMapper.toItemDTO(product);
     }
 
@@ -370,6 +384,46 @@ public class LookService {
                         "Peça não encontrada no guarda-roupa do usuário: " + wardrobeItemId));
     }
 
+    /** Próxima posição livre no look, considerando peças do guarda-roupa e produtos. */
+    private int nextPosition(UUID lookId) {
+        return Math.max(
+                lookWardrobeItemRepository.findMaxPositionByLookId(lookId),
+                lookProductRepository.findMaxPositionByLookId(lookId)) + 1;
+    }
+
+    /**
+     * Sequência final das peças. {@code items} (ordem do usuário) tem prioridade; no formato legado
+     * (listas separadas) a ordem é: peças do guarda-roupa e depois produtos. Duplicatas mantêm a 1ª ocorrência.
+     */
+    private List<LookItemRefDTO> orderedRefs(LookRequestDTO dto) {
+        Set<LookItemRefDTO> refs = new LinkedHashSet<>();
+
+        if (dto.items() != null && !dto.items().isEmpty()) {
+            for (LookItemRefDTO ref : dto.items()) {
+                if ((ref.wardrobeItemId() == null) == (ref.productId() == null)) {
+                    throw new BusinessException(
+                            "Cada peça deve informar exatamente um de wardrobeItemId ou productId");
+                }
+                refs.add(ref);
+            }
+        } else {
+            distinct(dto.wardrobeItemIds()).forEach(id -> refs.add(new LookItemRefDTO(id, null)));
+            distinct(dto.productIds()).forEach(id -> refs.add(new LookItemRefDTO(null, id)));
+        }
+
+        return List.copyOf(refs);
+    }
+
+    private List<UUID> idsOf(List<LookItemRefDTO> refs, Function<LookItemRefDTO, UUID> extractor) {
+        return refs.stream().map(extractor).filter(Objects::nonNull).toList();
+    }
+
+    private <T> Map<UUID, T> indexBy(List<T> entities, Function<T, UUID> idOf) {
+        Map<UUID, T> index = new HashMap<>();
+        entities.forEach(entity -> index.put(idOf.apply(entity), entity));
+        return index;
+    }
+
     private List<WardrobeItem> resolveWardrobeItems(UUID userId, List<UUID> ids) {
         Set<UUID> requested = distinct(ids);
         if (requested.isEmpty()) {
@@ -398,13 +452,6 @@ public class LookService {
         }
 
         return products;
-    }
-
-    private <T> List<T> pickRandom(List<T> candidates, int size) {
-        List<T> shuffled = new ArrayList<>(candidates);
-        Collections.shuffle(shuffled);
-
-        return shuffled.stream().limit(size).toList();
     }
 
     private Set<UUID> distinct(List<UUID> ids) {

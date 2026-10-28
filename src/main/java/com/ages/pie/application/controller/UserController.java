@@ -6,6 +6,7 @@ import com.ages.pie.application.dto.user.StyleIdentificationResponseDTO;
 import com.ages.pie.application.dto.user.UserRequestDTO;
 import com.ages.pie.application.dto.user.UserResponseDTO;
 import com.ages.pie.application.dto.user.UserUpdateDTO;
+import com.ages.pie.application.service.ColorimetryService;
 import com.ages.pie.application.service.PreferenceService;
 import com.ages.pie.application.service.StyleIdentificationService;
 import com.ages.pie.application.service.UserService;
@@ -13,8 +14,11 @@ import com.ages.pie.infrastructure.security.AuthenticatedUserProvider;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.UUID;
@@ -25,15 +29,18 @@ public class UserController {
 
     private final UserService userService;
     private final PreferenceService preferenceService;
+    private final ColorimetryService colorimetryService;
     private final StyleIdentificationService styleIdentificationService;
     private final AuthenticatedUserProvider authProvider;
 
     public UserController(UserService userService,
                           PreferenceService preferenceService,
+                          ColorimetryService colorimetryService,
                           StyleIdentificationService styleIdentificationService,
                           AuthenticatedUserProvider authProvider) {
         this.userService = userService;
         this.preferenceService = preferenceService;
+        this.colorimetryService = colorimetryService;
         this.styleIdentificationService = styleIdentificationService;
         this.authProvider = authProvider;
     }
@@ -46,6 +53,12 @@ public class UserController {
     @GetMapping
     public ResponseEntity<List<UserResponseDTO>> findAll() {
         return ResponseEntity.ok(userService.findAll());
+    }
+
+    @GetMapping("/me")
+    @SecurityRequirement(name = "bearerAuth")
+    public ResponseEntity<UserResponseDTO> findMe() {
+        return ResponseEntity.ok(userService.findById(authProvider.id()));
     }
 
     @GetMapping("/{id}")
@@ -61,7 +74,11 @@ public class UserController {
     }
 
     @DeleteMapping("/{id}")
+    @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<Void> delete(@PathVariable UUID id) {
+        if (!authProvider.id().equals(id)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Você só pode remover a própria conta");
+        }
         userService.delete(id);
         return ResponseEntity.noContent().build();
     }
@@ -79,6 +96,13 @@ public class UserController {
             @Valid @RequestBody PreferencesRequestDTO dto) {
         UUID userId = authProvider.id();
         return ResponseEntity.ok(preferenceService.updateFavoriteColors(userId, dto));
+    }
+
+    @PostMapping(value = "/me/colorimetry", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @SecurityRequirement(name = "bearerAuth")
+    public ResponseEntity<PreferencesResponseDTO> analyzeColorimetry(@RequestPart("file") MultipartFile file) {
+        UUID userId = authProvider.id();
+        return ResponseEntity.ok(colorimetryService.analyze(userId, file));
     }
 
     @PostMapping("/me/style/identify")

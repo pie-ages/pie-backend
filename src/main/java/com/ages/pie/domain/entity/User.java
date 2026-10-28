@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
+import com.ages.pie.domain.enums.ProductColor;
 import com.ages.pie.domain.enums.ProductStyle;
 import com.ages.pie.domain.enums.Style;
 import jakarta.persistence.Column;
@@ -35,8 +36,8 @@ public class User extends AuditableEntity {
     @Column(unique = true)
     private String email;
 
-    @Column(name = "password_hash")
-    private String passwordHash;
+    @Column(name = "supabase_user_id", unique = true)
+    private UUID supabaseUserId;
 
     @Column(name = "photo_url")
     private String photoUrl;
@@ -45,6 +46,11 @@ public class User extends AuditableEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "styles", columnDefinition = "varchar[]")
     private List<ProductStyle> styles;
+
+    @JdbcTypeCode(SqlTypes.ARRAY)
+    @Enumerated(EnumType.STRING)
+    @Column(name = "favorite_colors", columnDefinition = "varchar[]", nullable = false)
+    private List<ProductColor> favoriteColors = new ArrayList<>();
 
     @JdbcTypeCode(SqlTypes.ARRAY)
     @Column(name = "style_result", columnDefinition = "varchar[]")
@@ -69,10 +75,10 @@ public class User extends AuditableEntity {
     protected User() {
     }
 
-    public User(String name, String email, String passwordHash) {
+    public User(String name, String email, UUID supabaseUserId) {
         this.name = validateName(name);
         this.email = validateEmail(email);
-        this.passwordHash = Objects.requireNonNull(passwordHash, "Senha não pode ser nula");
+        this.supabaseUserId = Objects.requireNonNull(supabaseUserId, "Identificador do Supabase é obrigatório");
     }
 
     public void update(String name, String photoUrl) {
@@ -90,6 +96,15 @@ public class User extends AuditableEntity {
         this.stylePreference = new ArrayList<>(Objects.requireNonNull(styles, "Estilos são obrigatórios").stream()
             .map(style -> Objects.requireNonNull(style, "Estilo não pode ser nulo").name())
             .toList());
+    }
+
+    public void updateFavoriteColors(List<ProductColor> colors) {
+        Objects.requireNonNull(colors, "Cores favoritas são obrigatórias");
+
+        this.favoriteColors = new ArrayList<>(colors.stream()
+                .map(color -> Objects.requireNonNull(color, "Cor não pode ser nula"))
+                .distinct()
+                .toList());
     }
 
     private String validateName(String name) {
@@ -122,12 +137,20 @@ public class User extends AuditableEntity {
         return photoUrl;
     }
 
+    public UUID getSupabaseUserId() {
+        return supabaseUserId;
+    }
+
     public List<ProductStyle> getStyles() {
         return styles;
     }
 
     public void updateStyles(List<ProductStyle> styles) {
         this.styles = styles;
+    }
+
+    public List<ProductColor> getFavoriteColors() {
+        return List.copyOf(favoriteColors);
     }
 
     public List<String> getStyleResult() {

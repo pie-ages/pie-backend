@@ -36,11 +36,11 @@ class LookMapperTest {
         productId = UUID.randomUUID();
         wardrobeItemId = UUID.randomUUID();
 
-        user = new User("Ana Silva", "ana@email.com", "hash(senha123)");
+        user = new User("Ana Silva", "ana@email.com", UUID.randomUUID());
         ReflectionTestUtils.setField(user, "id", UUID.randomUUID());
 
         Company company = new Company(UUID.randomUUID(), "Loja X", "12345678000199", "Loja X LTDA",
-                "Maria", "contato@lojax.com", "hash(senha123)", null, null);
+                "Maria", "contato@lojax.com", UUID.randomUUID(), null, null);
         product = new Product(company, "Blazer Social Feminino");
         ReflectionTestUtils.setField(product, "id", productId);
         ReflectionTestUtils.setField(product, "category", "Casacos");
@@ -105,8 +105,8 @@ class LookMapperTest {
 
     @Test
     void toResponseDTO_shouldJoinWardrobeItemsAndProducts() {
-        look.getWardrobeItems().add(new LookWardrobeItem(look, wardrobeItem));
-        look.getProducts().add(new LookProduct(look, product));
+        look.getWardrobeItems().add(new LookWardrobeItem(look, wardrobeItem, 0));
+        look.getProducts().add(new LookProduct(look, product, 1));
 
         LookResponseDTO dto = lookMapper.toResponseDTO(look);
 
@@ -118,6 +118,27 @@ class LookMapperTest {
         assertThat(dto.items()).hasSize(2);
         assertThat(dto.items()).extracting(LookItemDTO::wardrobeItemId).containsExactly(wardrobeItemId, null);
         assertThat(dto.items()).extracting(LookItemDTO::productId).containsExactly(null, productId);
+    }
+
+    @Test
+    void toResponseDTO_shouldFollowPosition_whenWardrobeItemsAndProductsAreInterleaved() {
+        UUID camisaId = UUID.randomUUID();
+        WardrobeItem camisa = new WardrobeItem(user, null, "Camisa", "Camisas", "casual", "Azul");
+        ReflectionTestUtils.setField(camisa, "id", camisaId);
+        UUID tenisId = UUID.randomUUID();
+        Product tenis = new Product(product.getCompany(), "Tênis");
+        ReflectionTestUtils.setField(tenis, "id", tenisId);
+
+        // casaco(produto,0) -> camisa(guarda-roupa,1) -> calça(guarda-roupa,2) -> tênis(produto,3)
+        look.getProducts().add(new LookProduct(look, product, 0));
+        look.getWardrobeItems().add(new LookWardrobeItem(look, camisa, 1));
+        look.getWardrobeItems().add(new LookWardrobeItem(look, wardrobeItem, 2));
+        look.getProducts().add(new LookProduct(look, tenis, 3));
+
+        LookResponseDTO dto = lookMapper.toResponseDTO(look);
+
+        assertThat(dto.items()).extracting(i -> i.wardrobeItemId() != null ? i.wardrobeItemId() : i.productId())
+                .containsExactly(productId, camisaId, wardrobeItemId, tenisId);
     }
 
     @Test

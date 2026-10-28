@@ -37,12 +37,19 @@ public class LookWardrobeItem {
     @Column(name = "created_at", updatable = false)
     private OffsetDateTime createdAt;
 
+    @Column(name = "display_order", nullable = false)
+    private int position;
+
     protected LookWardrobeItem() {
     }
 
-    public LookWardrobeItem(Look look, WardrobeItem wardrobeItem) {
+    public LookWardrobeItem(Look look, WardrobeItem wardrobeItem, int position) {
         this.look = Objects.requireNonNull(look, "Look é obrigatório");
         this.wardrobeItem = Objects.requireNonNull(wardrobeItem, "Peça do guarda-roupa é obrigatória");
+        if (position < 0) {
+            throw new IllegalArgumentException("Posição da peça não pode ser negativa");
+        }
+        this.position = position;
     }
 
     @PrePersist
@@ -64,5 +71,9 @@ public class LookWardrobeItem {
 
     public OffsetDateTime getCreatedAt() {
         return createdAt;
+    }
+
+    public int getPosition() {
+        return position;
     }
 }

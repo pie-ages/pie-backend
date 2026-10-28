@@ -86,6 +86,10 @@ public class BodyProfile extends AuditableEntity {
         return colorPalette;
     }
 
+    public void setColorPalette(String colorPalette) {
+        this.colorPalette = colorPalette;
+    }
+
     public String getZylaPalette() {
         return zylaPalette;
     }

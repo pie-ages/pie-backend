@@ -15,6 +15,7 @@ import com.ages.pie.domain.entity.User;
 import com.ages.pie.infrastructure.auth.SupabaseAuthClient;
 import com.ages.pie.infrastructure.auth.SupabaseAuthClient.Session;
 import com.ages.pie.infrastructure.auth.SupabaseAuthClient.SessionUser;
+import com.ages.pie.infrastructure.repository.CompanyRepository;
 import com.ages.pie.infrastructure.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -33,27 +34,32 @@ class AuthServiceTest {
     @Mock
     private UserRepository userRepository;
 
+    @Mock
+    private CompanyRepository companyRepository;
+
     @InjectMocks
     private AuthService authService;
 
     private UUID userId;
+    private UUID supabaseUserId;
     private User user;
 
     @BeforeEach
     void setUp() {
         userId = UUID.randomUUID();
-        user = new User("Ana Silva", "ana@email.com", "hash(x)");
+        supabaseUserId = UUID.randomUUID();
+        user = new User("Ana Silva", "ana@email.com", supabaseUserId);
         ReflectionTestUtils.setField(user, "id", userId);
     }
 
     private Session session(String access, String refresh) {
-        return new Session(access, refresh, 3600, "bearer", new SessionUser(userId, "ana@email.com"));
+        return new Session(access, refresh, 3600, "bearer", new SessionUser(supabaseUserId, "ana@email.com"));
     }
 
     @Test
-    void loginRetornaTokensEDadosDoCustomerDoSub() {
+    void loginResolveOCustomerLocalPeloSub() {
         when(supabaseAuthClient.passwordGrant("ana@email.com", "senha")).thenReturn(session("acc", "ref"));
-        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        when(userRepository.findBySupabaseUserId(supabaseUserId)).thenReturn(Optional.of(user));
 
         LoginResponseDTO result = authService.login(new LoginRequestDTO("ana@email.com", "senha"));
 
@@ -68,7 +74,7 @@ class AuthServiceTest {
     @Test
     void loginRetornaUserNuloQuandoCustomerAindaNaoFoiCadastrado() {
         when(supabaseAuthClient.passwordGrant("ana@email.com", "senha")).thenReturn(session("acc", "ref"));
-        when(userRepository.findById(userId)).thenReturn(Optional.empty());
+        when(userRepository.findBySupabaseUserId(supabaseUserId)).thenReturn(Optional.empty());
 
         LoginResponseDTO result = authService.login(new LoginRequestDTO("ana@email.com", "senha"));
 
@@ -88,7 +94,7 @@ class AuthServiceTest {
     @Test
     void refreshRetornaNovoParDeTokens() {
         when(supabaseAuthClient.refresh("ref-antigo")).thenReturn(session("acc-novo", "ref-novo"));
-        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        when(userRepository.findBySupabaseUserId(supabaseUserId)).thenReturn(Optional.of(user));
 
         LoginResponseDTO result = authService.refresh("ref-antigo");
 
