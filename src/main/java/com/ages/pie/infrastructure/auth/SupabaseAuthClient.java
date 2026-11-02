@@ -13,15 +13,18 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
+import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Cliente da API do Supabase Auth (GoTrue). O backend atua como proxy para
- * login, renovação e logout; o Supabase emite e revoga as sessões.
+ * login, renovação, logout e recuperação de senha; o Supabase emite e revoga
+ * as sessões.
  */
 @Component
 public class SupabaseAuthClient {
@@ -70,6 +73,34 @@ public class SupabaseAuthClient {
             .toBodilessEntity());
     }
 
+    public void recover(String email) {
+        execute(() -> restClient.post()
+            .uri("/recover")
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(Map.of("email", email))
+            .retrieve()
+            .toBodilessEntity());
+    }
+
+    public Session verifyRecovery(String email, String code) {
+        return execute(() -> restClient.post()
+            .uri("/verify")
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(Map.of("type", "recovery", "email", email, "token", code))
+            .retrieve()
+            .body(Session.class));
+    }
+
+    public void updatePassword(String accessToken, String password) {
+        execute(() -> restClient.put()
+            .uri("/user")
+            .header("Authorization", "Bearer " + accessToken)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(Map.of("password", password))
+            .retrieve()
+            .toBodilessEntity());
+    }
+
     private Session token(String grantType, Map<String, String> body) {
         return execute(() -> restClient.post()
             .uri(uri -> uri.path("/token").queryParam("grant_type", grantType).build())
@@ -98,6 +129,24 @@ public class SupabaseAuthClient {
         String code = errorCode(e);
         if ("email_not_confirmed".equals(code)) {
             return new EmailNotConfirmedException("E-mail ainda não confirmado");
+        }
+        if ("otp_expired".equals(code)) {
+            return new ResponseStatusException(HttpStatus.BAD_REQUEST, "Código inválido ou expirado");
+        }
+        if ("same_password".equals(code)) {
+            return new ResponseStatusException(HttpStatus.BAD_REQUEST, "A nova senha deve ser diferente da atual");
+        }
+        if ("weak_password".equals(code)) {
+            return new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                "A senha não atende aos requisitos mínimos de segurança");
+        }
+        if ("over_email_send_rate_limit".equals(code)) {
+            return new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS,
+                "Aguarde um pouco antes de pedir um novo código");
+        }
+        if (e.getStatusCode().value() == HttpStatus.TOO_MANY_REQUESTS.value()) {
+            return new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS,
+                "Muitas tentativas. Aguarde um pouco e tente novamente");
         }
         if (INVALID_CREDENTIAL_CODES.contains(code) || e.getStatusCode().value() == 401
                 || e.getStatusCode().value() == 403) {
