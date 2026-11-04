@@ -15,8 +15,6 @@ public class UserMapper {
             user.getPhotoUrl(),
             user.getCreatedAt(),
             user.getUpdatedAt(),
-            user.getCreatedAt(),
-            user.getUpdatedAt(),
             user.getSex()
         );
     }
