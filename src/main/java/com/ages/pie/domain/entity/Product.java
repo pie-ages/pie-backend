@@ -7,6 +7,7 @@ import java.util.Objects;
 import java.util.UUID;
 
 import com.ages.pie.domain.enums.ProductStatus;
+import com.ages.pie.domain.enums.ProductGender;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -41,6 +42,10 @@ public class Product extends AuditableEntity {
     private String category;
 
     private String color;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "gender", length = 20)
+    private ProductGender gender;
 
     private BigDecimal price;
 
@@ -101,6 +106,14 @@ public class Product extends AuditableEntity {
 
     public String getColor() {
         return color;
+    }
+
+    public ProductGender getGender() {
+        return gender;
+    }
+
+    public void setGender(ProductGender gender) {
+        this.gender = gender;
     }
 
     public BigDecimal getPrice() {

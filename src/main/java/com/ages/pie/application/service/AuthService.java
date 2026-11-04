@@ -87,7 +87,7 @@ public class AuthService {
     }
 
     private static UserSummaryDTO toSummary(User user) {
-        return new UserSummaryDTO(user.getId(), user.getName(), user.getEmail(), user.getPhotoUrl(), null, null);
+        return new UserSummaryDTO(user.getId(), user.getName(), user.getEmail(), user.getPhotoUrl(), null, null, user.getSex());
     }
 
     private static UserSummaryDTO toSummary(Company company) {
@@ -97,7 +97,8 @@ public class AuthService {
             company.getEmail(),
             company.getPhotoUrl(),
             company.getRole() != null ? company.getRole().name() : null,
-            company.getStatus() != null ? company.getStatus().name() : null
+            company.getStatus() != null ? company.getStatus().name() : null,
+            null
         );
     }
 

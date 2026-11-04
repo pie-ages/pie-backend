@@ -14,7 +14,8 @@ public class UserMapper {
             user.getEmail(),
             user.getPhotoUrl(),
             user.getCreatedAt(),
-            user.getUpdatedAt()
+            user.getUpdatedAt(),
+            user.getSex()
         );
     }
 }

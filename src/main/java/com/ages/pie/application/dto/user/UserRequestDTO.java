@@ -2,6 +2,7 @@ package com.ages.pie.application.dto.user;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import com.ages.pie.domain.enums.AccountSex;
 
 public record UserRequestDTO(
     @NotBlank(message = "Nome é obrigatório")
@@ -12,6 +13,8 @@ public record UserRequestDTO(
     String email,
 
     @NotBlank(message = "Senha é obrigatória")
-    String password
+    String password,
+
+    AccountSex sex
 ) {
 }

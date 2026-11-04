@@ -1,5 +1,6 @@
 package com.ages.pie.application.dto.product;
 
+import com.ages.pie.domain.enums.ProductGender;
 import jakarta.validation.constraints.Positive;
 
 import java.math.BigDecimal;
@@ -28,6 +29,8 @@ public record ProductUpdateDTO(
 
     String purchaseUrl,
 
-    UUID companyId
+    UUID companyId,
+
+    ProductGender gender
 ) {
 }
