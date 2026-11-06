@@ -7,6 +7,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.time.Instant;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -48,6 +50,15 @@ class AuthenticatedUserProviderTest {
             .subject(subject)
             .issuedAt(Instant.now())
             .expiresAt(Instant.now().plusSeconds(60))
+            .build();
+        SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(jwt));
+    }
+
+    private static void authenticateWithAuthMethod(String method) {
+        Jwt jwt = Jwt.withTokenValue("token")
+            .header("alg", "ES256")
+            .subject(UUID.randomUUID().toString())
+            .claim("amr", List.of(Map.of("method", method, "timestamp", 1L)))
             .build();
         SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(jwt));
     }
@@ -99,5 +110,31 @@ class AuthenticatedUserProviderTest {
         authenticateWithSubject("not-a-uuid");
 
         assertThat(statusOf(catchThrowable(provider::id))).isEqualTo(401);
+    }
+
+    @Test
+    void isRecoverySession_shouldReturnTrue_whenAmrHasOtp() {
+        authenticateWithAuthMethod("otp");
+
+        assertThat(provider.isRecoverySession()).isTrue();
+    }
+
+    @Test
+    void isRecoverySession_shouldReturnFalse_whenAmrHasOnlyPassword() {
+        authenticateWithAuthMethod("password");
+
+        assertThat(provider.isRecoverySession()).isFalse();
+    }
+
+    @Test
+    void isRecoverySession_shouldReturnFalse_whenTokenHasNoAmr() {
+        authenticateWithSubject(UUID.randomUUID().toString());
+
+        assertThat(provider.isRecoverySession()).isFalse();
+    }
+
+    @Test
+    void isRecoverySession_shouldReturnFalse_whenThereIsNoAuthentication() {
+        assertThat(provider.isRecoverySession()).isFalse();
     }
 }
