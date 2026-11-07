@@ -68,6 +68,10 @@ class CompanyServiceTest {
         return new CompanyUpdateDTO("Loja Y", "Loja Y LTDA", "Joao", "novo@lojay.com", null, null, "senha123");
     }
 
+    private CompanyUpdateDTO updateDTOWithPhoto(String photoUrl) {
+        return new CompanyUpdateDTO("Loja X", "Loja X LTDA", "Maria", "contato@lojax.com", null, photoUrl, null);
+    }
+
     @Test
     void create_shouldReturnResponseDTO_whenDataIsValid() {
         CompanyRequestDTO dto = requestDTO();
@@ -345,6 +349,51 @@ class CompanyServiceTest {
         assertThatThrownBy(() -> companyService.update(companyId, dto))
                 .isInstanceOf(IllegalArgumentException.class);
 
+        verify(companyRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void update_shouldReplacePhotoUrl_whenNewUrlIsSent() {
+        ReflectionTestUtils.setField(company, "photoUrl", "https://cdn.com/antiga.png");
+        CompanyUpdateDTO dto = updateDTOWithPhoto("https://cdn.com/nova.png");
+        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
+        when(companyRepository.existsByEmailAndIdNot(dto.email(), companyId)).thenReturn(false);
+        when(companyRepository.saveAndFlush(company)).thenReturn(company);
+        when(companyMapper.toResponseDTO(company)).thenReturn(responseDTO);
+
+        companyService.update(companyId, dto);
+
+        assertThat(company.getPhotoUrl()).isEqualTo("https://cdn.com/nova.png");
+        verify(companyRepository).saveAndFlush(company);
+    }
+
+    @Test
+    void update_shouldRemovePhotoUrl_whenPhotoUrlIsBlank() {
+        ReflectionTestUtils.setField(company, "photoUrl", "https://cdn.com/antiga.png");
+        CompanyUpdateDTO dto = updateDTOWithPhoto("");
+        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
+        when(companyRepository.existsByEmailAndIdNot(dto.email(), companyId)).thenReturn(false);
+        when(companyRepository.saveAndFlush(company)).thenReturn(company);
+        when(companyMapper.toResponseDTO(company)).thenReturn(responseDTO);
+
+        companyService.update(companyId, dto);
+
+        assertThat(company.getPhotoUrl()).isNull();
+        verify(companyRepository).saveAndFlush(company);
+    }
+
+    @Test
+    void update_shouldKeepPreviousPhotoUrl_whenNewPhotoUrlIsInvalid() {
+        ReflectionTestUtils.setField(company, "photoUrl", "https://cdn.com/antiga.png");
+        CompanyUpdateDTO dto = updateDTOWithPhoto("nao-e-url");
+        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
+        when(companyRepository.existsByEmailAndIdNot(dto.email(), companyId)).thenReturn(false);
+
+        assertThatThrownBy(() -> companyService.update(companyId, dto))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("URL da logo inválida");
+
+        assertThat(company.getPhotoUrl()).isEqualTo("https://cdn.com/antiga.png");
         verify(companyRepository, never()).saveAndFlush(any());
     }
 
