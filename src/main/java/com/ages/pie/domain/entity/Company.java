@@ -1,5 +1,7 @@
 package com.ages.pie.domain.entity;
 
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -73,7 +75,7 @@ public class Company extends AuditableEntity {
         this.email = requireEmail(email);
         this.supabaseUserId = Objects.requireNonNull(supabaseUserId, "Identificador do Supabase é obrigatório");
         this.website = website;
-        this.photoUrl = photoUrl;
+        this.photoUrl = optionalUrl(photoUrl, "URL da logo inválida");
     }
 
     public void update(String name, String socialReason, String responsiblePerson,
@@ -83,7 +85,7 @@ public class Company extends AuditableEntity {
         this.responsiblePerson = requireText(responsiblePerson, "Responsável é obrigatório");
         this.email = requireEmail(email);
         this.website = website;
-        this.photoUrl = photoUrl;
+        this.photoUrl = optionalUrl(photoUrl, "URL da logo inválida");
     }
 
     public void linkSupabaseUser(UUID supabaseUserId) {
@@ -112,6 +114,26 @@ public class Company extends AuditableEntity {
             throw new IllegalArgumentException("Email inválido");
         }
         return email;
+    }
+
+    private String optionalUrl(String url, String message) {
+        if (url == null || url.isBlank()) {
+            return null;
+        }
+        if (!isHttpUrl(url)) {
+            throw new IllegalArgumentException(message);
+        }
+        return url;
+    }
+
+    private boolean isHttpUrl(String url) {
+        try {
+            URI uri = new URI(url);
+            return uri.getHost() != null
+                    && ("http".equalsIgnoreCase(uri.getScheme()) || "https".equalsIgnoreCase(uri.getScheme()));
+        } catch (URISyntaxException e) {
+            return false;
+        }
     }
 
     public UUID getId() {
