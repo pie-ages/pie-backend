@@ -136,7 +136,7 @@ class SecurityConfigTest {
         User user = new User("Ana", "ana@email.com", supabaseUserId);
         ReflectionTestUtils.setField(user, "id", userId);
         when(userRepository.findBySupabaseUserId(supabaseUserId)).thenReturn(Optional.of(user));
-        when(authService.findSummary(userId)).thenReturn(new UserSummaryDTO(userId, "Ana", "ana@email.com", null, null, null));
+        when(authService.findSummary(userId)).thenReturn(new UserSummaryDTO(userId, "Ana", "ana@email.com", null, null, null, null));
 
         mockMvc.perform(get("/auth/me")
                 .header("Authorization", "Bearer " + sign(validClaims(supabaseUserId).build(), SIGNING_KEY)))

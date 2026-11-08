@@ -56,13 +56,13 @@ class UserServiceTest {
         user = new User("Ana Silva", "ana@email.com", UUID.randomUUID());
         responseDTO = new UserResponseDTO(
                 userId, "Ana Silva", "ana@email.com", null,
-                OffsetDateTime.now(), OffsetDateTime.now()
+                OffsetDateTime.now(), OffsetDateTime.now(), null
         );
     }
 
     @Test
     void create_shouldReturnResponseDTO_whenEmailIsNew() {
-        UserRequestDTO dto = new UserRequestDTO("Ana Silva", "ana@email.com", "senha123");
+        UserRequestDTO dto = new UserRequestDTO("Ana Silva", "ana@email.com", "senha123", null);
 
         when(userRepository.existsByEmail(dto.email())).thenReturn(false);
         when(supabaseAdminClient.createUser(dto.email(), dto.password())).thenReturn(UUID.randomUUID());
@@ -77,7 +77,7 @@ class UserServiceTest {
 
     @Test
     void create_shouldAssociateSupabaseUserId_whenCreationSucceeds() {
-        UserRequestDTO dto = new UserRequestDTO("Ana Silva", "ana@email.com", "senha123");
+        UserRequestDTO dto = new UserRequestDTO("Ana Silva", "ana@email.com", "senha123", null);
         UUID supabaseUserId = UUID.randomUUID();
 
         when(userRepository.existsByEmail(dto.email())).thenReturn(false);
@@ -94,7 +94,7 @@ class UserServiceTest {
 
     @Test
     void create_shouldRemoveSupabaseUser_whenLocalSaveFails() {
-        UserRequestDTO dto = new UserRequestDTO("Ana Silva", "ana@email.com", "senha123");
+        UserRequestDTO dto = new UserRequestDTO("Ana Silva", "ana@email.com", "senha123", null);
         UUID supabaseUserId = UUID.randomUUID();
 
         when(userRepository.existsByEmail(dto.email())).thenReturn(false);
@@ -110,7 +110,7 @@ class UserServiceTest {
 
     @Test
     void create_shouldKeepOriginalError_whenCompensatingDeleteAlsoFails() {
-        UserRequestDTO dto = new UserRequestDTO("Ana Silva", "ana@email.com", "senha123");
+        UserRequestDTO dto = new UserRequestDTO("Ana Silva", "ana@email.com", "senha123", null);
         UUID supabaseUserId = UUID.randomUUID();
 
         when(userRepository.existsByEmail(dto.email())).thenReturn(false);
@@ -126,7 +126,7 @@ class UserServiceTest {
 
     @Test
     void create_shouldNotSave_whenSupabaseRejectsTheEmail() {
-        UserRequestDTO dto = new UserRequestDTO("Ana Silva", "ana@email.com", "senha123");
+        UserRequestDTO dto = new UserRequestDTO("Ana Silva", "ana@email.com", "senha123", null);
 
         when(userRepository.existsByEmail(dto.email())).thenReturn(false);
         when(supabaseAdminClient.createUser(dto.email(), dto.password()))
@@ -141,7 +141,7 @@ class UserServiceTest {
 
     @Test
     void create_shouldThrowBusinessException_whenEmailAlreadyExists() {
-        UserRequestDTO dto = new UserRequestDTO("Ana Silva", "ana@email.com", "senha123");
+        UserRequestDTO dto = new UserRequestDTO("Ana Silva", "ana@email.com", "senha123", null);
 
         when(userRepository.existsByEmail(dto.email())).thenReturn(true);
 
@@ -193,7 +193,7 @@ class UserServiceTest {
 
     @Test
     void update_shouldReturnUpdatedResponseDTO_whenUserExists() {
-        UserUpdateDTO dto = new UserUpdateDTO("Ana Santos", "https://foto.com/ana.jpg");
+        UserUpdateDTO dto = new UserUpdateDTO("Ana Santos", "https://foto.com/ana.jpg", null);
 
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
         when(userRepository.save(user)).thenReturn(user);
@@ -207,7 +207,7 @@ class UserServiceTest {
 
     @Test
     void update_shouldThrowResourceNotFoundException_whenUserDoesNotExist() {
-        UserUpdateDTO dto = new UserUpdateDTO("Ana Santos", null);
+        UserUpdateDTO dto = new UserUpdateDTO("Ana Santos", null, null);
 
         when(userRepository.findById(userId)).thenReturn(Optional.empty());
 

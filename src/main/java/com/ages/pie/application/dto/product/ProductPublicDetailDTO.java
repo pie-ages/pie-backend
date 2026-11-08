@@ -1,5 +1,6 @@
 package com.ages.pie.application.dto.product;
 
+import com.ages.pie.domain.enums.ProductGender;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
@@ -19,5 +20,6 @@ public record ProductPublicDetailDTO(
     List<String> materials,
     boolean available,
     List<ProductImageResponseDTO> images,
-    boolean inWishlist
+    boolean inWishlist,
+    ProductGender gender
 ) {}
