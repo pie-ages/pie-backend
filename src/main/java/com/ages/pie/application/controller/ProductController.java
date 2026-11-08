@@ -55,7 +55,7 @@ public class ProductController {
             @RequestParam(required = false) List<String> materials,
             @ParameterObject @PageableDefault(size = 20, sort = "name") Pageable pageable) {
         CatalogFiltersDTO filters = new CatalogFiltersDTO(styles, categories, colors, companies, materials);
-        return ResponseEntity.ok(productService.findCatalog(search, filters, pageable));
+        return ResponseEntity.ok(productService.findCatalog(search, filters, pageable, authenticatedUserProvider.optionalId()));
     }
 
     @GetMapping("/{id}/public")

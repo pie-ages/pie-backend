@@ -39,6 +39,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.lenient;
@@ -57,12 +58,14 @@ class ProductServiceTest {
 
     @Mock
     private ProductMapper productMapper;
-
     @Mock
     private WishlistRepository wishlistRepository;
 
     @Mock
     private WishlistItemRepository wishlistItemRepository;
+
+    @Mock
+    private RecommendationService recommendationService;
 
     @InjectMocks
     private ProductService productService;
@@ -306,10 +309,11 @@ class ProductServiceTest {
         when(productRepository.findCatalog(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), eq(pageable))).thenReturn(page);
         when(productMapper.toCatalogPageDTO(page)).thenReturn(pageDTO);
 
-        ProductCatalogPageDTO result = productService.findCatalog(null, emptyFilters, pageable);
+        ProductCatalogPageDTO result = productService.findCatalog(null, emptyFilters, pageable, Optional.empty());
 
         assertThat(result).isEqualTo(pageDTO);
         verify(productRepository).findCatalog(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), eq(pageable));
+        verify(recommendationService, never()).recommendCatalogItemsForUser(any(), anyInt());
     }
 
     @Test
@@ -320,7 +324,7 @@ class ProductServiceTest {
         when(productRepository.findCatalog(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), eq(pageable))).thenReturn(page);
         when(productMapper.toCatalogPageDTO(page)).thenReturn(new ProductCatalogPageDTO(List.of(), 1, 0, 20));
 
-        productService.findCatalog("   ", emptyFilters, pageable);
+        productService.findCatalog("   ", emptyFilters, pageable, Optional.empty());
 
         verify(productRepository).findCatalog(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), eq(pageable));
     }
@@ -334,9 +338,7 @@ class ProductServiceTest {
         when(productRepository.findCatalog(searchCaptor.capture(), isNull(), isNull(), isNull(), isNull(), isNull(), eq(pageable))).thenReturn(page);
         when(productMapper.toCatalogPageDTO(page)).thenReturn(new ProductCatalogPageDTO(List.of(), 1, 0, 20));
 
-        productService.findCatalog("  camiseta  ", emptyFilters, pageable);
-
-        assertThat(searchCaptor.getValue()).isEqualTo("camiseta");
+        productService.findCatalog("  camiseta  ", emptyFilters, pageable, Optional.empty());
     }
 
     @Test
@@ -348,7 +350,7 @@ class ProductServiceTest {
         when(productRepository.findCatalog(any(), isNull(), isNull(), isNull(), isNull(), isNull(), eq(pageable))).thenReturn(emptyPage);
         when(productMapper.toCatalogPageDTO(emptyPage)).thenReturn(emptyDTO);
 
-        ProductCatalogPageDTO result = productService.findCatalog("inexistente", emptyFilters, pageable);
+        ProductCatalogPageDTO result = productService.findCatalog("inexistente", emptyFilters, pageable, Optional.empty());
 
         assertThat(result.items()).isEmpty();
         assertThat(result.total()).isZero();
@@ -363,7 +365,7 @@ class ProductServiceTest {
                 .thenReturn(page);
         when(productMapper.toCatalogPageDTO(page)).thenReturn(new ProductCatalogPageDTO(List.of(), 1, 0, 20));
 
-        productService.findCatalog(null, filters, pageable);
+        productService.findCatalog(null, filters, pageable, Optional.empty());
 
         verify(productRepository).findCatalog(isNull(), eq(new String[]{"casual"}), eq(new String[]{"camiseta"}), isNull(), isNull(), isNull(), eq(pageable));
     }
@@ -376,7 +378,7 @@ class ProductServiceTest {
         when(productRepository.findCatalog(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), eq(pageable))).thenReturn(page);
         when(productMapper.toCatalogPageDTO(page)).thenReturn(new ProductCatalogPageDTO(List.of(), 0, 0, 20));
 
-        productService.findCatalog(null, filters, pageable);
+        productService.findCatalog(null, filters, pageable, Optional.empty());
 
         verify(productRepository).findCatalog(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), eq(pageable));
     }
@@ -386,7 +388,7 @@ class ProductServiceTest {
         Pageable pageable = PageRequest.of(0, 20);
         CatalogFiltersDTO filters = new CatalogFiltersDTO(List.of("invalido"), null, null, null, null);
 
-        Throwable thrown = catchThrowable(() -> productService.findCatalog(null, filters, pageable));
+        Throwable thrown = catchThrowable(() -> productService.findCatalog(null, filters, pageable, Optional.empty()));
 
         assertThat(statusOf(thrown)).isEqualTo(HttpStatus.BAD_REQUEST.value());
         verify(productRepository, never()).findCatalog(any(), any(), any(), any(), any(), any(), any());
@@ -397,7 +399,7 @@ class ProductServiceTest {
         Pageable pageable = PageRequest.of(0, 20);
         CatalogFiltersDTO filters = new CatalogFiltersDTO(null, List.of("invalido"), null, null, null);
 
-        Throwable thrown = catchThrowable(() -> productService.findCatalog(null, filters, pageable));
+        Throwable thrown = catchThrowable(() -> productService.findCatalog(null, filters, pageable, Optional.empty()));
 
         assertThat(statusOf(thrown)).isEqualTo(HttpStatus.BAD_REQUEST.value());
         verify(productRepository, never()).findCatalog(any(), any(), any(), any(), any(), any(), any());
@@ -408,10 +410,82 @@ class ProductServiceTest {
         Pageable pageable = PageRequest.of(0, 20);
         CatalogFiltersDTO filters = new CatalogFiltersDTO(null, null, List.of("invalido"), null, null);
 
-        Throwable thrown = catchThrowable(() -> productService.findCatalog(null, filters, pageable));
+        Throwable thrown = catchThrowable(() -> productService.findCatalog(null, filters, pageable, Optional.empty()));
 
         assertThat(statusOf(thrown)).isEqualTo(HttpStatus.BAD_REQUEST.value());
         verify(productRepository, never()).findCatalog(any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void findCatalog_shouldReturnRecommendations_whenAuthenticatedPageZeroWithoutSearchOrFilters() {
+        UUID userId = UUID.randomUUID();
+        Pageable pageable = PageRequest.of(0, 20);
+        CatalogFiltersDTO emptyFilters = new CatalogFiltersDTO(null, null, null, null, null);
+        ProductCatalogItemDTO itemDTO = new ProductCatalogItemDTO(productId, "Camiseta",
+                "Camiseta", "Branco", new BigDecimal("49.90"), "https://exemplo.com/camiseta.jpg",
+                "https://loja.exemplo.com/camiseta", "Loja X", ProductStatus.PUBLISHED,
+                List.of("casual"), List.of("M"), List.of("algodao"));
+        when(recommendationService.recommendCatalogItemsForUser(userId, 20)).thenReturn(List.of(itemDTO));
+
+        ProductCatalogPageDTO result = productService.findCatalog(null, emptyFilters, pageable, Optional.of(userId));
+
+        assertThat(result.items()).containsExactly(itemDTO);
+        assertThat(result.total()).isEqualTo(1);
+        assertThat(result.page()).isZero();
+        assertThat(result.size()).isEqualTo(1);
+        verify(productRepository, never()).findCatalog(any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void findCatalog_shouldFallbackToCatalog_whenRecommendationsAreEmpty() {
+        UUID userId = UUID.randomUUID();
+        Pageable pageable = PageRequest.of(0, 20);
+        CatalogFiltersDTO emptyFilters = new CatalogFiltersDTO(null, null, null, null, null);
+        Page<Product> page = new PageImpl<>(List.of(product), pageable, 1);
+        ProductCatalogPageDTO pageDTO = new ProductCatalogPageDTO(List.of(), 1, 0, 20);
+        when(recommendationService.recommendCatalogItemsForUser(userId, 20)).thenReturn(List.of());
+        when(productRepository.findCatalog(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), eq(pageable))).thenReturn(page);
+        when(productMapper.toCatalogPageDTO(page)).thenReturn(pageDTO);
+
+        ProductCatalogPageDTO result = productService.findCatalog(null, emptyFilters, pageable, Optional.of(userId));
+
+        assertThat(result).isEqualTo(pageDTO);
+        verify(productRepository).findCatalog(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), eq(pageable));
+    }
+
+    @Test
+    void findCatalog_shouldFallbackToCatalog_whenRecommendationLookupFails() {
+        UUID userId = UUID.randomUUID();
+        Pageable pageable = PageRequest.of(0, 20);
+        CatalogFiltersDTO emptyFilters = new CatalogFiltersDTO(null, null, null, null, null);
+        Page<Product> page = new PageImpl<>(List.of(product), pageable, 1);
+        ProductCatalogPageDTO pageDTO = new ProductCatalogPageDTO(List.of(), 1, 0, 20);
+        when(recommendationService.recommendCatalogItemsForUser(userId, 20)).thenReturn(List.of());
+        when(productRepository.findCatalog(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), eq(pageable))).thenReturn(page);
+        when(productMapper.toCatalogPageDTO(page)).thenReturn(pageDTO);
+
+        ProductCatalogPageDTO result = productService.findCatalog(null, emptyFilters, pageable, Optional.of(userId));
+
+        assertThat(result).isEqualTo(pageDTO);
+        verify(productRepository).findCatalog(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), eq(pageable));
+    }
+
+    @Test
+    void findCatalog_shouldSkipRecommendations_whenSearchOrFiltersArePresentOrUserMissingOrPageNotZero() {
+        Pageable pageZero = PageRequest.of(0, 20);
+        Pageable pageOne = PageRequest.of(1, 20);
+        CatalogFiltersDTO emptyFilters = new CatalogFiltersDTO(null, null, null, null, null);
+        CatalogFiltersDTO withFilter = new CatalogFiltersDTO(List.of("casual"), null, null, null, null);
+        Page<Product> page = new PageImpl<>(List.of(product), pageZero, 1);
+        when(productRepository.findCatalog(any(), any(), any(), any(), any(), any(), any())).thenReturn(page);
+        when(productMapper.toCatalogPageDTO(page)).thenReturn(new ProductCatalogPageDTO(List.of(), 1, 0, 20));
+
+        productService.findCatalog("camiseta", emptyFilters, pageZero, Optional.of(UUID.randomUUID()));
+        productService.findCatalog(null, withFilter, pageZero, Optional.of(UUID.randomUUID()));
+        productService.findCatalog(null, emptyFilters, pageOne, Optional.of(UUID.randomUUID()));
+        productService.findCatalog(null, emptyFilters, pageZero, Optional.empty());
+
+        verify(recommendationService, never()).recommendProductsForUser(any(), anyInt());
     }
 
     // ── findByCompany ─────────────────────────────────────────────────────

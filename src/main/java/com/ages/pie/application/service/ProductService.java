@@ -1,6 +1,7 @@
 package com.ages.pie.application.service;
 
 import com.ages.pie.application.dto.product.CatalogFiltersDTO;
+import com.ages.pie.application.dto.product.ProductCatalogItemDTO;
 import com.ages.pie.application.dto.product.ProductCatalogPageDTO;
 import com.ages.pie.application.dto.product.ProductPublicDetailDTO;
 import com.ages.pie.application.dto.product.ProductRequestDTO;
@@ -42,17 +43,19 @@ public class ProductService {
     private final ProductMapper productMapper;
     private final WishlistRepository wishlistRepository;
     private final WishlistItemRepository wishlistItemRepository;
-
+    private final RecommendationService recommendationService;
     public ProductService(ProductRepository productRepository,
             CompanyRepository companyRepository,
             ProductMapper productMapper,
             WishlistRepository wishlistRepository,
-            WishlistItemRepository wishlistItemRepository) {
+            WishlistItemRepository wishlistItemRepository,
+            RecommendationService recommendationService) {
         this.productRepository = productRepository;
         this.companyRepository = companyRepository;
         this.productMapper = productMapper;
         this.wishlistRepository = wishlistRepository;
         this.wishlistItemRepository = wishlistItemRepository;
+        this.recommendationService = recommendationService;
     }
 
     @Transactional
@@ -86,9 +89,23 @@ public class ProductService {
     }
 
     @Transactional(readOnly = true)
-    public ProductCatalogPageDTO findCatalog(String search, CatalogFiltersDTO filters, Pageable pageable) {
+    public ProductCatalogPageDTO findCatalog(String search, CatalogFiltersDTO filters, Pageable pageable, Optional<UUID> userId) {
         validateCatalogFilters(filters);
         String normalizedSearch = normalize(search);
+
+        boolean recommend = userId.isPresent()
+                && pageable.getPageNumber() == 0
+                && isBlank(normalizedSearch)
+                && hasNoFilters(filters);
+        if (recommend) {
+            List<ProductCatalogItemDTO> items = recommendationService.recommendCatalogItemsForUser(
+                    userId.get(), pageable.getPageSize());
+            if (!items.isEmpty()) {
+                return new ProductCatalogPageDTO(items, items.size(), 0, items.size());
+            }
+            logger.warn("Recomendações indisponíveis ou vazias para userId={}; usando catálogo padrão", userId.get());
+        }
+
         Page<Product> page = productRepository.findCatalog(
                 normalizedSearch,
                 toArrayOrNull(filters.styles()),
@@ -98,6 +115,18 @@ public class ProductService {
                 toArrayOrNull(filters.materials()),
                 pageable);
         return productMapper.toCatalogPageDTO(page);
+    }
+
+    private boolean isBlank(String value) {
+        return value == null || value.isBlank();
+    }
+
+    private boolean hasNoFilters(CatalogFiltersDTO filters) {
+        return (filters.styles() == null || filters.styles().isEmpty())
+                && (filters.categories() == null || filters.categories().isEmpty())
+                && (filters.colors() == null || filters.colors().isEmpty())
+                && (filters.companies() == null || filters.companies().isEmpty())
+                && (filters.materials() == null || filters.materials().isEmpty());
     }
 
     @Transactional(readOnly = true)

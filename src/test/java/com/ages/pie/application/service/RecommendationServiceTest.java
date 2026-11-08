@@ -2,6 +2,7 @@ package com.ages.pie.application.service;
 
 import com.ages.pie.application.dto.RecommendedProductDTO;
 import com.ages.pie.application.exception.ResourceNotFoundException;
+import com.ages.pie.application.mapper.ProductMapper;
 import com.ages.pie.domain.entity.BodyProfile;
 import com.ages.pie.domain.entity.Product;
 import com.ages.pie.domain.entity.User;
@@ -31,8 +32,9 @@ class RecommendationServiceTest {
     private final UserRepository userRepository = mock(UserRepository.class);
     private final BodyProfileRepository bodyProfileRepository = mock(BodyProfileRepository.class);
     private final ProductRepository productRepository = mock(ProductRepository.class);
+    private final ProductMapper productMapper = mock(ProductMapper.class);
     private final RecommendationService service = new RecommendationService(
-            userRepository, bodyProfileRepository, productRepository, new HeuristicRecommendationScorer());
+            userRepository, bodyProfileRepository, productRepository, new HeuristicRecommendationScorer(), productMapper);
 
     private final UUID userId = UUID.randomUUID();
     private final User user = mock(User.class);
