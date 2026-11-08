@@ -1,5 +1,6 @@
 package com.ages.pie.application.dto.product;
 
+import com.ages.pie.domain.enums.ProductGender;
 import com.ages.pie.domain.enums.ProductStatus;
 
 import java.math.BigDecimal;
@@ -23,6 +24,7 @@ public record ProductResponseDTO(
     List<String> styles,
     List<String> sizes,
     List<String> materials,
-    List<ProductImageResponseDTO> images
+    List<ProductImageResponseDTO> images,
+    ProductGender gender
 ) {
 }
