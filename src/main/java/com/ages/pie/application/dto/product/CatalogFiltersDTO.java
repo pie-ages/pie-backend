@@ -8,5 +8,13 @@ public record CatalogFiltersDTO(
     List<String> categories,
     List<String> colors,
     List<UUID> companies,
-    List<String> materials
-) {}
+    List<String> materials,
+    List<String> genders,
+    boolean colorimetry,
+    boolean matchesProfile
+) {
+    public CatalogFiltersDTO(List<String> styles, List<String> categories, List<String> colors,
+            List<UUID> companies, List<String> materials) {
+        this(styles, categories, colors, companies, materials, null, false, false);
+    }
+}

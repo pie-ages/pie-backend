@@ -66,7 +66,10 @@ class SexAndGenderServiceTest {
                 companyRepository,
                 productMapper,
                 mock(WishlistRepository.class),
-                mock(WishlistItemRepository.class)
+                mock(WishlistItemRepository.class),
+                userRepository,
+                mock(RecommendationService.class),
+                mock(PreferenceService.class)
         );
         authService = new AuthService(
                 mock(SupabaseAuthClient.class),
