@@ -21,6 +21,8 @@ public interface ImageStorageService {
      */
     String uploadForLook(MultipartFile file, UUID lookId);
 
+    String uploadForCompanyLogo(MultipartFile file, UUID companyId);
+
     void delete(String storageKey);
 
     String toPublicUrl(String storageKey);
