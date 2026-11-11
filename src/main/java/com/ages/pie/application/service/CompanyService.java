@@ -127,7 +127,7 @@ public class CompanyService {
         }
 
         company.update(dto.name(), dto.socialReason(), dto.responsiblePerson(),
-                dto.email(), dto.website(), dto.photoUrl());
+                dto.email(), dto.website());
         CompanyResponseDTO response = companyMapper.toResponseDTO(companyRepository.saveAndFlush(company));
 
         if (propagateEmail) {

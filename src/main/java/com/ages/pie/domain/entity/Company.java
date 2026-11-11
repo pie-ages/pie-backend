@@ -82,13 +82,12 @@ public class Company extends AuditableEntity {
     }
 
     public void update(String name, String socialReason, String responsiblePerson,
-            String email, String website, String photoUrl) {
+            String email, String website) {
         this.name = requireText(name, "Nome é obrigatório");
         this.socialReason = requireText(socialReason, "Razão social é obrigatória");
         this.responsiblePerson = requireText(responsiblePerson, "Responsável é obrigatório");
         this.email = requireEmail(email);
         this.website = website;
-        this.photoUrl = optionalUrl(photoUrl, "URL da logo inválida");
     }
 
     public void updateLogo(String photoUrl, String photoStorageKey) {

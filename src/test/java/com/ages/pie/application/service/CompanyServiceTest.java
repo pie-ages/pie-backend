@@ -73,11 +73,7 @@ class CompanyServiceTest {
     }
 
     private CompanyUpdateDTO updateDTO() {
-        return new CompanyUpdateDTO("Loja Y", "Loja Y LTDA", "Joao", "novo@lojay.com", null, null, "senha123");
-    }
-
-    private CompanyUpdateDTO updateDTOWithPhoto(String photoUrl) {
-        return new CompanyUpdateDTO("Loja X", "Loja X LTDA", "Maria", "contato@lojax.com", null, photoUrl, null);
+        return new CompanyUpdateDTO("Loja Y", "Loja Y LTDA", "Joao", "novo@lojay.com", null, "senha123");
     }
 
     @Test
@@ -267,7 +263,7 @@ class CompanyServiceTest {
     @Test
     void update_shouldRequireCurrentPassword_whenEmailChanges() {
         CompanyUpdateDTO dto = new CompanyUpdateDTO("Loja Y", "Loja Y LTDA", "Joao",
-                "novo@lojay.com", null, null, null);
+                "novo@lojay.com", null, null);
         when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
         when(companyRepository.existsByEmailAndIdNot(dto.email(), companyId)).thenReturn(false);
 
@@ -297,7 +293,7 @@ class CompanyServiceTest {
     @Test
     void update_shouldNotTouchSupabase_whenEmailIsUnchanged() {
         CompanyUpdateDTO dto = new CompanyUpdateDTO("Loja Y", "Loja Y LTDA", "Joao",
-                "contato@lojax.com", null, null, null);
+                "contato@lojax.com", null, null);
         when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
         when(companyRepository.existsByEmailAndIdNot(dto.email(), companyId)).thenReturn(false);
         when(companyRepository.saveAndFlush(company)).thenReturn(company);
@@ -350,7 +346,7 @@ class CompanyServiceTest {
     @Test
     void update_shouldThrowIllegalArgumentException_whenEntityRejectsData() {
         CompanyUpdateDTO dto = new CompanyUpdateDTO("  ", "Loja Y LTDA", "Joao",
-                "novo@lojay.com", null, null, "senha123");
+                "novo@lojay.com", null, "senha123");
         when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
         when(companyRepository.existsByEmailAndIdNot(dto.email(), companyId)).thenReturn(false);
 
@@ -361,9 +357,9 @@ class CompanyServiceTest {
     }
 
     @Test
-    void update_shouldReplacePhotoUrl_whenNewUrlIsSent() {
-        ReflectionTestUtils.setField(company, "photoUrl", "https://cdn.com/antiga.png");
-        CompanyUpdateDTO dto = updateDTOWithPhoto("https://cdn.com/nova.png");
+    void update_shouldKeepLogo_whenCompanyIsUpdated() {
+        company.updateLogo("https://storage/companies/a.png", "companies/a.png");
+        CompanyUpdateDTO dto = updateDTO();
         when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
         when(companyRepository.existsByEmailAndIdNot(dto.email(), companyId)).thenReturn(false);
         when(companyRepository.saveAndFlush(company)).thenReturn(company);
@@ -371,38 +367,9 @@ class CompanyServiceTest {
 
         companyService.update(companyId, dto);
 
-        assertThat(company.getPhotoUrl()).isEqualTo("https://cdn.com/nova.png");
-        verify(companyRepository).saveAndFlush(company);
-    }
-
-    @Test
-    void update_shouldRemovePhotoUrl_whenPhotoUrlIsBlank() {
-        ReflectionTestUtils.setField(company, "photoUrl", "https://cdn.com/antiga.png");
-        CompanyUpdateDTO dto = updateDTOWithPhoto("");
-        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
-        when(companyRepository.existsByEmailAndIdNot(dto.email(), companyId)).thenReturn(false);
-        when(companyRepository.saveAndFlush(company)).thenReturn(company);
-        when(companyMapper.toResponseDTO(company)).thenReturn(responseDTO);
-
-        companyService.update(companyId, dto);
-
-        assertThat(company.getPhotoUrl()).isNull();
-        verify(companyRepository).saveAndFlush(company);
-    }
-
-    @Test
-    void update_shouldKeepPreviousPhotoUrl_whenNewPhotoUrlIsInvalid() {
-        ReflectionTestUtils.setField(company, "photoUrl", "https://cdn.com/antiga.png");
-        CompanyUpdateDTO dto = updateDTOWithPhoto("nao-e-url");
-        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
-        when(companyRepository.existsByEmailAndIdNot(dto.email(), companyId)).thenReturn(false);
-
-        assertThatThrownBy(() -> companyService.update(companyId, dto))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("URL da logo inválida");
-
-        assertThat(company.getPhotoUrl()).isEqualTo("https://cdn.com/antiga.png");
-        verify(companyRepository, never()).saveAndFlush(any());
+        assertThat(company.getPhotoUrl()).isEqualTo("https://storage/companies/a.png");
+        assertThat(company.getPhotoStorageKey()).isEqualTo("companies/a.png");
+        verifyNoInteractions(imageStorageService);
     }
 
     @Test
