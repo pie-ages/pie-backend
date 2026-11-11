@@ -22,6 +22,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 @Service
@@ -33,14 +34,17 @@ public class CompanyService {
     private final CompanyMapper companyMapper;
     private final SupabaseAdminClient supabaseAdminClient;
     private final AuthenticatedUserProvider authenticatedUserProvider;
+    private final ImageStorageService imageStorageService;
 
     public CompanyService(CompanyRepository companyRepository, CompanyMapper companyMapper,
                           SupabaseAdminClient supabaseAdminClient,
-                          AuthenticatedUserProvider authenticatedUserProvider) {
+                          AuthenticatedUserProvider authenticatedUserProvider,
+                          ImageStorageService imageStorageService) {
         this.companyRepository = companyRepository;
         this.companyMapper = companyMapper;
         this.supabaseAdminClient = supabaseAdminClient;
         this.authenticatedUserProvider = authenticatedUserProvider;
+        this.imageStorageService = imageStorageService;
     }
 
     @Transactional
@@ -148,9 +152,50 @@ public class CompanyService {
         return companyMapper.toResponseDTO(companyRepository.saveAndFlush(company));
     }
 
+    @Transactional
+    public CompanyResponseDTO updateLogo(UUID id, MultipartFile file) {
+        requireOwner(id);
+        Company company = findEntity(id);
+        String previousKey = company.getPhotoStorageKey();
+
+        String storageKey = imageStorageService.uploadForCompanyLogo(file, id);
+        company.updateLogo(imageStorageService.toPublicUrl(storageKey), storageKey);
+        CompanyResponseDTO response = companyMapper.toResponseDTO(companyRepository.saveAndFlush(company));
+
+        if (previousKey != null) {
+            imageStorageService.delete(previousKey);
+        }
+
+        return response;
+    }
+
+    @Transactional
+    public void removeLogo(UUID id) {
+        requireOwner(id);
+        Company company = findEntity(id);
+
+        if (company.getPhotoUrl() == null) {
+            throw new ResourceNotFoundException("Empresa não possui logo: " + id);
+        }
+
+        String storageKey = company.getPhotoStorageKey();
+        company.clearLogo();
+        companyRepository.save(company);
+
+        if (storageKey != null) {
+            imageStorageService.delete(storageKey);
+        }
+    }
+
     private void requireAdmin() {
         if (!authenticatedUserProvider.isAdmin()) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Acesso restrito ao administrador");
+        }
+    }
+
+    private void requireOwner(UUID id) {
+        if (!id.equals(authenticatedUserProvider.id())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Não é possível alterar a logo de outra empresa");
         }
     }
 

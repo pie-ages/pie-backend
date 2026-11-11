@@ -59,6 +59,9 @@ public class Company extends AuditableEntity {
     @Column(name = "photo_url")
     private String photoUrl;
 
+    @Column(name = "photo_storage_key")
+    private String photoStorageKey;
+
     @OneToMany(mappedBy = "company", fetch = FetchType.LAZY)
     private List<Product> products = new ArrayList<>();
 
@@ -86,6 +89,16 @@ public class Company extends AuditableEntity {
         this.email = requireEmail(email);
         this.website = website;
         this.photoUrl = optionalUrl(photoUrl, "URL da logo inválida");
+    }
+
+    public void updateLogo(String photoUrl, String photoStorageKey) {
+        this.photoUrl = photoUrl;
+        this.photoStorageKey = photoStorageKey;
+    }
+
+    public void clearLogo() {
+        this.photoUrl = null;
+        this.photoStorageKey = null;
     }
 
     public void linkSupabaseUser(UUID supabaseUserId) {
@@ -174,6 +187,10 @@ public class Company extends AuditableEntity {
 
     public String getPhotoUrl() {
         return photoUrl;
+    }
+
+    public String getPhotoStorageKey() {
+        return photoStorageKey;
     }
 
     public CompanyRole getRole() {
