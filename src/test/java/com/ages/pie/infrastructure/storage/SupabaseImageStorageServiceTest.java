@@ -29,6 +29,7 @@ class SupabaseImageStorageServiceTest {
         props.setServiceRoleKey("test-key");
         props.setBucket("product-images");
         props.setWardrobeBucket("wardrobe-items");
+        props.setCompanyLogoBucket("company-logos");
         props.setMaxFileSizeMb(5);
         service = new SupabaseImageStorageService(props, mock(RestClient.class));
     }
@@ -98,6 +99,12 @@ class SupabaseImageStorageServiceTest {
         assertThat(service.getBucketForKey(key)).isEqualTo("wardrobe-items");
     }
 
+    @Test
+    void getBucketForKey_companyPrefix_returnsCompanyLogoBucket() {
+        String key = SupabaseImageStorageService.COMPANIES_FOLDER + "/" + UUID.randomUUID() + "/img.png";
+        assertThat(service.getBucketForKey(key)).isEqualTo("company-logos");
+    }
+
     // --- toPublicUrl ---
 
     @Test
@@ -115,6 +122,15 @@ class SupabaseImageStorageServiceTest {
         String url = service.toPublicUrl(key);
 
         assertThat(url).startsWith("https://test.supabase.co/storage/v1/object/public/wardrobe-items/");
+        assertThat(url).endsWith(key);
+    }
+
+    @Test
+    void toPublicUrl_companyLogoKey_usesCompanyLogoBucket() {
+        String key = SupabaseImageStorageService.COMPANIES_FOLDER + "/" + UUID.randomUUID() + "/img.png";
+        String url = service.toPublicUrl(key);
+
+        assertThat(url).startsWith("https://test.supabase.co/storage/v1/object/public/company-logos/");
         assertThat(url).endsWith(key);
     }
 }
