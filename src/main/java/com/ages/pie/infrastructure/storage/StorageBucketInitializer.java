@@ -43,7 +43,8 @@ public class StorageBucketInitializer implements ApplicationRunner {
         List<BucketSpec> buckets = List.of(
                 new BucketSpec(props.getBucket(), true),
                 new BucketSpec(props.getWardrobeBucket(), true),
-                new BucketSpec(props.getLookBucket(), true)
+                new BucketSpec(props.getLookBucket(), true),
+                new BucketSpec(props.getCompanyLogoBucket(), true)
         );
 
         for (BucketSpec bucket : buckets) {

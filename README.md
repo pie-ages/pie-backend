@@ -41,12 +41,14 @@ Após a inicialização, a API fica disponível em `http://localhost:8080` e a d
 
 ## Object Storage
 
-O projeto usa **Supabase Storage** para armazenar imagens. Há dois buckets:
+O projeto usa **Supabase Storage** para armazenar imagens. Há quatro buckets:
 
 | Bucket | Uso |
 | --- | --- |
 | `product-images` | Imagens dos produtos do catálogo |
 | `wardrobe-items` | Imagens das peças do guarda-roupa (PIE-74) |
+| `look-images` | Imagens dos looks (PIE-78) |
+| `company-logos` | Logos das empresas (PIE-124) |
 
 ### Configuração local
 
@@ -57,16 +59,15 @@ supabase.storage.url=https://<ref>.supabase.co
 supabase.storage.service-role-key=eyJ...
 supabase.storage.bucket=product-images
 supabase.storage.wardrobe-bucket=wardrobe-items
+supabase.storage.look-bucket=look-images
+supabase.storage.company-logo-bucket=company-logos
 ```
 
 A `service-role-key` fica em: **Supabase Dashboard → Project Settings → API → service_role → Reveal**.
 
-### Criar o bucket `wardrobe-items`
+### Criação dos buckets
 
-1. Acesse o Supabase Dashboard → **Storage → New bucket**
-2. Nome: `wardrobe-items`
-3. Marque **Public bucket** para que as URLs públicas funcionem
-4. Salve
+Os buckets são criados como públicos pelo `StorageBucketInitializer` ao subir a API, se ainda não existirem. Um bucket que já existe não é alterado: se ele tiver sido criado como privado, marque **Public bucket** no Supabase Dashboard → **Storage** para que as URLs públicas funcionem.
 
 ### Variáveis necessárias por ambiente
 
@@ -76,6 +77,8 @@ A `service-role-key` fica em: **Supabase Dashboard → Project Settings → API 
 | `supabase.storage.service-role-key` | `SUPABASE_STORAGE_SERVICE_ROLE_KEY` | Sim | Chave de acesso com permissão de escrita |
 | `supabase.storage.bucket` | `SUPABASE_STORAGE_BUCKET` | Não (padrão: `product-images`) | Bucket para imagens de produtos |
 | `supabase.storage.wardrobe-bucket` | `SUPABASE_STORAGE_WARDROBE_BUCKET` | Não (padrão: `wardrobe-items`) | Bucket para imagens do guarda-roupa |
+| `supabase.storage.look-bucket` | `SUPABASE_STORAGE_LOOK_BUCKET` | Não (padrão: `look-images`) | Bucket para imagens dos looks |
+| `supabase.storage.company-logo-bucket` | `SUPABASE_STORAGE_COMPANY_LOGO_BUCKET` | Não (padrão: `company-logos`) | Bucket para as logos das empresas |
 | `supabase.storage.max-file-size-mb` | `SUPABASE_STORAGE_MAX_FILE_SIZE_MB` | Não (padrão: `5`) | Limite de tamanho de upload em MB |
 | `supabase.auth.url` | `SUPABASE_URL` | Sim | URL do projeto Supabase usado no Auth (valida JWTs via JWKS) |
 | `supabase.auth.publishable-key` | `SUPABASE_PUBLISHABLE_KEY` | Sim | Publishable (anon) key do projeto, enviada ao Supabase Auth |

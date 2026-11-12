@@ -9,6 +9,7 @@ import com.ages.pie.application.mapper.CompanyMapper;
 import com.ages.pie.domain.entity.Company;
 import com.ages.pie.infrastructure.auth.SupabaseAdminClient;
 import com.ages.pie.infrastructure.repository.CompanyRepository;
+import com.ages.pie.infrastructure.security.AuthenticatedUserProvider;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -18,6 +19,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -43,6 +45,12 @@ class CompanyServiceTest {
     @Mock
     private SupabaseAdminClient supabaseAdminClient;
 
+    @Mock
+    private AuthenticatedUserProvider authenticatedUserProvider;
+
+    @Mock
+    private ImageStorageService imageStorageService;
+
     @InjectMocks
     private CompanyService companyService;
 
@@ -65,7 +73,7 @@ class CompanyServiceTest {
     }
 
     private CompanyUpdateDTO updateDTO() {
-        return new CompanyUpdateDTO("Loja Y", "Loja Y LTDA", "Joao", "novo@lojay.com", null, null, "senha123");
+        return new CompanyUpdateDTO("Loja Y", "Loja Y LTDA", "Joao", "novo@lojay.com", null, "senha123");
     }
 
     @Test
@@ -255,7 +263,7 @@ class CompanyServiceTest {
     @Test
     void update_shouldRequireCurrentPassword_whenEmailChanges() {
         CompanyUpdateDTO dto = new CompanyUpdateDTO("Loja Y", "Loja Y LTDA", "Joao",
-                "novo@lojay.com", null, null, null);
+                "novo@lojay.com", null, null);
         when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
         when(companyRepository.existsByEmailAndIdNot(dto.email(), companyId)).thenReturn(false);
 
@@ -285,7 +293,7 @@ class CompanyServiceTest {
     @Test
     void update_shouldNotTouchSupabase_whenEmailIsUnchanged() {
         CompanyUpdateDTO dto = new CompanyUpdateDTO("Loja Y", "Loja Y LTDA", "Joao",
-                "contato@lojax.com", null, null, null);
+                "contato@lojax.com", null, null);
         when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
         when(companyRepository.existsByEmailAndIdNot(dto.email(), companyId)).thenReturn(false);
         when(companyRepository.saveAndFlush(company)).thenReturn(company);
@@ -338,7 +346,7 @@ class CompanyServiceTest {
     @Test
     void update_shouldThrowIllegalArgumentException_whenEntityRejectsData() {
         CompanyUpdateDTO dto = new CompanyUpdateDTO("  ", "Loja Y LTDA", "Joao",
-                "novo@lojay.com", null, null, "senha123");
+                "novo@lojay.com", null, "senha123");
         when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
         when(companyRepository.existsByEmailAndIdNot(dto.email(), companyId)).thenReturn(false);
 
@@ -346,6 +354,22 @@ class CompanyServiceTest {
                 .isInstanceOf(IllegalArgumentException.class);
 
         verify(companyRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void update_shouldKeepLogo_whenCompanyIsUpdated() {
+        company.updateLogo("https://storage/companies/a.png", "companies/a.png");
+        CompanyUpdateDTO dto = updateDTO();
+        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
+        when(companyRepository.existsByEmailAndIdNot(dto.email(), companyId)).thenReturn(false);
+        when(companyRepository.saveAndFlush(company)).thenReturn(company);
+        when(companyMapper.toResponseDTO(company)).thenReturn(responseDTO);
+
+        companyService.update(companyId, dto);
+
+        assertThat(company.getPhotoUrl()).isEqualTo("https://storage/companies/a.png");
+        assertThat(company.getPhotoStorageKey()).isEqualTo("companies/a.png");
+        verifyNoInteractions(imageStorageService);
     }
 
     @Test
@@ -367,5 +391,172 @@ class CompanyServiceTest {
                 .hasMessageContaining(companyId.toString());
 
         verify(companyRepository, never()).save(any());
+    }
+
+    @Test
+    void updateLogo_shouldStoreUrlAndKey_whenFileIsValid() {
+        MockMultipartFile file = new MockMultipartFile("file", "logo.png", "image/png", new byte[] { 1 });
+        when(authenticatedUserProvider.id()).thenReturn(companyId);
+        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
+        when(imageStorageService.uploadForCompanyLogo(file, companyId)).thenReturn("companies/" + companyId + "/a.png");
+        when(imageStorageService.toPublicUrl("companies/" + companyId + "/a.png"))
+                .thenReturn("https://storage/companies/" + companyId + "/a.png");
+        when(companyRepository.saveAndFlush(company)).thenReturn(company);
+        when(companyMapper.toResponseDTO(company)).thenReturn(responseDTO);
+
+        CompanyResponseDTO result = companyService.updateLogo(companyId, file);
+
+        assertThat(result).isEqualTo(responseDTO);
+        assertThat(company.getPhotoStorageKey()).isEqualTo("companies/" + companyId + "/a.png");
+        assertThat(company.getPhotoUrl()).isEqualTo("https://storage/companies/" + companyId + "/a.png");
+        verify(companyRepository).saveAndFlush(company);
+        verify(imageStorageService, never()).delete(any());
+    }
+
+    @Test
+    void updateLogo_shouldDeletePreviousLogo_whenCompanyAlreadyHadLogo() {
+        MockMultipartFile file = new MockMultipartFile("file", "logo.png", "image/png", new byte[] { 1 });
+        company.updateLogo("https://storage/companies/antiga.png", "companies/antiga.png");
+        when(authenticatedUserProvider.id()).thenReturn(companyId);
+        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
+        when(imageStorageService.uploadForCompanyLogo(file, companyId)).thenReturn("companies/nova.png");
+        when(imageStorageService.toPublicUrl("companies/nova.png")).thenReturn("https://storage/companies/nova.png");
+        when(companyRepository.saveAndFlush(company)).thenReturn(company);
+        when(companyMapper.toResponseDTO(company)).thenReturn(responseDTO);
+
+        companyService.updateLogo(companyId, file);
+
+        verify(imageStorageService).delete("companies/antiga.png");
+        assertThat(company.getPhotoStorageKey()).isEqualTo("companies/nova.png");
+    }
+
+    @Test
+    void updateLogo_shouldNotDeleteAnything_whenLogoCameFromSignup() {
+        MockMultipartFile file = new MockMultipartFile("file", "logo.png", "image/png", new byte[] { 1 });
+        ReflectionTestUtils.setField(company, "photoUrl", "https://cdn.com/cadastro.png");
+        when(authenticatedUserProvider.id()).thenReturn(companyId);
+        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
+        when(imageStorageService.uploadForCompanyLogo(file, companyId)).thenReturn("companies/nova.png");
+        when(imageStorageService.toPublicUrl("companies/nova.png")).thenReturn("https://storage/companies/nova.png");
+        when(companyRepository.saveAndFlush(company)).thenReturn(company);
+        when(companyMapper.toResponseDTO(company)).thenReturn(responseDTO);
+
+        companyService.updateLogo(companyId, file);
+
+        assertThat(company.getPhotoUrl()).isEqualTo("https://storage/companies/nova.png");
+        verify(imageStorageService, never()).delete(any());
+    }
+
+    @Test
+    void updateLogo_shouldKeepPreviousLogoInStorage_whenSaveFails() {
+        MockMultipartFile file = new MockMultipartFile("file", "logo.png", "image/png", new byte[] { 1 });
+        company.updateLogo("https://storage/companies/antiga.png", "companies/antiga.png");
+        when(authenticatedUserProvider.id()).thenReturn(companyId);
+        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
+        when(imageStorageService.uploadForCompanyLogo(file, companyId)).thenReturn("companies/nova.png");
+        when(imageStorageService.toPublicUrl("companies/nova.png")).thenReturn("https://storage/companies/nova.png");
+        when(companyRepository.saveAndFlush(company)).thenThrow(new DataIntegrityViolationException("falha"));
+
+        assertThatThrownBy(() -> companyService.updateLogo(companyId, file))
+                .isInstanceOf(DataIntegrityViolationException.class);
+
+        verify(imageStorageService, never()).delete(any());
+    }
+
+    @Test
+    void updateLogo_shouldKeepCurrentLogo_whenUploadFails() {
+        MockMultipartFile file = new MockMultipartFile("file", "logo.png", "image/png", new byte[] { 1 });
+        company.updateLogo("https://storage/companies/antiga.png", "companies/antiga.png");
+        when(authenticatedUserProvider.id()).thenReturn(companyId);
+        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
+        when(imageStorageService.uploadForCompanyLogo(file, companyId))
+                .thenThrow(new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Falha ao armazenar a imagem. Tente novamente."));
+
+        assertThatThrownBy(() -> companyService.updateLogo(companyId, file))
+                .isInstanceOf(ResponseStatusException.class);
+
+        assertThat(company.getPhotoStorageKey()).isEqualTo("companies/antiga.png");
+        verify(companyRepository, never()).saveAndFlush(any());
+        verify(imageStorageService, never()).delete(any());
+    }
+
+    @Test
+    void updateLogo_shouldThrowForbidden_whenCompanyIsNotTheAuthenticatedOne() {
+        MockMultipartFile file = new MockMultipartFile("file", "logo.png", "image/png", new byte[] { 1 });
+        when(authenticatedUserProvider.id()).thenReturn(UUID.randomUUID());
+
+        assertThatThrownBy(() -> companyService.updateLogo(companyId, file))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode())
+                        .isEqualTo(HttpStatus.FORBIDDEN));
+
+        verifyNoInteractions(imageStorageService);
+        verify(companyRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void updateLogo_shouldThrowResourceNotFoundException_whenCompanyDoesNotExist() {
+        MockMultipartFile file = new MockMultipartFile("file", "logo.png", "image/png", new byte[] { 1 });
+        when(authenticatedUserProvider.id()).thenReturn(companyId);
+        when(companyRepository.findById(companyId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> companyService.updateLogo(companyId, file))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessageContaining(companyId.toString());
+
+        verifyNoInteractions(imageStorageService);
+    }
+
+    @Test
+    void removeLogo_shouldClearFieldsAndDeleteFromStorage_whenCompanyHasLogo() {
+        company.updateLogo("https://storage/companies/a.png", "companies/a.png");
+        when(authenticatedUserProvider.id()).thenReturn(companyId);
+        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
+
+        companyService.removeLogo(companyId);
+
+        assertThat(company.getPhotoUrl()).isNull();
+        assertThat(company.getPhotoStorageKey()).isNull();
+        verify(companyRepository).save(company);
+        verify(imageStorageService).delete("companies/a.png");
+    }
+
+    @Test
+    void removeLogo_shouldClearUrl_whenLogoCameFromSignup() {
+        ReflectionTestUtils.setField(company, "photoUrl", "https://cdn.com/cadastro.png");
+        when(authenticatedUserProvider.id()).thenReturn(companyId);
+        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
+
+        companyService.removeLogo(companyId);
+
+        assertThat(company.getPhotoUrl()).isNull();
+        verify(companyRepository).save(company);
+        verifyNoInteractions(imageStorageService);
+    }
+
+    @Test
+    void removeLogo_shouldThrowResourceNotFoundException_whenCompanyHasNoLogo() {
+        when(authenticatedUserProvider.id()).thenReturn(companyId);
+        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
+
+        assertThatThrownBy(() -> companyService.removeLogo(companyId))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessageContaining(companyId.toString());
+
+        verify(companyRepository, never()).save(any());
+        verifyNoInteractions(imageStorageService);
+    }
+
+    @Test
+    void removeLogo_shouldThrowForbidden_whenCompanyIsNotTheAuthenticatedOne() {
+        when(authenticatedUserProvider.id()).thenReturn(UUID.randomUUID());
+
+        assertThatThrownBy(() -> companyService.removeLogo(companyId))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode())
+                        .isEqualTo(HttpStatus.FORBIDDEN));
+
+        verify(companyRepository, never()).save(any());
+        verifyNoInteractions(imageStorageService);
     }
 }

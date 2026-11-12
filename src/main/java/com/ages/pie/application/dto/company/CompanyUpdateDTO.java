@@ -6,7 +6,6 @@ public record CompanyUpdateDTO(
     String responsiblePerson,
     String email,
     String website,
-    String photoUrl,
     String currentPassword
 ) {
 }
