@@ -16,11 +16,13 @@ supabase.storage.service-role-key=eyJ...
 supabase.storage.bucket=product-images
 
 # Bucket para imagens do guarda-roupa (padrão: wardrobe-items)
-# Criar o bucket em: Supabase Dashboard > Storage > New bucket > Name: wardrobe-items
 supabase.storage.wardrobe-bucket=wardrobe-items
 
 # Bucket para imagens dos looks (padrão: look-images)
 supabase.storage.look-bucket=look-images
+
+# Bucket para as logos das empresas (padrão: company-logos)
+supabase.storage.company-logo-bucket=company-logos
 
 # Supabase Auth (URL do projeto e publishable/anon key do ambiente)
 # Obter em: Project Settings > API Keys. Ver docs/auth/supabase.md
