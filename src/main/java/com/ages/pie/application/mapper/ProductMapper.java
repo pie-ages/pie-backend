@@ -70,6 +70,7 @@ public class ProductMapper {
             product.getImageUrl(),
             product.getPurchaseUrl(),
             product.getCompany() != null ? product.getCompany().getName() : null,
+            product.getCompany() != null ? product.getCompany().getPhotoUrl() : null,
             product.getStatus(),
             product.getStyles(),
             product.getSizes(),
