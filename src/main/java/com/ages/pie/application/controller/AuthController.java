@@ -2,8 +2,11 @@ package com.ages.pie.application.controller;
 
 import com.ages.pie.application.dto.LoginRequestDTO;
 import com.ages.pie.application.dto.LoginResponseDTO;
+import com.ages.pie.application.dto.RecoverPasswordRequestDTO;
 import com.ages.pie.application.dto.RefreshRequestDTO;
+import com.ages.pie.application.dto.UpdatePasswordRequestDTO;
 import com.ages.pie.application.dto.UserSummaryDTO;
+import com.ages.pie.application.dto.VerifyRecoveryRequestDTO;
 import com.ages.pie.application.service.AuthService;
 import com.ages.pie.infrastructure.security.AuthenticatedUserProvider;
 import jakarta.validation.Valid;
@@ -12,6 +15,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -46,6 +50,24 @@ public class AuthController {
     @PostMapping("/logout")
     public ResponseEntity<Void> logout(@AuthenticationPrincipal Jwt jwt) {
         authService.logout(jwt.getTokenValue());
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/recover")
+    public ResponseEntity<Void> recover(@Valid @RequestBody RecoverPasswordRequestDTO request) {
+        authService.recover(request.email());
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/recover/verify")
+    public LoginResponseDTO verifyRecovery(@Valid @RequestBody VerifyRecoveryRequestDTO request) {
+        return authService.verifyRecovery(request.email(), request.code());
+    }
+
+    @PutMapping("/password")
+    public ResponseEntity<Void> updatePassword(@AuthenticationPrincipal Jwt jwt,
+            @Valid @RequestBody UpdatePasswordRequestDTO request) {
+        authService.updatePassword(jwt.getTokenValue(), request.password());
         return ResponseEntity.noContent().build();
     }
 

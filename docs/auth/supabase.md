@@ -2,7 +2,7 @@
 
 O backend usa o Supabase Auth (e-mail e senha) e atua como:
 
-- **Proxy** para login, renovação e logout (`/auth/login`, `/auth/refresh`, `/auth/logout`), chamando a API GoTrue do projeto.
+- **Proxy** para login, renovação, logout e recuperação de senha (`/auth/login`, `/auth/refresh`, `/auth/logout`, `/auth/recover`, `/auth/recover/verify`, `/auth/password`), chamando a API GoTrue do projeto.
 - **Resource server**: todo endpoint fora da lista pública exige `Authorization: Bearer <access_token>`. O token é validado com:
   - assinatura assimétrica, via JWKS (`<SUPABASE_URL>/auth/v1/.well-known/jwks.json`);
   - `iss` (`<SUPABASE_URL>/auth/v1`), `aud` (`authenticated`) e `exp`/`nbf`.
@@ -18,11 +18,29 @@ O `sub` do token é o id da identidade no Supabase. O `auth.users` fica em outro
 | POST | `/api/auth/login` | pública | `{accessToken, refreshToken, expiresIn, tokenType, user}` |
 | POST | `/api/auth/refresh` | pública | mesmo corpo do login (o refresh token é rotacionado) |
 | POST | `/api/auth/logout` | Bearer | 204; revoga os refresh tokens da sessão |
+| POST | `/api/auth/recover` | pública | 204, mesmo para e-mail não cadastrado; envia o código de recuperação |
+| POST | `/api/auth/recover/verify` | pública | mesmo corpo do login |
+| PUT | `/api/auth/password` | Bearer | 204; troca a senha, só com a sessão da recuperação |
 | GET | `/api/auth/me` | Bearer | `UserSummaryDTO` |
 
-Erros: credenciais ou refresh inválidos → 401; e-mail não confirmado → 403; Supabase fora do ar → 503; token ausente ou inválido → 401; token válido sem cadastro local → 404.
+Erros: credenciais ou refresh inválidos → 401; e-mail não confirmado → 403; Supabase fora do ar → 503; token ausente ou inválido → 401; token válido sem cadastro local → 404; código de recuperação inválido ou expirado → 400; senha igual à atual ou fraca → 400; troca de senha fora da sessão de recuperação → 403; excesso de pedidos → 429.
 
 Logout: o access token continua válido até expirar (no máximo 1h), porque o JWT é stateless. A sessão não pode mais ser renovada.
+
+## Recuperação de senha
+
+A recuperação usa um código de 6 dígitos enviado por e-mail, sem link nem deep link:
+
+1. `POST /api/auth/recover` com `{email}`: o Supabase envia o código só se a conta existir.
+2. `POST /api/auth/recover/verify` com `{email, code}`: valida o código e devolve uma sessão.
+3. `PUT /api/auth/password` com `{password}` e o `accessToken` do passo 2: troca a senha.
+
+- O código vale por 1h e é de uso único. Um pedido novo invalida o anterior.
+- Entre dois pedidos para o mesmo e-mail é preciso esperar 60s; antes disso, a resposta é 429. Esse 429 só ocorre para e-mail cadastrado, então revela que a conta existe, como o 409 do cadastro.
+- Validar o código e trocar a senha são passos separados: senha igual ou fraca responde 400 e a sessão continua válida, então dá para tentar outra senha sem pedir um novo código.
+- A troca só aceita a sessão emitida pelo verify, identificada pelo claim `amr` com `method: "otp"`; o token de um login com senha recebe 403.
+- Trocar a senha encerra as outras sessões do usuário (o access token delas vale até expirar). A sessão da recuperação continua válida.
+- Clientes e empresas usam as mesmas rotas.
 
 ## Variáveis por ambiente
 
@@ -39,9 +57,11 @@ Faça em cada projeto Supabase:
 
 1. **Authentication → Sign In / Providers → Email**: habilitado.
    - **Confirm email**: **ligado em prod**. Em dev, desligue se o time preferir testar sem caixa de e-mail.
+   - **Email OTP Length**: `6`. O backend só aceita códigos de 6 dígitos.
+   - **Email OTP Expiration**: `3600`.
 2. **Authentication → URL Configuration**:
    - **Site URL**: a URL do front do ambiente.
-   - **Redirect URLs**: as URLs de confirmação de e-mail e de reset de senha do app (deep link do Expo e web).
+   - **Redirect URLs**: as URLs de confirmação de e-mail do app (deep link do Expo e web).
 3. **Project Settings → JWT Keys**:
    - Migre para **JWT Signing Keys** assimétricas (ECC P-256 / RS256).
    - O backend aceita ES256 e RS256 e **rejeita HS256**.

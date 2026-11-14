@@ -17,6 +17,7 @@ import com.ages.pie.application.config.SupabaseAuthProperties;
 import com.ages.pie.application.exception.AuthProviderUnavailableException;
 import com.ages.pie.application.exception.EmailNotConfirmedException;
 import com.ages.pie.application.exception.InvalidCredentialsException;
+import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpMethod;
@@ -24,6 +25,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.server.ResponseStatusException;
 
 class SupabaseAuthClientTest {
 
@@ -51,6 +53,21 @@ class SupabaseAuthClientTest {
 
     private static String errorJson(String code) {
         return "{\"code\":400,\"error_code\":\"" + code + "\",\"msg\":\"x\"}";
+    }
+
+    private void respondError(String path, HttpStatus status, String code) {
+        server.expect(requestTo(BASE + path))
+            .andRespond(withStatus(status).contentType(MediaType.APPLICATION_JSON).body(errorJson(code)));
+    }
+
+    private static void assertResponseStatus(ThrowingCallable call, HttpStatus status, String reason) {
+        assertThatThrownBy(call)
+            .isInstanceOf(ResponseStatusException.class)
+            .satisfies(error -> {
+                ResponseStatusException exception = (ResponseStatusException) error;
+                assertThat(exception.getStatusCode().value()).isEqualTo(status.value());
+                assertThat(exception.getReason()).isEqualTo(reason);
+            });
     }
 
     @Test
@@ -130,5 +147,87 @@ class SupabaseAuthClientTest {
 
         client.logout("acc");
         server.verify();
+    }
+
+    @Test
+    void recoverEnviaApikeyEEmail() {
+        server.expect(requestTo(BASE + "/recover"))
+            .andExpect(method(HttpMethod.POST))
+            .andExpect(header("apikey", "pub-key"))
+            .andExpect(content().json("{\"email\":\"ana@email.com\"}"))
+            .andRespond(withSuccess("{}", MediaType.APPLICATION_JSON));
+
+        client.recover("ana@email.com");
+        server.verify();
+    }
+
+    @Test
+    void verifyRecoveryEnviaTipoEmailECodigoERetornaSessao() {
+        UUID userId = UUID.randomUUID();
+        server.expect(requestTo(BASE + "/verify"))
+            .andExpect(method(HttpMethod.POST))
+            .andExpect(header("apikey", "pub-key"))
+            .andExpect(content().json("{\"type\":\"recovery\",\"email\":\"ana@email.com\",\"token\":\"123456\"}"))
+            .andRespond(withSuccess(sessionJson(userId), MediaType.APPLICATION_JSON));
+
+        SupabaseAuthClient.Session session = client.verifyRecovery("ana@email.com", "123456");
+
+        assertThat(session.accessToken()).isEqualTo("acc");
+        assertThat(session.refreshToken()).isEqualTo("ref");
+        assertThat(session.user().id()).isEqualTo(userId);
+        server.verify();
+    }
+
+    @Test
+    void updatePasswordEnviaBearerDoUsuarioENovaSenha() {
+        server.expect(requestTo(BASE + "/user"))
+            .andExpect(method(HttpMethod.PUT))
+            .andExpect(header("apikey", "pub-key"))
+            .andExpect(header("Authorization", "Bearer acc"))
+            .andExpect(content().json("{\"password\":\"nova-senha\"}"))
+            .andRespond(withSuccess("{}", MediaType.APPLICATION_JSON));
+
+        client.updatePassword("acc", "nova-senha");
+        server.verify();
+    }
+
+    @Test
+    void verifyRecoveryComCodigoInvalidoOuExpiradoLanca400() {
+        respondError("/verify", HttpStatus.FORBIDDEN, "otp_expired");
+
+        assertResponseStatus(() -> client.verifyRecovery("ana@email.com", "000000"),
+            HttpStatus.BAD_REQUEST, "Código inválido ou expirado");
+    }
+
+    @Test
+    void updatePasswordComSenhaIgualAAtualLanca400() {
+        respondError("/user", HttpStatus.UNPROCESSABLE_ENTITY, "same_password");
+
+        assertResponseStatus(() -> client.updatePassword("acc", "senha"),
+            HttpStatus.BAD_REQUEST, "A nova senha deve ser diferente da atual");
+    }
+
+    @Test
+    void updatePasswordComSenhaFracaLanca400() {
+        respondError("/user", HttpStatus.UNPROCESSABLE_ENTITY, "weak_password");
+
+        assertResponseStatus(() -> client.updatePassword("acc", "123"),
+            HttpStatus.BAD_REQUEST, "A senha não atende aos requisitos mínimos de segurança");
+    }
+
+    @Test
+    void recoverAntesDoIntervaloMinimoLanca429() {
+        respondError("/recover", HttpStatus.TOO_MANY_REQUESTS, "over_email_send_rate_limit");
+
+        assertResponseStatus(() -> client.recover("ana@email.com"),
+            HttpStatus.TOO_MANY_REQUESTS, "Aguarde um pouco antes de pedir um novo código");
+    }
+
+    @Test
+    void passwordGrantComExcessoDeTentativasLanca429() {
+        respondError("/token?grant_type=password", HttpStatus.TOO_MANY_REQUESTS, "over_request_rate_limit");
+
+        assertResponseStatus(() -> client.passwordGrant("ana@email.com", "senha"),
+            HttpStatus.TOO_MANY_REQUESTS, "Muitas tentativas. Aguarde um pouco e tente novamente");
     }
 }
