@@ -8,6 +8,7 @@ import com.ages.pie.application.exception.GlobalExceptionHandler;
 import com.ages.pie.application.service.ColorimetryService;
 import com.ages.pie.application.service.PreferenceService;
 import com.ages.pie.application.service.ProductService;
+import com.ages.pie.application.service.RecommendationService;
 import com.ages.pie.application.service.StyleIdentificationService;
 import com.ages.pie.application.service.UserService;
 import com.ages.pie.domain.enums.AccountSex;
@@ -55,6 +56,7 @@ class SexAndGenderControllerTest {
         );
         ProductController productController = new ProductController(
                 productService,
+                mock(RecommendationService.class),
                 mock(AuthenticatedUserProvider.class)
         );
 

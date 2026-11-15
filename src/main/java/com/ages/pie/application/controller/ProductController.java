@@ -6,7 +6,9 @@ import com.ages.pie.application.dto.product.ProductPublicDetailDTO;
 import com.ages.pie.application.dto.product.ProductRequestDTO;
 import com.ages.pie.application.dto.product.ProductResponseDTO;
 import com.ages.pie.application.dto.product.ProductUpdateDTO;
+import com.ages.pie.application.dto.RecommendedProductDTO;
 import com.ages.pie.application.service.ProductService;
+import com.ages.pie.application.service.RecommendationService;
 import com.ages.pie.domain.enums.ProductStatus;
 import com.ages.pie.infrastructure.security.AuthenticatedUserProvider;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -26,11 +28,14 @@ import java.util.UUID;
 public class ProductController {
 
     private final ProductService productService;
+    private final RecommendationService recommendationService;
     private final AuthenticatedUserProvider authenticatedUserProvider;
 
     public ProductController(ProductService productService,
+            RecommendationService recommendationService,
             AuthenticatedUserProvider authenticatedUserProvider) {
         this.productService = productService;
+        this.recommendationService = recommendationService;
         this.authenticatedUserProvider = authenticatedUserProvider;
     }
 
@@ -108,6 +113,17 @@ public class ProductController {
             return ResponseEntity.status(401).build();
         }
         return ResponseEntity.ok(productService.unpublish(id, effectiveCompanyId));
+    }
+
+    @GetMapping("/recommendations")
+    @SecurityRequirement(name = "bearerAuth")
+    public ResponseEntity<List<RecommendedProductDTO>> recommend(
+            @RequestParam(required = false) Integer limit) {
+        UUID userId = authenticatedUserProvider.id();
+        if (limit == null) {
+            return ResponseEntity.ok(recommendationService.recommendForUser(userId));
+        }
+        return ResponseEntity.ok(recommendationService.recommendForUser(userId, limit));
     }
 
     @DeleteMapping("/{id}")

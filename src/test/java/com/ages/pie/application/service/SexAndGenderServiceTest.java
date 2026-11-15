@@ -19,6 +19,7 @@ import com.ages.pie.infrastructure.repository.ProductRepository;
 import com.ages.pie.infrastructure.repository.UserRepository;
 import com.ages.pie.infrastructure.repository.WishlistItemRepository;
 import com.ages.pie.infrastructure.repository.WishlistRepository;
+import com.ages.pie.infrastructure.security.AuthenticatedUserProvider;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -71,7 +72,8 @@ class SexAndGenderServiceTest {
         authService = new AuthService(
                 mock(SupabaseAuthClient.class),
                 userRepository,
-                companyRepository
+                companyRepository,
+                mock(AuthenticatedUserProvider.class)
         );
         company = new Company(
                 UUID.randomUUID(), "Loja", "12345678000199", "Loja LTDA",

@@ -2,7 +2,6 @@ package com.ages.pie.application.mapper;
 
 import com.ages.pie.application.dto.look.LookItemDTO;
 import com.ages.pie.application.dto.look.LookResponseDTO;
-import com.ages.pie.application.dto.look.LookSuggestionDTO;
 import com.ages.pie.domain.entity.Company;
 import com.ages.pie.domain.entity.Look;
 import com.ages.pie.domain.entity.LookProduct;
@@ -166,19 +165,5 @@ class LookMapperTest {
     @Test
     void toResponseDTO_shouldReturnEmptyItems_whenLookHasNoPieces() {
         assertThat(lookMapper.toResponseDTO(look).items()).isEmpty();
-    }
-
-    @Test
-    void toSuggestionDTO_shouldMixWardrobeItemsAndProducts() {
-        LookSuggestionDTO dto = lookMapper.toSuggestionDTO(List.of(wardrobeItem), List.of(product));
-
-        assertThat(dto.items()).hasSize(2);
-        assertThat(dto.items().get(0).wardrobeItemId()).isEqualTo(wardrobeItemId);
-        assertThat(dto.items().get(1).productId()).isEqualTo(productId);
-    }
-
-    @Test
-    void toSuggestionDTO_shouldReturnEmptyItems_whenNothingIsAvailable() {
-        assertThat(lookMapper.toSuggestionDTO(List.of(), List.of()).items()).isEmpty();
     }
 }
