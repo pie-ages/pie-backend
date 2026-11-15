@@ -1,5 +1,6 @@
 package com.ages.pie.application.dto.product;
 
+import com.ages.pie.domain.enums.ProductGender;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
@@ -33,6 +34,8 @@ public record ProductRequestDTO(
     String purchaseUrl,
 
     @NotNull(message = "Empresa é obrigatória")
-    UUID companyId
+    UUID companyId,
+
+    ProductGender gender
 ) {
 }

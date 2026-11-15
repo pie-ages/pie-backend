@@ -69,6 +69,7 @@ public class ProductService {
         product.setDescription(requestDTO.description());
         product.setCategory(requestDTO.category());
         product.setColor(requestDTO.color());
+        product.setGender(requestDTO.gender());
         product.setPrice(requestDTO.price());
         product.setImageUrl(requestDTO.imageUrl());
         product.setPurchaseUrl(requestDTO.purchaseUrl());
