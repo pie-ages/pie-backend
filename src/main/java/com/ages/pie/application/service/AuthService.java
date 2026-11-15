@@ -11,8 +11,11 @@ import com.ages.pie.domain.entity.User;
 import com.ages.pie.infrastructure.auth.SupabaseAuthClient;
 import com.ages.pie.infrastructure.repository.CompanyRepository;
 import com.ages.pie.infrastructure.repository.UserRepository;
+import com.ages.pie.infrastructure.security.AuthenticatedUserProvider;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class AuthService {
@@ -20,12 +23,14 @@ public class AuthService {
     private final SupabaseAuthClient supabaseAuthClient;
     private final UserRepository userRepository;
     private final CompanyRepository companyRepository;
+    private final AuthenticatedUserProvider authenticatedUserProvider;
 
     public AuthService(SupabaseAuthClient supabaseAuthClient, UserRepository userRepository,
-            CompanyRepository companyRepository) {
+            CompanyRepository companyRepository, AuthenticatedUserProvider authenticatedUserProvider) {
         this.supabaseAuthClient = supabaseAuthClient;
         this.userRepository = userRepository;
         this.companyRepository = companyRepository;
+        this.authenticatedUserProvider = authenticatedUserProvider;
     }
 
     @Transactional(readOnly = true)
@@ -71,6 +76,20 @@ public class AuthService {
         supabaseAuthClient.logout(accessToken);
     }
 
+    public void recover(String email) {
+        supabaseAuthClient.recover(email);
+    }
+
+    @Transactional(readOnly = true)
+    public LoginResponseDTO verifyRecovery(String email, String code) {
+        return toResponse(supabaseAuthClient.verifyRecovery(email, code));
+    }
+
+    public void updatePassword(String accessToken, String password) {
+        requireRecoverySession();
+        supabaseAuthClient.updatePassword(accessToken, password);
+    }
+
     @Transactional(readOnly = true)
     public UserSummaryDTO findSummary(UUID userId) {
         return userRepository.findById(userId)
@@ -86,8 +105,15 @@ public class AuthService {
             .orElse(null);
     }
 
+    private void requireRecoverySession() {
+        if (!authenticatedUserProvider.isRecoverySession()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                "Troca de senha disponível apenas pela recuperação de acesso");
+        }
+    }
+
     private static UserSummaryDTO toSummary(User user) {
-        return new UserSummaryDTO(user.getId(), user.getName(), user.getEmail(), user.getPhotoUrl(), null, null);
+        return new UserSummaryDTO(user.getId(), user.getName(), user.getEmail(), user.getPhotoUrl(), null, null, user.getSex());
     }
 
     private static UserSummaryDTO toSummary(Company company) {
@@ -97,7 +123,8 @@ public class AuthService {
             company.getEmail(),
             company.getPhotoUrl(),
             company.getRole() != null ? company.getRole().name() : null,
-            company.getStatus() != null ? company.getStatus().name() : null
+            company.getStatus() != null ? company.getStatus().name() : null,
+            null
         );
     }
 

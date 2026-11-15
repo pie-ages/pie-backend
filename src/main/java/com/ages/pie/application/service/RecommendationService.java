@@ -3,6 +3,7 @@ package com.ages.pie.application.service;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
@@ -68,6 +69,32 @@ public class RecommendationService {
                 .limit(limit)
                 .map(RecommendationService::toDTO)
                 .toList();
+    }
+
+    /**
+     * Ids dos produtos compatíveis com o perfil do usuário, pelos mesmos critérios de
+     * {@link #recommendForUser(UUID)} (score &gt; 0). Retorna vazio quando o usuário não existe
+     * ou não tem estilos/cores suficientes para avaliar compatibilidade.
+     */
+    @Transactional(readOnly = true)
+    public Optional<Set<UUID>> findCompatibleProductIds(UUID userId) {
+        Optional<User> user = userRepository.findById(userId);
+        if (user.isEmpty()) {
+            return Optional.empty();
+        }
+        BodyProfile profile = bodyProfileRepository.findByCustomerId(userId).orElse(null);
+        Set<String> userStyleIds = collectUserStyleIds(user.get(), profile);
+        Set<String> favoriteColors = new HashSet<>(collectFavoriteColors(profile));
+        if (user.get().getFavoriteColors() != null) {
+            user.get().getFavoriteColors().forEach(c -> favoriteColors.add(c.getId()));
+        }
+        if (userStyleIds.isEmpty() && favoriteColors.isEmpty()) {
+            return Optional.empty();
+        }
+        return Optional.of(productRepository.findByActiveTrueAndStatus(ProductStatus.PUBLISHED).stream()
+                .filter(product -> scorer.score(userStyleIds, favoriteColors, product) > 0.0)
+                .map(Product::getId)
+                .collect(java.util.stream.Collectors.toSet()));
     }
 
     private Set<String> collectUserStyleIds(User user, BodyProfile profile) {

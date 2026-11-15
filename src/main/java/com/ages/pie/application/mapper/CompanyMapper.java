@@ -1,5 +1,6 @@
 package com.ages.pie.application.mapper;
 
+import com.ages.pie.application.dto.company.AdminRequestDTO;
 import com.ages.pie.application.dto.company.CompanyRequestDTO;
 import com.ages.pie.application.dto.company.CompanyResponseDTO;
 import com.ages.pie.domain.entity.Company;
@@ -22,6 +23,10 @@ public class CompanyMapper {
             dto.website(),
             dto.photoUrl()
         );
+    }
+
+    public Company toAdminEntity(AdminRequestDTO dto, UUID supabaseUserId) {
+        return Company.admin(dto.name(), dto.email(), supabaseUserId);
     }
 
     public CompanyResponseDTO toResponseDTO(Company company) {

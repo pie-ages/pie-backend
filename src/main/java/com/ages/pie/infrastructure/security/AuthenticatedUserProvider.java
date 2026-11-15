@@ -1,5 +1,7 @@
 package com.ages.pie.infrastructure.security;
 
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -49,6 +51,14 @@ public class AuthenticatedUserProvider {
             .flatMap(companyRepository::findBySupabaseUserId)
             .map(c -> c.getRole() == CompanyRole.ADMIN)
             .orElse(false);
+    }
+
+    public boolean isRecoverySession() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        return authentication instanceof JwtAuthenticationToken jwtAuthentication
+            && jwtAuthentication.getToken().getClaims().get("amr") instanceof List<?> amr
+            && amr.stream()
+                .anyMatch(entry -> entry instanceof Map<?, ?> claim && "otp".equals(claim.get("method")));
     }
 
     private Optional<UUID> subject() {

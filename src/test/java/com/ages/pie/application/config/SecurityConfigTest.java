@@ -4,6 +4,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -136,7 +137,7 @@ class SecurityConfigTest {
         User user = new User("Ana", "ana@email.com", supabaseUserId);
         ReflectionTestUtils.setField(user, "id", userId);
         when(userRepository.findBySupabaseUserId(supabaseUserId)).thenReturn(Optional.of(user));
-        when(authService.findSummary(userId)).thenReturn(new UserSummaryDTO(userId, "Ana", "ana@email.com", null, null, null));
+        when(authService.findSummary(userId)).thenReturn(new UserSummaryDTO(userId, "Ana", "ana@email.com", null, null, null, null));
 
         mockMvc.perform(get("/auth/me")
                 .header("Authorization", "Bearer " + sign(validClaims(supabaseUserId).build(), SIGNING_KEY)))
@@ -191,5 +192,32 @@ class SecurityConfigTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"email\":\"ana@email.com\",\"password\":\"senha\"}"))
             .andExpect(status().isOk());
+    }
+
+    @Test
+    void recoverEPublico() throws Exception {
+        mockMvc.perform(post("/auth/recover")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"email\":\"ana@email.com\"}"))
+            .andExpect(status().isNoContent());
+    }
+
+    @Test
+    void verifyRecoveryEPublico() throws Exception {
+        when(authService.verifyRecovery("ana@email.com", "123456"))
+            .thenReturn(new LoginResponseDTO("acc", "ref", 3600, "bearer", null));
+
+        mockMvc.perform(post("/auth/recover/verify")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"email\":\"ana@email.com\",\"code\":\"123456\"}"))
+            .andExpect(status().isOk());
+    }
+
+    @Test
+    void updatePasswordExigeToken() throws Exception {
+        mockMvc.perform(put("/auth/password")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"password\":\"nova-senha\"}"))
+            .andExpect(status().isUnauthorized());
     }
 }

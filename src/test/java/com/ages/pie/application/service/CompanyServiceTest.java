@@ -1,5 +1,6 @@
 package com.ages.pie.application.service;
 
+import com.ages.pie.application.dto.company.AdminRequestDTO;
 import com.ages.pie.application.dto.company.CompanyRequestDTO;
 import com.ages.pie.application.dto.company.CompanyResponseDTO;
 import com.ages.pie.application.dto.company.CompanyUpdateDTO;
@@ -184,6 +185,73 @@ class CompanyServiceTest {
 
         verify(companyRepository, never()).saveAndFlush(any());
         verify(supabaseAdminClient).deleteUser(any());
+    }
+
+    private AdminRequestDTO adminRequestDTO() {
+        return new AdminRequestDTO("Admin Novo", "admin@pie.com", "senha123");
+    }
+
+    @Test
+    void createAdmin_shouldCreateAdmin_whenCallerIsAdmin() {
+        AdminRequestDTO dto = adminRequestDTO();
+        UUID supabaseUserId = UUID.randomUUID();
+        Company admin = Company.admin(dto.name(), dto.email(), supabaseUserId);
+        when(authenticatedUserProvider.isAdmin()).thenReturn(true);
+        when(companyRepository.existsByEmail(dto.email())).thenReturn(false);
+        when(supabaseAdminClient.createUser(dto.email(), dto.password())).thenReturn(supabaseUserId);
+        when(companyMapper.toAdminEntity(dto, supabaseUserId)).thenReturn(admin);
+        when(companyRepository.saveAndFlush(admin)).thenReturn(admin);
+        when(companyMapper.toResponseDTO(admin)).thenReturn(responseDTO);
+
+        CompanyResponseDTO result = companyService.createAdmin(dto);
+
+        assertThat(result).isEqualTo(responseDTO);
+        verify(companyRepository).saveAndFlush(admin);
+    }
+
+    @Test
+    void createAdmin_shouldThrowForbidden_whenCallerIsNotAdmin() {
+        when(authenticatedUserProvider.isAdmin()).thenReturn(false);
+
+        assertThatThrownBy(() -> companyService.createAdmin(adminRequestDTO()))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(e -> assertThat(((ResponseStatusException) e).getStatusCode())
+                        .isEqualTo(HttpStatus.FORBIDDEN));
+
+        verify(supabaseAdminClient, never()).createUser(any(), any());
+        verify(companyRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void createAdmin_shouldThrowBusinessException_whenEmailAlreadyExists() {
+        AdminRequestDTO dto = adminRequestDTO();
+        when(authenticatedUserProvider.isAdmin()).thenReturn(true);
+        when(companyRepository.existsByEmail(dto.email())).thenReturn(true);
+
+        assertThatThrownBy(() -> companyService.createAdmin(dto))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining(dto.email());
+
+        verify(supabaseAdminClient, never()).createUser(any(), any());
+        verify(companyRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void createAdmin_shouldRemoveSupabaseUser_whenLocalSaveFails() {
+        AdminRequestDTO dto = adminRequestDTO();
+        UUID supabaseUserId = UUID.randomUUID();
+        Company admin = Company.admin(dto.name(), dto.email(), supabaseUserId);
+        when(authenticatedUserProvider.isAdmin()).thenReturn(true);
+        when(companyRepository.existsByEmail(dto.email())).thenReturn(false);
+        when(supabaseAdminClient.createUser(dto.email(), dto.password())).thenReturn(supabaseUserId);
+        when(companyMapper.toAdminEntity(dto, supabaseUserId)).thenReturn(admin);
+        when(companyRepository.saveAndFlush(admin))
+                .thenThrow(new DataIntegrityViolationException("email duplicado"));
+
+        assertThatThrownBy(() -> companyService.createAdmin(dto))
+                .isInstanceOf(DataIntegrityViolationException.class);
+
+        verify(supabaseAdminClient).deleteUser(supabaseUserId);
     }
 
     @Test

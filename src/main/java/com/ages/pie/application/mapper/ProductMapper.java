@@ -43,7 +43,8 @@ public class ProductMapper {
             product.getStyles(),
             product.getSizes(),
             product.getMaterials(),
-            images
+            images,
+            product.getGender()
         );
     }
 
@@ -52,6 +53,7 @@ public class ProductMapper {
         if (dto.description() != null) product.setDescription(dto.description());
         if (dto.category() != null) product.setCategory(dto.category());
         if (dto.color() != null) product.setColor(dto.color());
+        if (dto.gender() != null) product.setGender(dto.gender());
         if (dto.styles() != null) product.setStyles(dto.styles());
         if (dto.materials() != null) product.setMaterials(dto.materials());
         if (dto.sizes() != null) product.setSizes(dto.sizes());
@@ -73,7 +75,8 @@ public class ProductMapper {
             product.getStatus(),
             product.getStyles(),
             product.getSizes(),
-            product.getMaterials()
+            product.getMaterials(),
+            product.getGender()
         );
     }
 
@@ -104,7 +107,8 @@ public class ProductMapper {
             product.getMaterials(),
             available,
             images,
-            inWishlist
+            inWishlist,
+            product.getGender()
         );
     }
 

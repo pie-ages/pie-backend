@@ -8,6 +8,7 @@ import java.util.UUID;
 import com.ages.pie.domain.enums.ProductColor;
 import com.ages.pie.domain.enums.ProductStyle;
 import com.ages.pie.domain.enums.Style;
+import com.ages.pie.domain.enums.AccountSex;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -41,6 +42,10 @@ public class User extends AuditableEntity {
 
     @Column(name = "photo_url")
     private String photoUrl;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "sex", length = 30)
+    private AccountSex sex;
 
     @JdbcTypeCode(SqlTypes.ARRAY)
     @Enumerated(EnumType.STRING)
@@ -135,6 +140,16 @@ public class User extends AuditableEntity {
 
     public String getPhotoUrl() {
         return photoUrl;
+    }
+
+    public AccountSex getSex() {
+        return sex;
+    }
+
+    public void updateSex(AccountSex sex) {
+        if (sex != null) {
+            this.sex = sex;
+        }
     }
 
     public UUID getSupabaseUserId() {
