@@ -20,9 +20,10 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.Iterator;
-import java.util.Locale;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 /**
  * Classifies the user's seasonal coloring from a face photo. The photo is only held in memory for the
@@ -37,6 +38,12 @@ public class ColorimetryService {
     static final long MAX_SOURCE_PIXELS = 50_000_000L;
     // Some Android pickers report JPEGs with the non-standard "image/jpg" type.
     private static final Set<String> FORMATS = Set.of("image/jpeg", "image/jpg", "image/png");
+    private static final int MAX_DEPTH_RATING = 5;
+    private static final int MAX_LEANING_RATING = 4;
+    private static final int LIGHT_MAX_DEPTH_SUM = 7;
+    private static final int DEEP_MIN_DEPTH_SUM = 11;
+    private static final int WARM_MIN_UNDERTONE = 3;
+    private static final int BRIGHT_MIN_CONTRAST = 3;
 
     private final BedrockImageAnalysisClient client;
     private final SeasonCatalog seasonCatalog;
@@ -65,22 +72,42 @@ public class ColorimetryService {
         if (result == null) {
             throw invalidResponse();
         }
-        if (Boolean.FALSE.equals(result.face())
-                || (result.temperature() == null && result.depth() == null && result.chroma() == null)) {
+        if (Boolean.FALSE.equals(result.face()) || hasNoRatings(result)) {
             throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
                     "Não identificamos um rosto na foto. Tire outra foto de frente, com o rosto visível.");
         }
-        Season season = seasonCatalog.findByAxes(
-                normalize(result.temperature()), normalize(result.depth()), normalize(result.chroma()));
-        if (season == null) {
-            throw invalidResponse();
-        }
+        Season season = seasonCatalog.findByAxes(temperature(result), depth(result), chroma(result));
         return preferenceService.saveSeason(userId, season);
     }
 
-    // The model may vary casing or pad values even at temperature 0; the catalog keys are lowercase.
-    private static String normalize(String axis) {
-        return axis == null ? null : axis.trim().toLowerCase(Locale.ROOT);
+    private static boolean hasNoRatings(ColorimetryAnalysisDTO result) {
+        return Stream.of(result.skinDepth(), result.hairDepth(), result.eyeDepth(), result.undertone(), result.contrast())
+                .allMatch(Objects::isNull);
+    }
+
+    private String temperature(ColorimetryAnalysisDTO result) {
+        return rating(result.undertone(), MAX_LEANING_RATING) >= WARM_MIN_UNDERTONE ? "warm" : "cool";
+    }
+
+    private String depth(ColorimetryAnalysisDTO result) {
+        int sum = rating(result.skinDepth(), MAX_DEPTH_RATING)
+                + rating(result.hairDepth(), MAX_DEPTH_RATING)
+                + rating(result.eyeDepth(), MAX_DEPTH_RATING);
+        if (sum <= LIGHT_MAX_DEPTH_SUM) {
+            return "light";
+        }
+        return sum >= DEEP_MIN_DEPTH_SUM ? "deep" : "medium";
+    }
+
+    private String chroma(ColorimetryAnalysisDTO result) {
+        return rating(result.contrast(), MAX_LEANING_RATING) >= BRIGHT_MIN_CONTRAST ? "bright" : "soft";
+    }
+
+    private int rating(Integer value, int max) {
+        if (value == null || value < 1 || value > max) {
+            throw invalidResponse();
+        }
+        return value;
     }
 
     private byte[] downscale(MultipartFile file) {
