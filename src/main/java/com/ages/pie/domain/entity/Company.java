@@ -76,6 +76,17 @@ public class Company extends AuditableEntity {
         this.photoUrl = photoUrl;
     }
 
+    public static Company admin(String name, String email, UUID supabaseUserId) {
+        Company admin = new Company();
+        admin.name = admin.requireText(name, "Nome é obrigatório");
+        admin.email = admin.requireEmail(email);
+        admin.supabaseUserId = Objects.requireNonNull(supabaseUserId, "Identificador do Supabase é obrigatório");
+        admin.role = CompanyRole.ADMIN;
+        admin.status = CompanyStatus.ACTIVE;
+        admin.active = true;
+        return admin;
+    }
+
     public void update(String name, String socialReason, String responsiblePerson,
             String email, String website, String photoUrl) {
         this.name = requireText(name, "Nome é obrigatório");

@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
+import com.ages.pie.application.dto.company.AdminRequestDTO;
 import com.ages.pie.application.dto.company.CompanyRequestDTO;
 import com.ages.pie.application.dto.company.CompanyResponseDTO;
 import com.ages.pie.application.dto.company.CompanyUpdateDTO;
@@ -57,6 +58,24 @@ public class CompanyService {
         try {
             Company company = companyMapper.toEntity(dto, supabaseUserId);
             return companyMapper.toResponseDTO(companyRepository.saveAndFlush(company));
+        } catch (RuntimeException e) {
+            rollbackSupabaseUser(supabaseUserId, dto.email());
+            throw e;
+        }
+    }
+
+    @Transactional
+    public CompanyResponseDTO createAdmin(AdminRequestDTO dto) {
+        requireAdmin();
+        if (companyRepository.existsByEmail(dto.email())) {
+            throw new BusinessException("Email já cadastrado: " + dto.email());
+        }
+
+        UUID supabaseUserId = supabaseAdminClient.createUser(dto.email(), dto.password());
+
+        try {
+            Company admin = companyMapper.toAdminEntity(dto, supabaseUserId);
+            return companyMapper.toResponseDTO(companyRepository.saveAndFlush(admin));
         } catch (RuntimeException e) {
             rollbackSupabaseUser(supabaseUserId, dto.email());
             throw e;
