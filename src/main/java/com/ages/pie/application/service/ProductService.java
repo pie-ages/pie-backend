@@ -9,14 +9,18 @@ import com.ages.pie.application.dto.product.ProductUpdateDTO;
 import com.ages.pie.application.mapper.ProductMapper;
 import com.ages.pie.domain.entity.Company;
 import com.ages.pie.domain.entity.Product;
+import com.ages.pie.domain.entity.User;
 import com.ages.pie.domain.enums.ProductCategory;
 import com.ages.pie.domain.enums.ProductColor;
+import com.ages.pie.domain.enums.ProductGender;
 import com.ages.pie.domain.enums.ProductMaterial;
 import com.ages.pie.domain.enums.ProductSize;
 import com.ages.pie.domain.enums.ProductStatus;
 import com.ages.pie.domain.enums.ProductStyle;
+import com.ages.pie.domain.service.ProductColorMapper;
 import com.ages.pie.infrastructure.repository.CompanyRepository;
 import com.ages.pie.infrastructure.repository.ProductRepository;
+import com.ages.pie.infrastructure.repository.UserRepository;
 import com.ages.pie.infrastructure.repository.WishlistItemRepository;
 import com.ages.pie.infrastructure.repository.WishlistRepository;
 import org.slf4j.Logger;
@@ -28,7 +32,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -37,22 +44,34 @@ public class ProductService {
 
     private static final Logger logger = LoggerFactory.getLogger(ProductService.class);
 
+    static final String IGNORED_COLORIMETRY = "colorimetry";
+    static final String IGNORED_MATCHES_PROFILE = "matchesProfile";
+
     private final ProductRepository productRepository;
     private final CompanyRepository companyRepository;
     private final ProductMapper productMapper;
     private final WishlistRepository wishlistRepository;
     private final WishlistItemRepository wishlistItemRepository;
+    private final UserRepository userRepository;
+    private final RecommendationService recommendationService;
+    private final PreferenceService preferenceService;
 
     public ProductService(ProductRepository productRepository,
             CompanyRepository companyRepository,
             ProductMapper productMapper,
             WishlistRepository wishlistRepository,
-            WishlistItemRepository wishlistItemRepository) {
+            WishlistItemRepository wishlistItemRepository,
+            UserRepository userRepository,
+            RecommendationService recommendationService,
+            PreferenceService preferenceService) {
         this.productRepository = productRepository;
         this.companyRepository = companyRepository;
         this.productMapper = productMapper;
         this.wishlistRepository = wishlistRepository;
         this.wishlistItemRepository = wishlistItemRepository;
+        this.userRepository = userRepository;
+        this.recommendationService = recommendationService;
+        this.preferenceService = preferenceService;
     }
 
     @Transactional
@@ -88,17 +107,106 @@ public class ProductService {
 
     @Transactional(readOnly = true)
     public ProductCatalogPageDTO findCatalog(String search, CatalogFiltersDTO filters, Pageable pageable) {
+        return findCatalog(search, filters, pageable, Optional.empty());
+    }
+
+    /**
+     * Busca o catálogo aplicando os filtros comuns e, quando solicitados, os filtros de perfil
+     * (colorimetria e "combinam com você"). Filtros de perfil sem dados suficientes do usuário
+     * não são aplicados e são reportados em {@code ignoredFilters}.
+     */
+    @Transactional(readOnly = true)
+    public ProductCatalogPageDTO findCatalog(String search, CatalogFiltersDTO filters, Pageable pageable,
+            Optional<UUID> customerId) {
         validateCatalogFilters(filters);
         String normalizedSearch = normalize(search);
+
+        List<String> ignored = new ArrayList<>();
+        List<String> colors = filters.colors();
+        UUID[] compatibleIds = null;
+        boolean noMatch = false;
+
+        if (filters.colorimetry()) {
+            List<String> profileColors = resolveColorimetryColors(customerId);
+            if (profileColors.isEmpty()) {
+                ignored.add(IGNORED_COLORIMETRY);
+            } else {
+                colors = combine(colors, profileColors);
+                noMatch = colors.isEmpty();
+            }
+        }
+        if (filters.matchesProfile()) {
+            Optional<Set<UUID>> compatible = customerId.flatMap(recommendationService::findCompatibleProductIds);
+            if (compatible.isEmpty()) {
+                ignored.add(IGNORED_MATCHES_PROFILE);
+            } else if (compatible.get().isEmpty()) {
+                noMatch = true;
+            } else {
+                compatibleIds = compatible.get().toArray(new UUID[0]);
+            }
+        }
+
+        if (noMatch) {
+            return new ProductCatalogPageDTO(List.of(), 0, pageable.getPageNumber(), pageable.getPageSize(), ignored);
+        }
+
         Page<Product> page = productRepository.findCatalog(
                 normalizedSearch,
                 toArrayOrNull(filters.styles()),
                 toArrayOrNull(filters.categories()),
-                toArrayOrNull(filters.colors()),
+                toArrayOrNull(colors),
                 toUuidArrayOrNull(filters.companies()),
                 toArrayOrNull(filters.materials()),
+                toGenderArrayOrNull(filters.genders()),
+                compatibleIds,
                 pageable);
-        return productMapper.toCatalogPageDTO(page);
+        return productMapper.toCatalogPageDTO(page).withIgnoredFilters(ignored);
+    }
+
+    /** Sem filtro explícito usa o do perfil; com ambos, exige que atendam aos dois (interseção). */
+    private List<String> combine(List<String> explicit, List<String> fromProfile) {
+        if (explicit == null || explicit.isEmpty()) {
+            return fromProfile;
+        }
+        return explicit.stream().filter(e -> fromProfile.stream().anyMatch(e::equalsIgnoreCase)).toList();
+    }
+
+    private List<String> resolveColorimetryColors(Optional<UUID> customerId) {
+        if (customerId.isEmpty()) {
+            return List.of();
+        }
+        UUID userId = customerId.get();
+        Optional<User> userOpt = userRepository.findById(userId);
+        if (userOpt.isEmpty()) {
+            return List.of();
+        }
+        Set<String> resolved = new LinkedHashSet<>();
+        List<ProductColor> favoriteColors = userOpt.get().getFavoriteColors();
+        if (favoriteColors != null) {
+            favoriteColors.stream().map(ProductColor::getId).forEach(resolved::add);
+        }
+        if (preferenceService != null) {
+            try {
+                var prefs = preferenceService.getPreferences(userId);
+                if (prefs != null && prefs.highlightColors() != null) {
+                    for (String hex : prefs.highlightColors()) {
+                        if (hex != null && hex.matches("^#[0-9A-Fa-f]{6}$")) {
+                            resolved.add(ProductColorMapper.fromHex(hex).getId());
+                        }
+                    }
+                }
+            } catch (RuntimeException ignored) {
+                // Caso o perfil ainda não exista ou falhe ao buscar estação, mantém apenas favoriteColors
+            }
+        }
+        return List.copyOf(resolved);
+    }
+
+    private String[] toGenderArrayOrNull(List<String> genders) {
+        if (genders == null || genders.isEmpty()) {
+            return null;
+        }
+        return genders.stream().map(g -> g.trim().toUpperCase()).toArray(String[]::new);
     }
 
     @Transactional(readOnly = true)
@@ -279,6 +387,22 @@ public class ProductService {
                         "Material(is) inválido(s): " + invalid);
             }
         }
+        if (filters.genders() != null) {
+            List<String> invalid = filters.genders().stream()
+                    .filter(g -> !isValidGender(g)).toList();
+            if (!invalid.isEmpty()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Gênero(s) inválido(s): " + invalid);
+            }
+        }
+    }
+
+    private boolean isValidGender(String value) {
+        if (value == null || value.isBlank()) return false;
+        for (ProductGender g : ProductGender.values()) {
+            if (g.name().equalsIgnoreCase(value.trim())) return true;
+        }
+        return false;
     }
 
     private String[] toArrayOrNull(List<String> list) {
