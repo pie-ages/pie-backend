@@ -9,6 +9,7 @@ import com.ages.pie.application.dto.company.CompanyUpdateDTO;
 import com.ages.pie.application.dto.company.UpdateStatusDTO;
 import com.ages.pie.application.service.CompanyService;
 import com.ages.pie.domain.enums.CompanyStatus;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -22,6 +23,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/companies")
@@ -69,6 +71,20 @@ public class CompanyController {
             @PathVariable UUID id,
             @Valid @RequestBody UpdateStatusDTO dto) {
         return ResponseEntity.ok(companyService.updateStatus(id, dto));
+    }
+
+    @PostMapping(path = "/{id}/logo", consumes = "multipart/form-data")
+    @SecurityRequirement(name = "bearerAuth")
+    public ResponseEntity<CompanyResponseDTO> updateLogo(@PathVariable UUID id,
+            @RequestParam("file") MultipartFile file) {
+        return ResponseEntity.ok(companyService.updateLogo(id, file));
+    }
+
+    @DeleteMapping("/{id}/logo")
+    @SecurityRequirement(name = "bearerAuth")
+    public ResponseEntity<Void> removeLogo(@PathVariable UUID id) {
+        companyService.removeLogo(id);
+        return ResponseEntity.noContent().build();
     }
 
     @DeleteMapping("/{id}")

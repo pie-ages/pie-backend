@@ -45,7 +45,7 @@ class SignupControllerTest {
     @Test
     void cadastroDeClienteNaoExigeToken() throws Exception {
         when(userService.create(any())).thenReturn(
-                new UserResponseDTO(UUID.randomUUID(), "Ana", "ana@email.com", null, null, null));
+                new UserResponseDTO(UUID.randomUUID(), "Ana", "ana@email.com", null, null, null, null));
 
         mockMvc.perform(post("/users")
                         .contentType(MediaType.APPLICATION_JSON)

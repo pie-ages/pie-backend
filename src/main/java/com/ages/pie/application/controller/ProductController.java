@@ -53,9 +53,14 @@ public class ProductController {
             @RequestParam(required = false) List<String> colors,
             @RequestParam(required = false) List<UUID> companies,
             @RequestParam(required = false) List<String> materials,
+            @RequestParam(required = false) List<String> genders,
+            @RequestParam(required = false, defaultValue = "false") boolean colorimetry,
+            @RequestParam(required = false, defaultValue = "false") boolean matchesProfile,
             @ParameterObject @PageableDefault(size = 20, sort = "name") Pageable pageable) {
-        CatalogFiltersDTO filters = new CatalogFiltersDTO(styles, categories, colors, companies, materials);
-        return ResponseEntity.ok(productService.findCatalog(search, filters, pageable));
+        CatalogFiltersDTO filters = new CatalogFiltersDTO(styles, categories, colors, companies, materials,
+                genders, colorimetry, matchesProfile);
+        return ResponseEntity.ok(productService.findCatalog(search, filters, pageable,
+                authenticatedUserProvider.optionalId()));
     }
 
     @GetMapping("/{id}/public")

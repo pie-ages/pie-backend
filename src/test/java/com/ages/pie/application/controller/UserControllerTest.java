@@ -62,7 +62,7 @@ class UserControllerTest {
         OffsetDateTime createdAt = OffsetDateTime.parse("2026-01-10T12:00:00Z");
         when(authProvider.id()).thenReturn(userId);
         when(userService.findById(userId)).thenReturn(new UserResponseDTO(
-                userId, "Ana", "ana@pie.com", "https://cdn/ana.png", createdAt, createdAt));
+                userId, "Ana", "ana@pie.com", "https://cdn/ana.png", createdAt, createdAt, null));
 
         mockMvc.perform(get("/users/me"))
                 .andExpect(status().isOk())
@@ -113,7 +113,7 @@ class UserControllerTest {
     void findById_shouldStillResolveUuidPath() throws Exception {
         UUID otherId = UUID.randomUUID();
         when(userService.findById(otherId)).thenReturn(new UserResponseDTO(
-                otherId, "Bia", "bia@pie.com", null, null, null));
+                otherId, "Bia", "bia@pie.com", null, null, null, null));
 
         mockMvc.perform(get("/users/{id}", otherId))
                 .andExpect(status().isOk())

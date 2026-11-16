@@ -27,6 +27,8 @@ public interface ProductRepository extends JpaRepository<Product, UUID> {
               AND (:#{#colors == null} = true OR p.color IN :colors)
               AND (:#{#companyIds == null} = true OR p.company.id IN :companyIds)
               AND (:#{#materials == null} = true OR array_overlaps(p.materials, :materials) = true)
+              AND (:#{#genders == null} = true OR cast(p.gender as string) IN :genders)
+              AND (:#{#productIds == null} = true OR p.id IN :productIds)
 """,
             countQuery = """
             SELECT COUNT(p) FROM Product p
@@ -41,6 +43,8 @@ public interface ProductRepository extends JpaRepository<Product, UUID> {
               AND (:#{#colors == null} = true OR p.color IN :colors)
               AND (:#{#companyIds == null} = true OR p.company.id IN :companyIds)
               AND (:#{#materials == null} = true OR array_overlaps(p.materials, :materials) = true)
+              AND (:#{#genders == null} = true OR cast(p.gender as string) IN :genders)
+              AND (:#{#productIds == null} = true OR p.id IN :productIds)
 """)
     Page<Product> findCatalog(
             @Param("search") String search,
@@ -49,6 +53,8 @@ public interface ProductRepository extends JpaRepository<Product, UUID> {
             @Param("colors") String[] colors,
             @Param("companyIds") UUID[] companyIds,
             @Param("materials") String[] materials,
+            @Param("genders") String[] genders,
+            @Param("productIds") UUID[] productIds,
             Pageable pageable);
 
     @Query(value = """

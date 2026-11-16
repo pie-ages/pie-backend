@@ -43,6 +43,7 @@ public class UserService {
 
         try {
             User user = new User(dto.name(), dto.email(), supabaseUserId);
+            user.updateSex(dto.sex());
             return userMapper.toResponseDTO(userRepository.saveAndFlush(user));
         } catch (RuntimeException e) {
             rollbackSupabaseUser(supabaseUserId, dto.email());
@@ -78,8 +79,9 @@ public class UserService {
     public UserResponseDTO update(UUID id, UserUpdateDTO dto) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado: " + id));
-
+    
         user.update(dto.name(), dto.photoUrl());
+            user.updateSex(dto.sex());
         return userMapper.toResponseDTO(userRepository.save(user));
     }
 
