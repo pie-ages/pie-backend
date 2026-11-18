@@ -2,7 +2,7 @@
 
 O backend usa o Supabase Auth (e-mail e senha) e atua como:
 
-- **Proxy** para login, renovação e logout (`/auth/login`, `/auth/refresh`, `/auth/logout`), chamando a API GoTrue do projeto.
+- **Proxy** para login, renovação, logout e recuperação de senha (`/auth/login`, `/auth/refresh`, `/auth/logout`, `/auth/recover`, `/auth/recover/verify`, `/auth/password`), chamando a API GoTrue do projeto.
 - **Resource server**: todo endpoint fora da lista pública exige `Authorization: Bearer <access_token>`. O token é validado com:
   - assinatura assimétrica, via JWKS (`<SUPABASE_URL>/auth/v1/.well-known/jwks.json`);
   - `iss` (`<SUPABASE_URL>/auth/v1`), `aud` (`authenticated`) e `exp`/`nbf`.
@@ -18,11 +18,29 @@ O `sub` do token é o id da identidade no Supabase. O `auth.users` fica em outro
 | POST | `/api/auth/login` | pública | `{accessToken, refreshToken, expiresIn, tokenType, user}` |
 | POST | `/api/auth/refresh` | pública | mesmo corpo do login (o refresh token é rotacionado) |
 | POST | `/api/auth/logout` | Bearer | 204; revoga os refresh tokens da sessão |
+| POST | `/api/auth/recover` | pública | 204, mesmo para e-mail não cadastrado; envia o código de recuperação |
+| POST | `/api/auth/recover/verify` | pública | mesmo corpo do login |
+| PUT | `/api/auth/password` | Bearer | 204; troca a senha, só com a sessão da recuperação |
 | GET | `/api/auth/me` | Bearer | `UserSummaryDTO` |
 
-Erros: credenciais ou refresh inválidos → 401; e-mail não confirmado → 403; Supabase fora do ar → 503; token ausente ou inválido → 401; token válido sem cadastro local → 404.
+Erros: credenciais ou refresh inválidos → 401; e-mail não confirmado → 403; Supabase fora do ar → 503; token ausente ou inválido → 401; token válido sem cadastro local → 404; código de recuperação inválido ou expirado → 400; senha igual à atual ou fraca → 400; troca de senha fora da sessão de recuperação → 403; excesso de pedidos → 429.
 
 Logout: o access token continua válido até expirar (no máximo 1h), porque o JWT é stateless. A sessão não pode mais ser renovada.
+
+## Recuperação de senha
+
+A recuperação usa um código de 6 dígitos enviado por e-mail, sem link nem deep link:
+
+1. `POST /api/auth/recover` com `{email}`: o Supabase envia o código só se a conta existir.
+2. `POST /api/auth/recover/verify` com `{email, code}`: valida o código e devolve uma sessão.
+3. `PUT /api/auth/password` com `{password}` e o `accessToken` do passo 2: troca a senha.
+
+- O código vale por 1h e é de uso único. Um pedido novo invalida o anterior.
+- Entre dois pedidos para o mesmo e-mail é preciso esperar 60s; antes disso, a resposta é 429. Esse 429 só ocorre para e-mail cadastrado, então revela que a conta existe, como o 409 do cadastro.
+- Validar o código e trocar a senha são passos separados: senha igual ou fraca responde 400 e a sessão continua válida, então dá para tentar outra senha sem pedir um novo código.
+- A troca só aceita a sessão emitida pelo verify, identificada pelo claim `amr` com `method: "otp"`; o token de um login com senha recebe 403.
+- Trocar a senha encerra as outras sessões do usuário (o access token delas vale até expirar). A sessão da recuperação continua válida.
+- Clientes e empresas usam as mesmas rotas.
 
 ## Variáveis por ambiente
 
@@ -39,9 +57,11 @@ Faça em cada projeto Supabase:
 
 1. **Authentication → Sign In / Providers → Email**: habilitado.
    - **Confirm email**: **ligado em prod**. Em dev, desligue se o time preferir testar sem caixa de e-mail.
+   - **Email OTP Length**: `6`. O backend só aceita códigos de 6 dígitos.
+   - **Email OTP Expiration**: `3600`.
 2. **Authentication → URL Configuration**:
    - **Site URL**: a URL do front do ambiente.
-   - **Redirect URLs**: as URLs de confirmação de e-mail e de reset de senha do app (deep link do Expo e web).
+   - **Redirect URLs**: as URLs de confirmação de e-mail do app (deep link do Expo e web).
 3. **Project Settings → JWT Keys**:
    - Migre para **JWT Signing Keys** assimétricas (ECC P-256 / RS256).
    - O backend aceita ES256 e RS256 e **rejeita HS256**.
@@ -49,6 +69,44 @@ Faça em cada projeto Supabase:
    - Access token expiry: `3600`.
    - Refresh token rotation: habilitado.
    - Reuse interval: `10`s.
+
+## E-mails (SMTP)
+
+Os e-mails do Auth, como o de recuperação de senha, são enviados pelo próprio Supabase, pelo SMTP configurado em cada projeto. O backend não envia e-mail nem recebe credenciais de SMTP.
+
+| Ambiente | SMTP |
+| --- | --- |
+| Local | Inbucket do `supabase start`; os e-mails aparecem em `http://localhost:54324` |
+| Dev | Mailtrap Email Sandbox |
+
+### Provedor
+
+- **Mailtrap Email Sandbox** (dev): captura os e-mails numa caixa web, sem entregar ao destinatário, e não exige domínio. Plano gratuito: 50 e-mails/mês e 1 usuário.
+- **Resend**: avaliado e não adotado por enquanto. O plano gratuito tem 3.000 e-mails/mês (100/dia), mas sem domínio verificado só entrega para o e-mail do dono da conta.
+
+A configuração de dev foi feita no Mailtrap, na conta pessoal do Natan.
+
+### Configurar um projeto
+
+1. No Mailtrap, abra **Email Sandbox → My Sandbox → Integration → SMTP** e copie usuário e senha.
+2. No Supabase, em **Authentication → Emails → SMTP Settings**, ative **Enable custom SMTP** e preencha:
+
+   | Campo | Valor |
+   | --- | --- |
+   | Sender email address | `naoresponda@pie.test` |
+   | Sender name | `PIE` |
+   | Host | `sandbox.smtp.mailtrap.io` |
+   | Port number | `587` |
+   | Username / Password | credenciais do passo 1 |
+
+   Use a porta 587 (ou 2525). O Mailtrap usa STARTTLS em todas as portas, e na 465 o Supabase espera TLS direto.
+3. Valide: em **Authentication → Users**, abra o menu de um usuário e use **Send password recovery**. O e-mail deve aparecer no sandbox do Mailtrap. Se não aparecer, veja **Logs → Auth**.
+
+O sandbox não valida remetente nem domínio. Um provedor com entrega real exige domínio verificado (SPF e DKIM) antes do primeiro envio.
+
+### Credenciais
+
+Usuário e senha do SMTP ficam só no painel do Supabase, que os armazena criptografados. Não há variáveis de SMTP no backend, e os valores nunca vão para o repositório. Se a senha vazar, gere outra em **Reset Credentials** no Mailtrap e atualize o painel.
 
 ## Local
 

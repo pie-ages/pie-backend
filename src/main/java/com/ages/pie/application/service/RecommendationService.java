@@ -3,17 +3,17 @@ package com.ages.pie.application.service;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.ages.pie.application.dto.RecommendedProductDTO;
-import com.ages.pie.application.dto.product.ProductCatalogItemDTO;
+import com.ages.pie.application.dto.product.ProductCatalogPageDTO;
 import com.ages.pie.application.exception.ResourceNotFoundException;
 import com.ages.pie.application.mapper.ProductMapper;
 import com.ages.pie.domain.entity.BodyProfile;
@@ -30,7 +30,6 @@ import com.ages.pie.infrastructure.repository.UserRepository;
 @Service
 public class RecommendationService {
 
-    private static final Logger logger = LoggerFactory.getLogger(RecommendationService.class);
     private static final int DEFAULT_LIMIT = 20;
 
     private final UserRepository userRepository;
@@ -64,27 +63,15 @@ public class RecommendationService {
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = true)
-    public List<ProductCatalogItemDTO> recommendCatalogItemsForUser(UUID userId, int limit) {
-        try {
-            return recommendScored(userId, limit).stream()
-                    .map(scoredProduct -> scoredProduct.product())
-                    .map(productMapper::toCatalogItemDTO)
-                    .toList();
-        } catch (Exception e) {
-            logger.warn("Falha ao obter recomendações para userId={}", userId, e);
-            return List.of();
-        }
-    }
-
-    @Transactional(readOnly = true)
-    public List<Product> recommendProductsForUser(UUID userId, int limit) {
-        try {
-            return recommendScored(userId, limit).stream()
-                    .map(scoredProduct -> scoredProduct.product())
-                    .toList();
-        } catch (Exception e) {
-            return List.of();
-        }
+    public ProductCatalogPageDTO recommendCatalogForUser(UUID userId, Pageable pageable) {
+        List<ScoredProduct> recommendations = recommendScored(userId, Integer.MAX_VALUE);
+        var items = recommendations.stream()
+                .skip(pageable.getOffset())
+                .limit(pageable.getPageSize())
+                .map(ScoredProduct::product)
+                .map(productMapper::toCatalogItemDTO)
+                .toList();
+        return new ProductCatalogPageDTO(items, recommendations.size(), pageable.getPageNumber(), pageable.getPageSize());
     }
 
     private List<ScoredProduct> recommendScored(UUID userId, int limit) {
@@ -106,6 +93,32 @@ public class RecommendationService {
                         .thenComparing(Comparator.comparing(ScoredProduct::createdAt).reversed()))
                 .limit(limit)
                 .toList();
+    }
+
+    /**
+     * Ids dos produtos compatíveis com o perfil do usuário, pelos mesmos critérios de
+     * {@link #recommendForUser(UUID)} (score &gt; 0). Retorna vazio quando o usuário não existe
+     * ou não tem estilos/cores suficientes para avaliar compatibilidade.
+     */
+    @Transactional(readOnly = true)
+    public Optional<Set<UUID>> findCompatibleProductIds(UUID userId) {
+        Optional<User> user = userRepository.findById(userId);
+        if (user.isEmpty()) {
+            return Optional.empty();
+        }
+        BodyProfile profile = bodyProfileRepository.findByCustomerId(userId).orElse(null);
+        Set<String> userStyleIds = collectUserStyleIds(user.get(), profile);
+        Set<String> favoriteColors = new HashSet<>(collectFavoriteColors(profile));
+        if (user.get().getFavoriteColors() != null) {
+            user.get().getFavoriteColors().forEach(c -> favoriteColors.add(c.getId()));
+        }
+        if (userStyleIds.isEmpty() && favoriteColors.isEmpty()) {
+            return Optional.empty();
+        }
+        return Optional.of(productRepository.findByActiveTrueAndStatus(ProductStatus.PUBLISHED).stream()
+                .filter(product -> scorer.score(userStyleIds, favoriteColors, product) > 0.0)
+                .map(Product::getId)
+                .collect(java.util.stream.Collectors.toSet()));
     }
 
     private Set<String> collectUserStyleIds(User user, BodyProfile profile) {

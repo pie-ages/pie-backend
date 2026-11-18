@@ -12,6 +12,7 @@ public class SupabaseStorageProperties {
     private String bucket = "product-images";
     private String wardrobeBucket = "wardrobe-items";
     private String lookBucket = "look-images";
+    private String companyLogoBucket = "company-logos";
     private int maxFileSizeMb = 5;
 
     public String getUrl() { return url; }
@@ -28,6 +29,9 @@ public class SupabaseStorageProperties {
 
     public String getLookBucket() { return lookBucket; }
     public void setLookBucket(String lookBucket) { this.lookBucket = lookBucket; }
+
+    public String getCompanyLogoBucket() { return companyLogoBucket; }
+    public void setCompanyLogoBucket(String companyLogoBucket) { this.companyLogoBucket = companyLogoBucket; }
 
     public int getMaxFileSizeMb() { return maxFileSizeMb; }
     public void setMaxFileSizeMb(int maxFileSizeMb) { this.maxFileSizeMb = maxFileSizeMb; }

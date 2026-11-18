@@ -12,10 +12,12 @@ import com.ages.pie.infrastructure.repository.BodyProfileRepository;
 import com.ages.pie.infrastructure.service.HeuristicRecommendationScorer;
 import com.ages.pie.infrastructure.repository.ProductRepository;
 import com.ages.pie.infrastructure.repository.UserRepository;
+import org.springframework.data.domain.PageRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.time.OffsetDateTime;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -23,6 +25,7 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -32,7 +35,7 @@ class RecommendationServiceTest {
     private final UserRepository userRepository = mock(UserRepository.class);
     private final BodyProfileRepository bodyProfileRepository = mock(BodyProfileRepository.class);
     private final ProductRepository productRepository = mock(ProductRepository.class);
-    private final ProductMapper productMapper = mock(ProductMapper.class);
+    private final ProductMapper productMapper = new ProductMapper(null);
     private final RecommendationService service = new RecommendationService(
             userRepository, bodyProfileRepository, productRepository, new HeuristicRecommendationScorer(), productMapper);
 
@@ -132,5 +135,69 @@ class RecommendationServiceTest {
         List<RecommendedProductDTO> result = service.recommendForUser(userId, 1);
 
         assertEquals(1, result.size());
+    }
+
+    @Test
+    void paginatesRankedRecommendationsWithoutLosingTotalOrRepeatingItems() {
+        givenPreferences(List.of(ProductStyle.CASUAL), null, null);
+        OffsetDateTime now = OffsetDateTime.now();
+        List<Product> products = java.util.stream.IntStream.range(0, 25)
+                .mapToObj(i -> product("item-" + i, List.of("casual"), "azul", now.plusMinutes(i)))
+                .toList();
+        when(productRepository.findByActiveTrueAndStatus(ProductStatus.PUBLISHED)).thenReturn(products);
+
+        var first = service.recommendCatalogForUser(userId, PageRequest.of(0, 20));
+        var second = service.recommendCatalogForUser(userId, PageRequest.of(1, 20));
+        var beyondLast = service.recommendCatalogForUser(userId, PageRequest.of(2, 20));
+
+        assertThat(first.total()).isEqualTo(25);
+        assertThat(first.page()).isZero();
+        assertThat(first.size()).isEqualTo(20);
+        assertThat(first.items()).hasSize(20);
+        assertThat(first.items().getFirst().name()).isEqualTo("item-24");
+        assertThat(second.total()).isEqualTo(25);
+        assertThat(second.page()).isEqualTo(1);
+        assertThat(second.size()).isEqualTo(20);
+        assertThat(second.items()).extracting(item -> item.name())
+                .containsExactly("item-4", "item-3", "item-2", "item-1", "item-0");
+        assertThat(second.items()).doesNotContainAnyElementsOf(first.items());
+        assertThat(beyondLast.items()).isEmpty();
+        assertThat(beyondLast.total()).isEqualTo(25);
+    }
+
+    @Test
+    void catalogMappingPreservesProductDisplayAndPartnerStoreFields() {
+        givenPreferences(List.of(ProductStyle.CASUAL), null, null);
+        Product product = product("Camiseta", List.of("casual"), "azul", OffsetDateTime.now());
+        var company = mock(com.ages.pie.domain.entity.Company.class);
+        when(company.getName()).thenReturn("Loja parceira");
+        when(product.getCompany()).thenReturn(company);
+        when(product.getCategory()).thenReturn("camiseta");
+        when(product.getPrice()).thenReturn(new BigDecimal("49.90"));
+        when(product.getImageUrl()).thenReturn("https://example.com/image.jpg");
+        when(product.getPurchaseUrl()).thenReturn("https://example.com/buy");
+        when(product.getStatus()).thenReturn(ProductStatus.PUBLISHED);
+        when(product.getSizes()).thenReturn(List.of("M"));
+        when(product.getMaterials()).thenReturn(List.of("algodao"));
+        when(product.getGender()).thenReturn(com.ages.pie.domain.enums.ProductGender.FEMININO);
+        when(productRepository.findByActiveTrueAndStatus(ProductStatus.PUBLISHED)).thenReturn(List.of(product));
+
+        var result = service.recommendCatalogForUser(userId, PageRequest.of(0, 20));
+
+        assertThat(result.items()).hasSize(1);
+        var item = result.items().getFirst();
+        assertThat(item.id()).isEqualTo(product.getId());
+        assertThat(item.name()).isEqualTo("Camiseta");
+        assertThat(item.category()).isEqualTo("camiseta");
+        assertThat(item.color()).isEqualTo("azul");
+        assertThat(item.price()).isEqualByComparingTo("49.90");
+        assertThat(item.imageUrl()).isEqualTo("https://example.com/image.jpg");
+        assertThat(item.purchaseUrl()).isEqualTo("https://example.com/buy");
+        assertThat(item.companyName()).isEqualTo("Loja parceira");
+        assertThat(item.status()).isEqualTo(ProductStatus.PUBLISHED);
+        assertThat(item.styles()).containsExactly("casual");
+        assertThat(item.sizes()).containsExactly("M");
+        assertThat(item.materials()).containsExactly("algodao");
+        assertThat(item.gender()).isEqualTo(com.ages.pie.domain.enums.ProductGender.FEMININO);
     }
 }
