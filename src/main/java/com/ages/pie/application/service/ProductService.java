@@ -125,6 +125,18 @@ public class ProductService {
         validateCatalogFilters(filters);
         String normalizedSearch = normalize(search);
 
+        if (customerId.isPresent() && normalizedSearch == null && hasNoFilters(filters)) {
+            try {
+                ProductCatalogPageDTO recommendations = recommendationService.recommendCatalogForUser(customerId.get(), pageable);
+                if (recommendations.total() > 0) {
+                    return recommendations;
+                }
+            } catch (RuntimeException e) {
+                // Catch outside the proxy, after the independent transaction has completed or rolled back.
+                logger.warn("Falha ao obter recomendações para userId={}; usando catálogo padrão", customerId.get(), e);
+            }
+        }
+
         List<String> ignored = new ArrayList<>();
         List<String> colors = filters.colors();
         UUID[] compatibleIds = null;
@@ -165,6 +177,17 @@ public class ProductService {
                 compatibleIds,
                 pageable);
         return productMapper.toCatalogPageDTO(page).withIgnoredFilters(ignored);
+    }
+
+    private boolean hasNoFilters(CatalogFiltersDTO filters) {
+        return (filters.styles() == null || filters.styles().isEmpty())
+                && (filters.categories() == null || filters.categories().isEmpty())
+                && (filters.colors() == null || filters.colors().isEmpty())
+                && (filters.companies() == null || filters.companies().isEmpty())
+                && (filters.materials() == null || filters.materials().isEmpty())
+                && (filters.genders() == null || filters.genders().isEmpty())
+                && !filters.colorimetry()
+                && !filters.matchesProfile();
     }
 
     /** Sem filtro explícito usa o do perfil; com ambos, exige que atendam aos dois (interseção). */

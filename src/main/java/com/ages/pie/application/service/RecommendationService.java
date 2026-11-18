@@ -7,11 +7,15 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.ages.pie.application.dto.RecommendedProductDTO;
+import com.ages.pie.application.dto.product.ProductCatalogPageDTO;
 import com.ages.pie.application.exception.ResourceNotFoundException;
+import com.ages.pie.application.mapper.ProductMapper;
 import com.ages.pie.domain.entity.BodyProfile;
 import com.ages.pie.domain.entity.Product;
 import com.ages.pie.domain.entity.User;
@@ -32,15 +36,18 @@ public class RecommendationService {
     private final BodyProfileRepository bodyProfileRepository;
     private final ProductRepository productRepository;
     private final RecommendationScorer scorer;
+    private final ProductMapper productMapper;
 
     public RecommendationService(UserRepository userRepository,
                                  BodyProfileRepository bodyProfileRepository,
                                  ProductRepository productRepository,
-                                 RecommendationScorer scorer) {
+                                 RecommendationScorer scorer,
+                                 ProductMapper productMapper) {
         this.userRepository = userRepository;
         this.bodyProfileRepository = bodyProfileRepository;
         this.productRepository = productRepository;
         this.scorer = scorer;
+        this.productMapper = productMapper;
     }
 
     @Transactional(readOnly = true)
@@ -50,6 +57,24 @@ public class RecommendationService {
 
     @Transactional(readOnly = true)
     public List<RecommendedProductDTO> recommendForUser(UUID userId, int limit) {
+        return recommendScored(userId, limit).stream()
+                .map(RecommendationService::toDTO)
+                .toList();
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = true)
+    public ProductCatalogPageDTO recommendCatalogForUser(UUID userId, Pageable pageable) {
+        List<ScoredProduct> recommendations = recommendScored(userId, Integer.MAX_VALUE);
+        var items = recommendations.stream()
+                .skip(pageable.getOffset())
+                .limit(pageable.getPageSize())
+                .map(ScoredProduct::product)
+                .map(productMapper::toCatalogItemDTO)
+                .toList();
+        return new ProductCatalogPageDTO(items, recommendations.size(), pageable.getPageNumber(), pageable.getPageSize());
+    }
+
+    private List<ScoredProduct> recommendScored(UUID userId, int limit) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
@@ -67,7 +92,6 @@ public class RecommendationService {
                 .sorted(Comparator.comparingDouble(ScoredProduct::score).reversed()
                         .thenComparing(Comparator.comparing(ScoredProduct::createdAt).reversed()))
                 .limit(limit)
-                .map(RecommendationService::toDTO)
                 .toList();
     }
 

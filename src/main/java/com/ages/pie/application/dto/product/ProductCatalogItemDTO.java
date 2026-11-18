@@ -16,6 +16,7 @@ public record ProductCatalogItemDTO(
     String imageUrl,
     String purchaseUrl,
     String companyName,
+    String companyPhotoUrl,
     ProductStatus status,
     List<String> styles,
     List<String> sizes,
