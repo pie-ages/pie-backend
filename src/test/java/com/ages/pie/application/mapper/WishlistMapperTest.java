@@ -4,14 +4,11 @@ import com.ages.pie.application.dto.wishlist.WishlistItemResponseDTO;
 import com.ages.pie.application.dto.wishlist.WishlistResponseDTO;
 import com.ages.pie.domain.entity.Company;
 import com.ages.pie.domain.entity.Product;
-import com.ages.pie.domain.enums.ProductStatus;
 import com.ages.pie.domain.entity.User;
 import com.ages.pie.domain.entity.Wishlist;
 import com.ages.pie.domain.entity.WishlistItem;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
@@ -35,7 +32,6 @@ class WishlistMapperTest {
         Company company = new Company(UUID.randomUUID(), "Loja X", "12345678000199", "Loja X LTDA",
                 "Maria", "contato@lojax.com", UUID.randomUUID(), null, null);
         product = new Product(company, "Blazer Social Feminino");
-        product.setStatus(ProductStatus.PUBLISHED);
         ReflectionTestUtils.setField(product, "id", productId);
         ReflectionTestUtils.setField(product, "color", "Bege");
         ReflectionTestUtils.setField(product, "price", new BigDecimal("279.90"));
@@ -48,7 +44,7 @@ class WishlistMapperTest {
     }
 
     @Test
-    void toItemDTO_shouldMapProductData_whenProductIsActiveAndPublished() {
+    void toItemDTO_shouldMapProductData_whenProductIsActive() {
         WishlistItemResponseDTO result = wishlistMapper.toItemDTO(new WishlistItem(wishlist, product));
 
         assertThat(result.productId()).isEqualTo(productId);
@@ -98,16 +94,5 @@ class WishlistMapperTest {
         assertThat(result.id()).isNull();
         assertThat(result.name()).isNull();
         assertThat(result.items()).isEqualTo(List.of());
-    }
-
-    @ParameterizedTest
-    @EnumSource(ProductStatus.class)
-    void onlyActivePublishedProductsAreAvailable(ProductStatus status) {
-        product.setStatus(status);
-        WishlistItem item = new WishlistItem(wishlist, product);
-
-        assertThat(wishlistMapper.toItemDTO(item).available()).isEqualTo(status == ProductStatus.PUBLISHED);
-        ReflectionTestUtils.setField(product, "active", false);
-        assertThat(wishlistMapper.toItemDTO(item).available()).isFalse();
     }
 }

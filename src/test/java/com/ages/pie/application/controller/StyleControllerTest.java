@@ -20,7 +20,6 @@ import com.ages.pie.application.service.StyleService;
 import com.ages.pie.application.dto.user.UserStyleResponseDTO;
 import com.ages.pie.application.service.UserStyleService;
 import com.ages.pie.domain.enums.ProductStyle;
-import com.ages.pie.domain.enums.Style;
 import com.ages.pie.infrastructure.security.AuthenticatedUserProvider;
 import com.ages.pie.application.config.SecurityConfig;
 import com.ages.pie.application.config.SupabaseAuthProperties;
@@ -123,22 +122,6 @@ class StyleControllerTest {
         mockMvc.perform(get("/users/me/style"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.styles[1]").value("BOHO"));
-    }
-
-    @Test
-    void acceptsThePersonalStylesOfferedByMobile() throws Exception {
-        UUID userId = UUID.randomUUID();
-        var styles = List.of(Style.CLASSICO, Style.CRIATIVO, Style.REFINADO, Style.SENSUAL, Style.DRAMATICO);
-        when(authenticatedUserProvider.id()).thenReturn(userId);
-        when(styleService.updateStyles(userId, styles)).thenReturn(
-                new StyleResultResponseDTO(styles.stream().map(Style::name).toList()));
-
-        mockMvc.perform(put("/users/me/style")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"styles\":[\"CLASSICO\",\"CRIATIVO\",\"REFINADO\",\"SENSUAL\",\"DRAMATICO\"]}"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.styles[4]").value("DRAMATICO"));
-        verify(styleService).updateStyles(userId, styles);
     }
 
     @Test
