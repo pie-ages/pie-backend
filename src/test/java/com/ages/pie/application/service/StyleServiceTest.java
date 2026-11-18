@@ -103,12 +103,12 @@ class StyleServiceTest {
     }
 
     @Test
-    void updateStyles_shouldPersistExactlyTheSixDevStyles() {
+    void updateStyles_shouldPersistTheNineManualStyles() {
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
-        var styles = List.of(Style.values());
+        var styles = List.of(Style.CLASSICO, Style.CASUAL, Style.CRIATIVO, Style.ROMANTICO, Style.REFINADO, Style.SENSUAL, Style.DRAMATICO, Style.MINIMALISTA, Style.BOHO);
         var response = styleService.updateStyles(userId, styles);
 
-        assertThat(styles).hasSize(6);
+        assertThat(styles).hasSize(9);
         assertThat(user.getStylePreference()).containsExactlyElementsOf(styles);
         assertThat(response.styles()).containsExactlyElementsOf(styles.stream().map(Style::name).toList());
         assertThat(styleService.getStyles(userId).styles()).isEqualTo(response.styles());

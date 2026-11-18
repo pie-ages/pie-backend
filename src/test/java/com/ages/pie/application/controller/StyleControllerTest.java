@@ -126,23 +126,23 @@ class StyleControllerTest {
     }
 
     @Test
-    void acceptsOnlyThePersonalCatalogDefinedByDev() throws Exception {
+    void acceptsTheNinePersonalStylesShownByMobile() throws Exception {
         UUID userId = UUID.randomUUID();
-        var styles = List.of(Style.values());
+        var styles = List.of(Style.CLASSICO, Style.CASUAL, Style.CRIATIVO, Style.ROMANTICO, Style.REFINADO, Style.SENSUAL, Style.DRAMATICO, Style.MINIMALISTA, Style.BOHO);
         when(authenticatedUserProvider.id()).thenReturn(userId);
         when(styleService.updateStyles(userId, styles)).thenReturn(
                 new StyleResultResponseDTO(styles.stream().map(Style::name).toList()));
         mockMvc.perform(put("/users/me/style")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"styles\":[\"CASUAL\",\"ELEGANTE\",\"ESPORTIVO\",\"ROMANTICO\",\"MINIMALISTA\",\"BOHO\"]}"))
+                        .content("{\"styles\":[\"CLASSICO\",\"CASUAL\",\"CRIATIVO\",\"ROMANTICO\",\"REFINADO\",\"SENSUAL\",\"DRAMATICO\",\"MINIMALISTA\",\"BOHO\"]}"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.styles.length()").value(6));
+                .andExpect(jsonPath("$.styles.length()").value(9));
         verify(styleService).updateStyles(userId, styles);
     }
 
     @org.junit.jupiter.params.ParameterizedTest
-    @org.junit.jupiter.params.provider.ValueSource(strings = {"CLASSICO", "CRIATIVO", "REFINADO", "SENSUAL", "DRAMATICO"})
-    void rejectsStylesOutsideDevInsteadOfConvertingThem(String style) throws Exception {
+    @org.junit.jupiter.params.provider.ValueSource(strings = {"CLASSIC", "SPORT", "PUNK", "UNKNOWN", "REFINADO_OLD"})
+    void rejectsUnknownStylesWithoutConvertingThem(String style) throws Exception {
         mockMvc.perform(put("/users/me/style")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"styles\":[\"" + style + "\"]}"))
