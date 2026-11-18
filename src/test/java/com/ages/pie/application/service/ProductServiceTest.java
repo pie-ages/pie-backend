@@ -314,7 +314,7 @@ class ProductServiceTest {
         Page<Product> page = new PageImpl<>(List.of(product), pageable, 1);
         ProductCatalogItemDTO itemDTO = new ProductCatalogItemDTO(productId, "Camiseta",
                 "Camiseta", "Branco", new BigDecimal("49.90"), "https://exemplo.com/camiseta.jpg",
-                "https://loja.exemplo.com/camiseta", "Loja X", ProductStatus.DRAFT, List.of(), List.of(), List.of(), null);
+                "https://loja.exemplo.com/camiseta", "Loja X", null, ProductStatus.DRAFT, List.of(), List.of(), List.of(), null);
         ProductCatalogPageDTO pageDTO = new ProductCatalogPageDTO(List.of(itemDTO), 1, 0, 20);
         CatalogFiltersDTO emptyFilters = new CatalogFiltersDTO(null, null, null, null, null);
         when(productRepository.findCatalog(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), eq(pageable))).thenReturn(page);
@@ -435,7 +435,7 @@ class ProductServiceTest {
         CatalogFiltersDTO emptyFilters = new CatalogFiltersDTO(null, null, null, null, null);
         ProductCatalogItemDTO itemDTO = new ProductCatalogItemDTO(productId, "Camiseta",
                 "Camiseta", "Branco", new BigDecimal("49.90"), "https://exemplo.com/camiseta.jpg",
-                "https://loja.exemplo.com/camiseta", "Loja X", ProductStatus.PUBLISHED,
+                "https://loja.exemplo.com/camiseta", "Loja X", null, ProductStatus.PUBLISHED,
                 List.of("casual"), List.of("M"), List.of("algodao"), null);
         when(recommendationService.recommendCatalogForUser(userId, pageable))
                 .thenReturn(new ProductCatalogPageDTO(List.of(itemDTO), 1, 0, 20));
@@ -553,7 +553,7 @@ class ProductServiceTest {
         Page<Product> page = new PageImpl<>(List.of(product), pageable, 1);
         ProductCatalogItemDTO itemDTO = new ProductCatalogItemDTO(productId, "Camiseta",
                 "Camiseta", "Branco", new BigDecimal("49.90"), "https://exemplo.com/camiseta.jpg",
-                "https://loja.exemplo.com/camiseta", "Loja X", ProductStatus.PUBLISHED, List.of(), List.of(), List.of(), null);
+                "https://loja.exemplo.com/camiseta", "Loja X", null, ProductStatus.PUBLISHED, List.of(), List.of(), List.of(), null);
         ProductCatalogPageDTO pageDTO = new ProductCatalogPageDTO(List.of(itemDTO), 1, 0, 20);
         when(companyRepository.existsById(companyId)).thenReturn(true);
         when(productRepository.findByCompanyFiltered(companyId, ProductStatus.PUBLISHED, null, pageable))
