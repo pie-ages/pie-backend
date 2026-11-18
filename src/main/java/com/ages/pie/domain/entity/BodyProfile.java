@@ -56,6 +56,10 @@ public class BodyProfile extends AuditableEntity {
     private String identifiedStyle;
 
     @JdbcTypeCode(SqlTypes.ARRAY)
+    @Column(name = "identified_style_touches", columnDefinition = "varchar[]")
+    private String[] identifiedStyleTouches = new String[0];
+
+    @JdbcTypeCode(SqlTypes.ARRAY)
     @Column(name = "favorite_colors", columnDefinition = "varchar[]")
     private String[] favoriteColors;
 
@@ -128,5 +132,13 @@ public class BodyProfile extends AuditableEntity {
 
     public void setIdentifiedStyle(String identifiedStyle) {
         this.identifiedStyle = identifiedStyle;
+    }
+
+    public String[] getIdentifiedStyleTouches() {
+        return identifiedStyleTouches;
+    }
+
+    public void setIdentifiedStyleTouches(String[] touches) {
+        this.identifiedStyleTouches = touches;
     }
 }

@@ -164,6 +164,51 @@ class StyleIdentificationFromAnswersTest {
                 .isInstanceOf(com.ages.pie.application.exception.ResourceNotFoundException.class);
     }
 
+    @Test
+    void persistsEssenceAndTwoTouchesFromPositiveVotesAndReadsThemBack() {
+        UUID userId = UUID.randomUUID();
+        User user = user(userId);
+        BodyProfile profile = new BodyProfile(user);
+        BodyProfileRepository profiles = mock(BodyProfileRepository.class);
+        StyleAnswerRepository answers = mock(StyleAnswerRepository.class);
+        UserRepository users = mock(UserRepository.class);
+        when(users.findById(userId)).thenReturn(Optional.of(user));
+        when(users.existsById(userId)).thenReturn(true);
+        when(profiles.findByCustomerId(userId)).thenReturn(Optional.of(profile));
+        List<Style> votes = List.of(Style.CASUAL, Style.ROMANTICO, Style.CASUAL, Style.BOHO, Style.ROMANTICO);
+        when(answers.findByCustomerId(userId)).thenReturn(votes.stream().map(style -> {
+            StyleQuestion q = question();
+            return new StyleAnswer(user, q, new StyleOption(q, style.name(), style, 1), StyleAnswerType.OPTION);
+        }).toList());
+        StyleIdentificationService service = new StyleIdentificationService(profiles, users, answers, mock(StyleOptionRepository.class));
+        var result = service.identify(userId);
+        assertThat(result.styles()).containsExactly("CASUAL");
+        assertThat(result.touches()).containsExactly("ROMANTICO", "BOHO");
+        assertThat(profile.getIdentifiedStyleTouches()).containsExactly("ROMANTICO", "BOHO");
+        assertThat(service.getIdentified(userId)).isEqualTo(result);
+    }
+
+    @Test
+    void ignoresArchivedQuizAnswersAndDoesNotInventTouches() {
+        UUID userId = UUID.randomUUID();
+        User user = user(userId);
+        StyleQuestion archived = question();
+        archived.setActive(false);
+        StyleQuestion active = question();
+        BodyProfile profile = new BodyProfile(user);
+        BodyProfileRepository profiles = mock(BodyProfileRepository.class);
+        StyleAnswerRepository answers = mock(StyleAnswerRepository.class);
+        UserRepository users = mock(UserRepository.class);
+        when(users.findById(userId)).thenReturn(Optional.of(user));
+        when(profiles.findByCustomerId(userId)).thenReturn(Optional.of(profile));
+        when(answers.findByCustomerId(userId)).thenReturn(List.of(
+                new StyleAnswer(user, archived, new StyleOption(archived, "Antigo", Style.ROMANTICO, 1), StyleAnswerType.OPTION),
+                new StyleAnswer(user, active, new StyleOption(active, "Atual", Style.ESPORTIVO, 1), StyleAnswerType.OPTION)));
+        var result = new StyleIdentificationService(profiles, users, answers, mock(StyleOptionRepository.class)).identify(userId);
+        assertThat(result.styles()).containsExactly("ESPORTIVO");
+        assertThat(result.touches()).isEmpty();
+    }
+
     private User user(UUID userId) {
         User user = new User("Ana", "ana@pie.com", UUID.randomUUID());
         ReflectionTestUtils.setField(user, "id", userId);

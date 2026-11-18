@@ -59,11 +59,13 @@ class UserStyleIdentificationControllerTest {
         UUID userId = UUID.randomUUID();
         when(authProvider.id()).thenReturn(userId);
         when(styleIdentificationService.identify(userId))
-                .thenReturn(new StyleIdentificationResponseDTO(List.of("ELEGANTE")));
+                .thenReturn(new StyleIdentificationResponseDTO(List.of("ELEGANTE"), List.of("ROMANTICO", "BOHO")));
 
         mockMvc.perform(post("/users/me/style/identify"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.styles[0]").value("ELEGANTE"));
+                .andExpect(jsonPath("$.styles[0]").value("ELEGANTE"))
+                .andExpect(jsonPath("$.touches[0]").value("ROMANTICO"))
+                .andExpect(jsonPath("$.touches[1]").value("BOHO"));
 
         verify(styleIdentificationService).identify(userId);
     }
@@ -73,7 +75,7 @@ class UserStyleIdentificationControllerTest {
         UUID userId = UUID.randomUUID();
         when(authProvider.id()).thenReturn(userId);
         when(styleIdentificationService.identify(userId))
-                .thenReturn(new StyleIdentificationResponseDTO(List.of()));
+                .thenReturn(new StyleIdentificationResponseDTO(List.of(), List.of()));
 
         mockMvc.perform(post("/users/me/style/identify"))
                 .andExpect(status().isOk())
@@ -94,7 +96,7 @@ class UserStyleIdentificationControllerTest {
                 UUID userId = UUID.randomUUID();
                 when(authProvider.id()).thenReturn(userId);
                 when(styleIdentificationService.getIdentified(userId))
-                                .thenReturn(new StyleIdentificationResponseDTO(List.of("BOHO")));
+                                .thenReturn(new StyleIdentificationResponseDTO(List.of("BOHO"), List.of()));
 
                 mockMvc.perform(get("/users/me/style/identified"))
                                 .andExpect(status().isOk())
