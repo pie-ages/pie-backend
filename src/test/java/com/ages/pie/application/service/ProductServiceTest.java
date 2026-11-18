@@ -435,7 +435,7 @@ class ProductServiceTest {
         CatalogFiltersDTO emptyFilters = new CatalogFiltersDTO(null, null, null, null, null);
         ProductCatalogItemDTO itemDTO = new ProductCatalogItemDTO(productId, "Camiseta",
                 "Camiseta", "Branco", new BigDecimal("49.90"), "https://exemplo.com/camiseta.jpg",
-                "https://loja.exemplo.com/camiseta", "Loja X", ProductStatus.PUBLISHED,
+                "https://loja.exemplo.com/camiseta", "Loja X", null, ProductStatus.PUBLISHED,
                 List.of("casual"), List.of("M"), List.of("algodao"), null);
         when(recommendationService.recommendCatalogForUser(userId, pageable))
                 .thenReturn(new ProductCatalogPageDTO(List.of(itemDTO), 1, 0, 20));
