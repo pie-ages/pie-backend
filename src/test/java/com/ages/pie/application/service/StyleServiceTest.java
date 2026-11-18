@@ -103,6 +103,18 @@ class StyleServiceTest {
     }
 
     @Test
+    void updateStyles_shouldPersistAllMobileStylesAndKeepLegacyStyles() {
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        var styles = List.of(Style.values());
+        var response = styleService.updateStyles(userId, styles);
+
+        assertThat(user.getStylePreference()).containsExactlyElementsOf(styles);
+        assertThat(response.styles()).containsExactlyElementsOf(styles.stream().map(Style::name).toList());
+        assertThat(styleService.getStyles(userId).styles()).isEqualTo(response.styles());
+        verify(userRepository).save(user);
+    }
+
+    @Test
         void submitAnswers_shouldCountBothDisplayedStyles() {
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
         when(questionRepository.findByActiveTrueOrderByDisplayOrderAsc())
