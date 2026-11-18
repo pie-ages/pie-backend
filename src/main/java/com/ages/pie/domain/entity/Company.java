@@ -95,8 +95,8 @@ public class Company extends AuditableEntity {
     public void update(String name, String socialReason, String responsiblePerson,
             String email, String website) {
         this.name = requireText(name, "Nome é obrigatório");
-        this.socialReason = requireText(socialReason, "Razão social é obrigatória");
-        this.responsiblePerson = requireText(responsiblePerson, "Responsável é obrigatório");
+        if (socialReason != null && !socialReason.isBlank()) this.socialReason = socialReason;
+        if (responsiblePerson != null && !responsiblePerson.isBlank()) this.responsiblePerson = responsiblePerson;
         this.email = requireEmail(email);
         this.website = website;
     }
