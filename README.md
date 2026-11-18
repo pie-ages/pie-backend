@@ -35,41 +35,6 @@ Após a inicialização, a API fica disponível em `http://localhost:8080` e a d
 ./mvnw test
 ```
 
-O Mockito é iniciado como agente pelo Maven, sem depender de autoanexação à JVM.
-Os testes de integração que exigem PostgreSQL só executam quando `SPRING_DATASOURCE_URL` está definida.
-
-## Recomendações na Home/Vitrine
-
-`GET /api/products` retorna `{ "items": [...], "total": 25, "page": 0, "size": 20, "ignoredFilters": [] }`.
-O endpoint é público. Com token válido associado a um cliente, sem busca nem filtros,
-consulta o `RecommendationService` em todas as páginas. O id local é resolvido a partir do
-`sub` do JWT; o serviço carrega os estilos de produto do usuário, o estilo identificado e
-as cores favoritas do perfil. A integração é interna ao backend, sem chamada HTTP externa.
-
-- As recomendações contêm somente produtos ativos e publicados com pontuação positiva.
-- A ordem é a do serviço existente: pontuação decrescente e, no empate, criação mais recente.
-  Nesse fluxo, `sort` não altera a ordem de relevância.
-- `page` começa em zero; `size` mantém o tamanho solicitado (padrão 20, máximo 100), inclusive na última página.
-  `total` conta todas as recomendações antes da paginação. Uma página além do fim retorna `items: []`
-  com o mesmo `total`, sem trocar para o catálogo comum.
-- Cada item mantém `id`, `name`, `category`, `color`, `price`, `imageUrl`, `purchaseUrl`,
-  `companyName`, `status`, `styles`, `sizes`, `materials` e `gender`. O frontend usa `id`
-  para abrir o detalhe e `purchaseUrl` para navegar à loja parceira.
-- Busca e filtros de estilo, categoria, cor, empresa, material ou gênero mantêm o catálogo comum
-  e sua ordenação. Os filtros explícitos `colorimetry` e `matchesProfile` também preservam o
-  comportamento existente, incluindo a indicação de filtros não aplicados em `ignoredFilters`.
-- Sem usuário local, sem preferências aproveitáveis, sem produtos recomendados ou em falha
-  na recomendação, retorna o catálogo comum com a paginação recebida. Falhas são registradas em log.
-  A recomendação usa uma transação independente e o tratamento ocorre no chamador, cobrindo
-  também falhas ao iniciar ou finalizar essa transação.
-- Falhas do próprio catálogo comum seguem o tratamento padrão de erros da API.
-
-A paginação é recalculada a cada requisição; alterações no perfil ou nos produtos entre
-requisições podem mudar os resultados. O algoritmo de pontuação não foi alterado.
-
-Os testes cobrem sucesso, paginação, acesso anônimo, retorno vazio, falhas de consulta e
-de transação, preservação dos dados da loja e convivência com os filtros existentes.
-
 ## Estilos do usuário
 
 `GET/PUT /users/me/style` usa os estilos `Style` do questionário e as preferências da US09. `GET/PUT /users/me/product-styles` usa `ProductStyle` na coluna `customer.styles`. As duas rotas exigem autenticação e persistem dados separados; os valores de um enum não são convertidos automaticamente para o outro.
