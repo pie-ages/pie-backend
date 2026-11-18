@@ -21,6 +21,7 @@ import com.ages.pie.domain.service.ProductColorMapper;
 import com.ages.pie.infrastructure.repository.CompanyRepository;
 import com.ages.pie.infrastructure.repository.ProductRepository;
 import com.ages.pie.infrastructure.repository.UserRepository;
+import com.ages.pie.infrastructure.repository.WardrobeItemRepository;
 import com.ages.pie.infrastructure.repository.WishlistItemRepository;
 import com.ages.pie.infrastructure.repository.WishlistRepository;
 import org.slf4j.Logger;
@@ -52,6 +53,7 @@ public class ProductService {
     private final ProductMapper productMapper;
     private final WishlistRepository wishlistRepository;
     private final WishlistItemRepository wishlistItemRepository;
+    private final WardrobeItemRepository wardrobeItemRepository;
     private final UserRepository userRepository;
     private final RecommendationService recommendationService;
     private final PreferenceService preferenceService;
@@ -61,6 +63,7 @@ public class ProductService {
             ProductMapper productMapper,
             WishlistRepository wishlistRepository,
             WishlistItemRepository wishlistItemRepository,
+            WardrobeItemRepository wardrobeItemRepository,
             UserRepository userRepository,
             RecommendationService recommendationService,
             PreferenceService preferenceService) {
@@ -69,6 +72,7 @@ public class ProductService {
         this.productMapper = productMapper;
         this.wishlistRepository = wishlistRepository;
         this.wishlistItemRepository = wishlistItemRepository;
+        this.wardrobeItemRepository = wardrobeItemRepository;
         this.userRepository = userRepository;
         this.recommendationService = recommendationService;
         this.preferenceService = preferenceService;
@@ -298,6 +302,14 @@ public class ProductService {
         String normalizedSearch = normalize(search);
         Page<Product> page = productRepository.findByCompanyFiltered(companyId, status, normalizedSearch, pageable);
         return productMapper.toCatalogPageDTO(page);
+    }
+
+    @Transactional(readOnly = true)
+    public long countClosetSavesByCompany(UUID companyId) {
+        if (!companyRepository.existsById(companyId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Empresa não encontrada");
+        }
+        return wardrobeItemRepository.countByCompanyId(companyId);
     }
 
     @Transactional

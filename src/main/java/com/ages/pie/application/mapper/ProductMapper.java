@@ -69,7 +69,7 @@ public class ProductMapper {
             product.getCategory(),
             product.getColor(),
             product.getPrice(),
-            product.getImageUrl(),
+            resolvePrimaryImageUrl(product),
             product.getPurchaseUrl(),
             product.getCompany() != null ? product.getCompany().getName() : null,
             product.getCompany() != null ? product.getCompany().getPhotoUrl() : null,
@@ -118,6 +118,19 @@ public class ProductMapper {
                 .stream()
                 .map(this::toImageDTO)
                 .toList();
+    }
+
+    private String resolvePrimaryImageUrl(Product product) {
+        if (product.getImageUrl() != null) {
+            return product.getImageUrl();
+        }
+        List<ProductImage> images = productImageRepository.findByProductIdOrderByDisplayOrderAsc(product.getId());
+        return images.stream()
+                .filter(ProductImage::isPrimary)
+                .findFirst()
+                .or(() -> images.stream().findFirst())
+                .map(ProductImage::getUrl)
+                .orElse(null);
     }
 
     private ProductImageResponseDTO toImageDTO(ProductImage image) {

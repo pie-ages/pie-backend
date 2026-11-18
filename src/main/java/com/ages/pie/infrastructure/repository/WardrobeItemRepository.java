@@ -26,4 +26,7 @@ public interface WardrobeItemRepository extends JpaRepository<WardrobeItem, UUID
 
     Page<WardrobeItem> findAllByCustomerIdAndCategoryOrderByCreatedAtDescIdDesc(
             UUID customerId, String category, Pageable pageable);
+
+    @Query("SELECT COUNT(wi) FROM WardrobeItem wi JOIN wi.product p JOIN p.company c WHERE c.id = :companyId")
+    long countByCompanyId(@Param("companyId") UUID companyId);
 }
