@@ -7,6 +7,7 @@ import com.ages.pie.application.dto.wishlist.WishlistResponseDTO;
 import com.ages.pie.domain.entity.Product;
 import com.ages.pie.domain.entity.Wishlist;
 import com.ages.pie.domain.entity.WishlistItem;
+import com.ages.pie.domain.enums.ProductStatus;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -42,7 +43,7 @@ public class WishlistMapper {
             product.getPrice(),
             product.getImageUrl(),
             product.getPurchaseUrl(),
-            product.isActive(),
+            product.isActive() && product.getStatus() == ProductStatus.PUBLISHED,
             item.getCreatedAt()
         );
     }

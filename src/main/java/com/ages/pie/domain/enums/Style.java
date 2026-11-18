@@ -6,5 +6,10 @@ public enum Style {
     ESPORTIVO,
     ROMANTICO,
     MINIMALISTA,
-    BOHO
+    BOHO,
+    CLASSICO,
+    CRIATIVO,
+    REFINADO,
+    SENSUAL,
+    DRAMATICO
 }
