@@ -94,6 +94,11 @@ public class ProductController {
         return ResponseEntity.ok(productService.findByCompany(companyId, status, search, pageable));
     }
 
+    @GetMapping("/company/{companyId}/closet-saves")
+    public ResponseEntity<java.util.Map<String, Long>> countClosetSaves(@PathVariable UUID companyId) {
+        return ResponseEntity.ok(java.util.Map.of("count", productService.countClosetSavesByCompany(companyId)));
+    }
+
     @PatchMapping("/{id}/publish")
     public ResponseEntity<ProductResponseDTO> publish(
             @PathVariable UUID id,
