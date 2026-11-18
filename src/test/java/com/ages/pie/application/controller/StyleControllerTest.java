@@ -20,6 +20,7 @@ import com.ages.pie.application.service.StyleService;
 import com.ages.pie.application.dto.user.UserStyleResponseDTO;
 import com.ages.pie.application.service.UserStyleService;
 import com.ages.pie.domain.enums.ProductStyle;
+import com.ages.pie.domain.enums.Style;
 import com.ages.pie.infrastructure.security.AuthenticatedUserProvider;
 import com.ages.pie.application.config.SecurityConfig;
 import com.ages.pie.application.config.SupabaseAuthProperties;
@@ -122,6 +123,31 @@ class StyleControllerTest {
         mockMvc.perform(get("/users/me/style"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.styles[1]").value("BOHO"));
+    }
+
+    @Test
+    void acceptsTheNinePersonalStylesShownByMobile() throws Exception {
+        UUID userId = UUID.randomUUID();
+        var styles = List.of(Style.CLASSICO, Style.CASUAL, Style.CRIATIVO, Style.ROMANTICO, Style.REFINADO, Style.SENSUAL, Style.DRAMATICO, Style.MINIMALISTA, Style.BOHO);
+        when(authenticatedUserProvider.id()).thenReturn(userId);
+        when(styleService.updateStyles(userId, styles)).thenReturn(
+                new StyleResultResponseDTO(styles.stream().map(Style::name).toList()));
+        mockMvc.perform(put("/users/me/style")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"styles\":[\"CLASSICO\",\"CASUAL\",\"CRIATIVO\",\"ROMANTICO\",\"REFINADO\",\"SENSUAL\",\"DRAMATICO\",\"MINIMALISTA\",\"BOHO\"]}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.styles.length()").value(9));
+        verify(styleService).updateStyles(userId, styles);
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings = {"CLASSIC", "SPORT", "PUNK", "UNKNOWN", "REFINADO_OLD"})
+    void rejectsUnknownStylesWithoutConvertingThem(String style) throws Exception {
+        mockMvc.perform(put("/users/me/style")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"styles\":[\"" + style + "\"]}"))
+                .andExpect(status().isBadRequest());
+        org.mockito.Mockito.verifyNoInteractions(styleService);
     }
 
     @Test

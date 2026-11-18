@@ -1,8 +1,8 @@
 package com.ages.pie.application.service;
 
-import java.util.EnumMap;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 import com.ages.pie.application.dto.user.StyleIdentificationResponseDTO;
@@ -41,33 +41,30 @@ public class StyleIdentificationService {
     public StyleIdentificationResponseDTO identify(UUID userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado: " + userId));
-        Map<Style, Integer> answerScores = new EnumMap<>(Style.class);
+        List<Style> votes = new ArrayList<>();
         for (StyleAnswer answer : styleAnswerRepository.findByCustomerId(userId)) {
+            if (!answer.getQuestion().isActive()) continue;
             if (answer.getAnswerType() == StyleAnswerType.OPTION) {
-                answerScores.merge(answer.getOption().getStyle(), 1, Integer::sum);
+                votes.add(answer.getOption().getStyle());
             } else if (answer.getAnswerType() == StyleAnswerType.BOTH) {
                 styleOptionRepository.findByQuestionIdOrderByDisplayOrderAsc(answer.getQuestion().getId())
                         .stream().limit(2).map(StyleOption::getStyle)
-                        .forEach(style -> answerScores.merge(style, 1, Integer::sum));
+                        .forEach(votes::add);
             }
         }
 
-        Style identified = null;
-        for (Style style : Style.values()) {
-            int score = answerScores.getOrDefault(style, 0);
-            if (score > 0 && (identified == null || score > answerScores.get(identified))) {
-                identified = style;
-            }
+        List<Style> ranked = StyleScoreCalculator.rankStyles(votes);
+        if (ranked.isEmpty()) {
+            return new StyleIdentificationResponseDTO(List.of(), List.of());
         }
-
-        if (identified == null) {
-            return new StyleIdentificationResponseDTO(List.of());
-        }
+        Style identified = ranked.getFirst();
+        List<String> touches = ranked.stream().skip(1).limit(2).map(Style::name).toList();
         var profile = bodyProfileRepository.findByCustomerId(userId);
         BodyProfile bodyProfile = profile.orElseGet(() -> new BodyProfile(user));
         bodyProfile.setIdentifiedStyle(identified.name());
+        bodyProfile.setIdentifiedStyleTouches(touches.toArray(String[]::new));
         bodyProfileRepository.save(bodyProfile);
-        return new StyleIdentificationResponseDTO(List.of(identified.name()));
+        return new StyleIdentificationResponseDTO(List.of(identified.name()), touches);
     }
 
     @Transactional(readOnly = true)
@@ -75,13 +72,19 @@ public class StyleIdentificationService {
         if (!userRepository.existsById(userId)) {
             throw new ResourceNotFoundException("Usuário não encontrado: " + userId);
         }
-        String identified = bodyProfileRepository.findByCustomerId(userId)
-                .map(BodyProfile::getIdentifiedStyle).orElse(null);
-        for (Style style : Style.values()) {
-            if (style.name().equals(identified)) {
-                return new StyleIdentificationResponseDTO(List.of(style.name()));
-            }
-        }
-        return new StyleIdentificationResponseDTO(List.of());
+        return bodyProfileRepository.findByCustomerId(userId).map(profile -> {
+            Style essence = parseStyle(profile.getIdentifiedStyle());
+            if (essence == null) return new StyleIdentificationResponseDTO(List.of(), List.of());
+            String[] savedTouches = profile.getIdentifiedStyleTouches();
+            List<String> touches = Arrays.stream(savedTouches)
+                    .map(this::parseStyle).filter(style -> style != null && style != essence)
+                    .distinct().limit(2).map(Style::name).toList();
+            return new StyleIdentificationResponseDTO(List.of(essence.name()), touches);
+        }).orElseGet(() -> new StyleIdentificationResponseDTO(List.of(), List.of()));
+    }
+
+    private Style parseStyle(String value) {
+        if (value == null) return null;
+        return Style.valueOf(value);
     }
 }
